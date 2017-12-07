@@ -5,13 +5,9 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 var node = require('./node').node;
 
 // Some general TODOs:
-// TODO: write readme
-// TODO: write license
-// TODO: write changelog/history
-// TODO: fix tests (currently broken after the helluva refactoring)
+// TODO: add changelog/history
 // TODO: add linting
 // TODO: add editor config
-// TODO: publish
 
 module.exports = _extends({
     initNode: function initNode(opts) {

@@ -36,9 +36,9 @@ var DEFAULT_OPTIONS = {
     cycleInterval: 60,
     epochInterval: 300,
     beatInterval: 10,
-    port: 16600,
     dataPath: DEFAULT_LIST_OPTIONS.dataPath,
     // TODO: add process and HTTP api interfaces to query the node on current status
+    port: 16600,
     apiPort: 17600,
     IRIPort: DEFAULT_IRI_OPTIONS.port,
     TCPPort: 15600,
