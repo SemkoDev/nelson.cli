@@ -3,3 +3,4 @@ node_modules/
 temp/
 data/
 config.ini
+*.iml
