@@ -1,3 +1,4 @@
+const api = require('./api');
 const base = require('./base');
 const heart = require('./heart');
 const iri = require('./iri');
@@ -7,6 +8,7 @@ const peerList = require('./peer-list');
 const utils = require('./utils');
 
 module.exports = {
+    api,
     base,
     heart,
     iri,

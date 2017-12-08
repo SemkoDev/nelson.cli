@@ -37,14 +37,13 @@ var DEFAULT_OPTIONS = {
     epochInterval: 300,
     beatInterval: 10,
     dataPath: DEFAULT_LIST_OPTIONS.dataPath,
-    // TODO: add process and HTTP api interfaces to query the node on current status
     port: 16600,
-    apiPort: 17600,
+    apiPort: 18600,
     IRIPort: DEFAULT_IRI_OPTIONS.port,
     TCPPort: 15600,
     UDPPort: 14600,
-    weightDeflation: 0.75,
-    incomingMax: 6,
+    weightDeflation: 0.65,
+    incomingMax: 8,
     outgoingMax: 6,
     maxShareableNodes: 16,
     localNodes: false,
@@ -344,7 +343,7 @@ var Node = function (_Base) {
             var onConnected = function onConnected() {
                 _this8.log('connection established', peer.data.hostname, peer.data.port);
                 _this8._sendNeighbors(ws);
-                _this8.list.update(peer, { connected: peer.data.connected + 1, dateLastConnected: new Date() }).then(_this8.iri.addNeighbors([peer])).then(_this8.opts.onPeerConnected);
+                _this8.list.markConnected(peer, !asServer).then(_this8.iri.addNeighbors([peer])).then(_this8.opts.onPeerConnected);
             };
 
             var promise = null;
@@ -606,7 +605,7 @@ var Node = function (_Base) {
         value: function reconnectPeers() {
             var _this11 = this;
 
-            // TODO: remove old peers by inverse weight, maybe?
+            // TODO: remove old peers by inverse weight, maybe? Not urgent. Can be added at a later point.
             // this.log('reconnectPeers');
             // If max was reached, do nothing.
             var toTry = Math.ceil((this.opts.outgoingMax - this._getOutgoingSlotsCount()) * 1.5);

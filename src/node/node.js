@@ -12,9 +12,8 @@ const DEFAULT_OPTIONS = {
     epochInterval: 300,
     beatInterval: 10,
     dataPath: DEFAULT_LIST_OPTIONS.dataPath,
-    // TODO: add process and HTTP api interfaces to query the node on current status
     port: 16600,
-    apiPort: 17600,
+    apiPort: 18600,
     IRIPort: DEFAULT_IRI_OPTIONS.port,
     TCPPort: 15600,
     UDPPort: 14600,
@@ -448,7 +447,7 @@ class Node extends Base {
      * @returns {Peer[]} List of new connected peers
      */
     reconnectPeers () {
-        // TODO: remove old peers by inverse weight, maybe?
+        // TODO: remove old peers by inverse weight, maybe? Not urgent. Can be added at a later point.
         // this.log('reconnectPeers');
         // If max was reached, do nothing.
         const toTry = Math.ceil((this.opts.outgoingMax - this._getOutgoingSlotsCount())  * 1.5);

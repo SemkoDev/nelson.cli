@@ -42,6 +42,7 @@ var DEFAULT_PEER_DATA = {
     weight: 1.0,
     dateTried: null,
     dateLastConnected: null,
+    dateCreated: null,
     isTrusted: false
 };
 

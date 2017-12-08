@@ -85,6 +85,7 @@ You can provide one or more of the following options in your ini file. Example:
 [nelson]
 cycleInterval = 60
 epochInterval = 300
+apiPort = 18600
 port = 16600
 IRIPort = 14600
 TCPPort = 15600
@@ -107,6 +108,7 @@ Some have additional short versions.
 | Option                 |      Description                        | Default |
 |------------------------|-----------------------------------------|---------|
 | --neighbors, -n |  space-separated list of nelson neighbors ||
+| --apiPort, -a | Nelson API port to request current node status data|18600|
 | --port, -p | TCP port, on which to start your nelson instance|16600|
 | --IRIPort, -i| IRI API port of the locally running IRI node instance|14600|
 | --TCPPort, -t| IRI TCP Port|15600|

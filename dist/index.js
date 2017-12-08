@@ -3,6 +3,7 @@
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var node = require('./node').node;
+var api = require('./node').api;
 
 // Some general TODOs:
 // TODO: add changelog/history
@@ -22,6 +23,7 @@ module.exports = _extends({
         process.on('SIGTERM', terminate);
 
         _node.start().then(function (n) {
+            api.createAPI(n);
             n.log('initialized!');
         });
     }
