@@ -30,6 +30,9 @@ var _require3 = require('./peer'),
 var _require4 = require('./iri'),
     DEFAULT_IRI_OPTIONS = _require4.DEFAULT_OPTIONS;
 
+var _require5 = require('./utils'),
+    getSecondsPassed = _require5.getSecondsPassed;
+
 var DEFAULT_OPTIONS = {
     dataPath: path.join(process.cwd(), 'data/neighbors.db'),
     multiPort: false,
@@ -146,6 +149,17 @@ var PeerList = function (_Base) {
             };
             return refreshPeer ? peer.update(newData, false).then(updater) : updater();
         }
+    }, {
+        key: 'markConnected',
+        value: function markConnected(peer) {
+            var increaseWeight = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+            return this.update(peer, {
+                connected: peer.data.connected + 1,
+                weight: peer.data.weight * (increaseWeight ? 1.01 : 1),
+                dateLastConnected: new Date()
+            });
+        }
 
         /**
          * Returns currently loaded peers.
@@ -231,6 +245,42 @@ var PeerList = function (_Base) {
         }
 
         /**
+         * Returns average age of all known peers.
+         * @returns {number}
+         * @private
+         */
+
+    }, {
+        key: '_getAverageAge',
+        value: function _getAverageAge() {
+            if (!this.peers.length) {
+                return 1;
+            }
+            var ages = this.peers.map(function (p) {
+                return getSecondsPassed(p.data.dateCreated);
+            });
+            return ages.reduce(function (sum, x) {
+                return sum + x;
+            }) / this.peers.length;
+        }
+
+        /**
+         * Calculates the weight of a peer
+         * @param {Peer} peer
+         * @param {number} averageAge
+         * @returns {number}
+         */
+
+    }, {
+        key: 'getPeerWeight',
+        value: function getPeerWeight(peer, averageAge) {
+            averageAge = averageAge || this._getAverageAge();
+            var normalizedAge = Math.max(getSecondsPassed(peer.data.dateCreated) - averageAge, 1);
+            var weightedAgeMinutes = normalizedAge / 60.0 * peer.data.weight;
+            return Math.max(Math.pow(weightedAgeMinutes, 2), 0.00001);
+        }
+
+        /**
          * Get a certain amount of weighted random peers.
          * The weight depends on relationship age (connections) and trust (weight).
          * @param {number} amount
@@ -240,9 +290,12 @@ var PeerList = function (_Base) {
     }, {
         key: 'getWeighted',
         value: function getWeighted() {
+            var _this7 = this;
+
             var amount = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
 
             amount = amount || this.peers.length;
+            var averageAge = this._getAverageAge();
             var peers = Array.from(this.peers);
             if (!peers.length) {
                 return [];
@@ -251,7 +304,7 @@ var PeerList = function (_Base) {
             var choices = [];
             var getChoice = function getChoice() {
                 var peer = weighted(peers, peers.map(function (p) {
-                    return Math.max(p.data.connected * p.data.weight, 1);
+                    return _this7.getPeerWeight(p, averageAge);
                 }));
                 peers.splice(peers.indexOf(peer), 1);
                 choices.push(peer);
@@ -287,7 +340,7 @@ var PeerList = function (_Base) {
             var TCPPort = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : DEFAULT_IRI_OPTIONS.TCPPort;
             var UDPPort = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : DEFAULT_IRI_OPTIONS.UDPPort;
 
-            var _this7 = this;
+            var _this8 = this;
 
             var isTrusted = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : false;
             var weight = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : 0;
@@ -302,21 +355,21 @@ var PeerList = function (_Base) {
                 // If the hostname already exists and no multiple ports from same hostname are allowed,
                 // update existing with port. Otherwise just return the existing peer.
                 if (existing) {
-                    if (!_this7.opts.multiPort && (port !== existing.data.port || TCPPort !== existing.data.TCPPort || UDPPort !== existing.data.UDPPort)) {
-                        return _this7.update(existing, { port: port, TCPPort: TCPPort, UDPPort: UDPPort });
+                    if (!_this8.opts.multiPort && (port !== existing.data.port || TCPPort !== existing.data.TCPPort || UDPPort !== existing.data.UDPPort)) {
+                        return _this8.update(existing, { port: port, TCPPort: TCPPort, UDPPort: UDPPort });
                     } else if (existing.data.weight < weight) {
-                        return _this7.update(existing, { weight: weight });
+                        return _this8.update(existing, { weight: weight });
                     } else {
                         return existing;
                     }
                 } else {
-                    _this7.log('adding', hostname, port);
+                    _this8.log('adding', hostname, port);
                     var peerIP = ip.isV4Format(addr) || ip.isV6Format(addr) ? addr : null;
-                    var peer = new Peer({ port: port, hostname: addr, ip: peerIP, TCPPort: TCPPort, UDPPort: UDPPort, isTrusted: isTrusted, weight: weight }, { onDataUpdate: _this7.onPeerUpdate });
-                    _this7.peers.push(peer);
-                    _this7.log('added', hostname, port, _this7.peers.length);
+                    var peer = new Peer({ port: port, hostname: addr, ip: peerIP, TCPPort: TCPPort, UDPPort: UDPPort, isTrusted: isTrusted, weight: weight, dateCreated: new Date() }, { onDataUpdate: _this8.onPeerUpdate });
+                    _this8.peers.push(peer);
+                    _this8.log('added', hostname, port, _this8.peers.length);
                     return new Promise(function (resolve, reject) {
-                        _this7.db.insert(peer.data, function (err, doc) {
+                        _this8.db.insert(peer.data, function (err, doc) {
                             if (err) {
                                 reject(err);
                             }

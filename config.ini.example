@@ -1,0 +1,14 @@
+[nelson]
+cycleInterval = 60
+epochInterval = 300
+apiPort = 18600
+port = 16600
+IRIPort = 14600
+TCPPort = 15600
+UDPPort = 14600
+dataPath = data/neighbors.db
+isMaster = false
+silent = false
+; add as many initial nelson neighbors, as you like
+neighbors[] = nelson1.carriota.com/14600
+neighbors[] = nelson2.carriota.com/14600

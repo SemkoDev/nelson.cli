@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const ini = require('ini');
 const fs = require('fs');
 const program = require('commander');
@@ -18,6 +20,7 @@ program
     .option('-n, --neighbors [value]', 'Trusted neighbors', parseNeighbors, [])
     .option('-c, --cycleInterval [value]', 'Cycle interval in seconds', parseNumber, DEFAULT_OPTIONS.cycleInterval)
     .option('-e, --epochInterval [value]', 'Epoch interval in seconds', parseNumber, DEFAULT_OPTIONS.epochInterval)
+    .option('-a, --apiPort [value]', 'Nelson API port', parseNumber, DEFAULT_OPTIONS.apiPort)
     .option('-p, --port [value]', 'Nelson port', parseNumber, DEFAULT_OPTIONS.port)
     .option('-i, --IRIPort [value]', 'IRI API port', parseNumber, DEFAULT_OPTIONS.IRIPort)
     .option('-t, --TCPPort [value]', 'IRI TCP port', parseNumber, DEFAULT_OPTIONS.TCPPort)

@@ -1,7 +1,7 @@
 const node = require('./node').node;
+const api = require('./node').api;
 
 // Some general TODOs:
-// TODO: add changelog/history
 // TODO: add linting
 // TODO: add editor config
 
@@ -14,6 +14,7 @@ module.exports = {
         process.on('SIGTERM', terminate);
 
         _node.start().then((n) => {
+            api.createAPI(n);
             n.log('initialized!');
         });
     },
