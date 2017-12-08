@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const ini = require('ini');
 const fs = require('fs');
 const program = require('commander');
