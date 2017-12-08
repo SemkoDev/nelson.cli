@@ -18,8 +18,8 @@ const DEFAULT_OPTIONS = {
     IRIPort: DEFAULT_IRI_OPTIONS.port,
     TCPPort: 15600,
     UDPPort: 14600,
-    weightDeflation: 0.75,
-    incomingMax: 6,
+    weightDeflation: 0.65,
+    incomingMax: 8,
     outgoingMax: 6,
     maxShareableNodes: 16,
     localNodes: false,
@@ -244,8 +244,7 @@ class Node extends Base {
         const onConnected = () => {
             this.log('connection established', peer.data.hostname, peer.data.port);
             this._sendNeighbors(ws);
-            this.list
-                .update(peer, { connected: peer.data.connected + 1, dateLastConnected: new Date() })
+            this.list.markConnected(peer, !asServer)
                 .then(this.iri.addNeighbors([ peer ]))
                 .then(this.opts.onPeerConnected);
         };

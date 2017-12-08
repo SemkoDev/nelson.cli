@@ -40,7 +40,7 @@ describe('Heart', () => {
                 done();
             }, 2100);
         }, 2100);
-    }, 7000);
+    }, 10000);
 
     it('Does not update personality, if epoch off', (done) => {
         const heart = new Heart({

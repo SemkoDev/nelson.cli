@@ -1,13 +1,12 @@
 const ini = require('ini');
 const fs = require('fs');
 const program = require('commander');
-const { URL } = require('url');
 const { initNode } = require('./index');
 const { DEFAULT_OPTIONS } = require('./node/node');
 const { DEFAULT_OPTIONS: DEFAULT_LIST_OPTIONS } = require('./node/peer-list');
 const version = require('../package.json').version;
 
-const parseNeighbors = (val) => val.split(' ').map((uri) => new URL(uri).href);
+const parseNeighbors = (val) => val.split(' ');
 const parseNumber = (v) => parseInt(v);
 
 process.on('unhandledRejection', (reason, p) => {

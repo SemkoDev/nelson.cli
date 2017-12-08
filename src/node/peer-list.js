@@ -8,6 +8,7 @@ const Datastore = require('nedb');
 const { Base } = require('./base');
 const { Peer } = require('./peer');
 const { DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
+const { getSecondsPassed } = require('./utils');
 
 const DEFAULT_OPTIONS = {
     dataPath: path.join(process.cwd(), 'data/neighbors.db'),
@@ -92,6 +93,14 @@ class PeerList extends Base {
         return refreshPeer ? peer.update(newData, false).then(updater) : updater();
     }
 
+    markConnected (peer, increaseWeight=false) {
+        return this.update(peer, {
+            connected: peer.data.connected + 1,
+            weight: peer.data.weight * (increaseWeight ? 1.01 : 1),
+            dateLastConnected: new Date()
+        });
+    }
+
     /**
      * Returns currently loaded peers.
      * @returns {Peer[]}
@@ -156,6 +165,32 @@ class PeerList extends Base {
     }
 
     /**
+     * Returns average age of all known peers.
+     * @returns {number}
+     * @private
+     */
+    _getAverageAge () {
+        if (!this.peers.length) {
+            return 1;
+        }
+        const ages = this.peers.map(p => getSecondsPassed(p.data.dateCreated));
+        return ages.reduce((sum, x) => sum + x) / this.peers.length;
+    }
+
+    /**
+     * Calculates the weight of a peer
+     * @param {Peer} peer
+     * @param {number} averageAge
+     * @returns {number}
+     */
+    getPeerWeight (peer, averageAge) {
+        averageAge = averageAge || this._getAverageAge();
+        const normalizedAge = Math.max(getSecondsPassed(peer.data.dateCreated) - averageAge, 1);
+        const weightedAgeMinutes = normalizedAge / 60.0 * peer.data.weight;
+        return Math.max(weightedAgeMinutes**2, 0.00001);
+    }
+
+    /**
      * Get a certain amount of weighted random peers.
      * The weight depends on relationship age (connections) and trust (weight).
      * @param {number} amount
@@ -163,6 +198,7 @@ class PeerList extends Base {
      */
     getWeighted (amount = 0) {
         amount = amount || this.peers.length;
+        const averageAge = this._getAverageAge();
         const peers = Array.from(this.peers);
         if (!peers.length) {
             return [];
@@ -170,9 +206,7 @@ class PeerList extends Base {
 
         const choices = [];
         const getChoice = () => {
-            const peer = weighted(peers, peers.map(p => {
-                return Math.max(p.data.connected * p.data.weight, 1)
-            }));
+            const peer = weighted(peers, peers.map(p => this.getPeerWeight(p, averageAge)));
             peers.splice(peers.indexOf(peer), 1);
             choices.push(peer);
         };
@@ -223,8 +257,8 @@ class PeerList extends Base {
                 this.log('adding', hostname, port);
                 const peerIP = ip.isV4Format(addr) || ip.isV6Format(addr) ? addr : null;
                 const peer = new Peer(
-                    { port, hostname: addr, ip: peerIP, TCPPort, UDPPort, isTrusted, weight },
-                    { onDataUpdate: this.onPeerUpdate}
+                    { port, hostname: addr, ip: peerIP, TCPPort, UDPPort, isTrusted, weight, dateCreated: new Date() },
+                    { onDataUpdate: this.onPeerUpdate }
                 );
                 this.peers.push(peer);
                 this.log('added', hostname, port, this.peers.length);
