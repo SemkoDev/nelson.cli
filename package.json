@@ -2,8 +2,8 @@
   "name": "nelson.cli",
   "version": "0.0.4",
   "repository": {
-    "type" : "git",
-    "url" : "https://github.com/SemkoDev/nelson.cli.git"
+    "type": "git",
+    "url": "https://github.com/SemkoDev/nelson.cli.git"
   },
   "description": "P2P manager for IOTA's IRI node",
   "main": "dist/index.js",
@@ -53,6 +53,7 @@
     "babel-cli": "^6.26.0",
     "babel-preset-es2015": "^6.24.1",
     "babel-preset-stage-2": "^6.24.1",
+    "colors": "^1.1.2",
     "jest": "^21.2.1",
     "pkg": "^4.3.0-beta.1",
     "rimraf": "^2.6.2"
