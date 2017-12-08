@@ -14,6 +14,7 @@ It is expected that you have already installed Java, downloaded the IRI jar file
 and know how to start it.
 
 Nelson is running on Node.js You will have to install node and npm (node package manager) on your system.
+Alternatively to npm you can (and should) use yarn package manager.
 
 ### Installing
 
@@ -34,6 +35,36 @@ As your nelson stays online and gets to know its neighbors, it will rely less an
 points.
 
 Below is the list of all possible options.
+
+## Building Locally
+
+If you are a developer you may want to build the project locally and play around with the sources.
+Otherwise, ignore this section.
+Make sure you have yarn package manager installed.
+Checkout the project:
+
+```
+git clone https://github.com/SemkoDev/nelson.cli.git
+cd nelson.cli
+```
+
+Install dependencies:
+
+```
+yarn install --pure-lockfile
+```
+
+Run tests and make binaries:
+
+```
+yarn make
+```
+
+Try to run Nelson:
+
+```
+node ./dist/nelson.js --neighbors nelson1.carriota.com/14600 nelson2.carriota.com/14600
+```
 
 ## Configuration
 
