@@ -1,3 +1,4 @@
+require('colors')
 const node = require('./node').node;
 const api = require('./node').api;
 
@@ -15,7 +16,7 @@ module.exports = {
 
         _node.start().then((n) => {
             api.createAPI(n);
-            n.log('initialized!');
+            n.log('initialized!'.green.bold);
         });
     },
     ...node
