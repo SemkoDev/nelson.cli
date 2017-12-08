@@ -1,3 +1,4 @@
+require('colors')
 const WebSocket = require('ws');
 const ip = require('ip');
 const pip = require('public-ip');
@@ -219,7 +220,7 @@ class Node extends Base {
             this.list.add(address, port, TCPPort, UDPPort).then((peer) => {
                 this._bindWebSocket(ws, peer, true);
             }).catch((e) => {
-                this.log('Error binding/adding', address, port, e);
+                this.log('Error binding/adding'.red, address, port, e);
                 this.sockets.delete(Array.from(this.sockets.keys()).find(p => this.sockets.get(p) === ws));
                 ws.close();
                 ws.terminate();
@@ -242,12 +243,12 @@ class Node extends Base {
      */
     _bindWebSocket (ws, peer, asServer=false) {
         const removeNeighbor = (e) => {
-            this.log('closing connection', e);
+            this.log('closing connection'.red, e);
             this._removeNeighbor(peer);
         };
 
         const onConnected = () => {
-            this.log('connection established', peer.data.hostname, peer.data.port);
+            this.log('connection established'.green, this.formatNode(peer.data.hostname, peer.data.port));
             this._sendNeighbors(ws);
             const addWeight = !asServer &&
                 getSecondsPassed(peer.data.dateLastConnected) > this.opts.epochInterval * this.opts.epochsBetweenWeight;
@@ -391,7 +392,7 @@ class Node extends Base {
      * @private
      */
     _removeNeighbor (peer) {
-        this.log('removing neighbor', peer.data.hostname, peer.data.port);
+        this.log('removing neighbor', this.formatNode(peer.data.hostname, peer.data.port));
         return this._removeNeighbors([ peer ]);
     }
 
@@ -442,7 +443,7 @@ class Node extends Base {
      * @returns {Peer}
      */
     connectPeer (peer) {
-        this.log('connecting peer', peer.data.hostname, peer.data.port);
+        this.log('connecting peer', this.formatNode(peer.data.hostname, peer.data.port));
         this._bindWebSocket(new WebSocket(`ws://${peer.data.hostname}:${peer.data.port}`, {
             headers: this._getHeaders(),
             handshakeTimeout: 10000

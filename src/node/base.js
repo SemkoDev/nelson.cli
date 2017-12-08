@@ -1,4 +1,4 @@
-require('colors')
+require('colors');
 
 const DEFAULT_OPTIONS = {
     silent: false,
@@ -26,6 +26,10 @@ class Base {
 
             console.log(`${timeString} ${logIdent}`, ...arguments);
         }
+    }
+
+    formatNode (hostname, port) {
+        return `${hostname}:${port}`.cyan
     }
 
     start () {}
