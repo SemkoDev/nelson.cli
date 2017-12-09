@@ -477,6 +477,13 @@ class Node extends Base {
      */
     _onEpoch () {
         this.log('new epoch and new id:', this.heart.personality.id);
+        // Master node should recycle all connections
+        if (this.opts.isMaster) {
+            return this._removeNeighbors(Array.from(this.sockets.keys())).then(() => {
+                this.reconnectPeers();
+                return false;
+            });
+        }
         return this._dropRandomNeighbors(getRandomInt(0, this._getOutgoingSlotsCount()))
             .then(() => {
                 this.reconnectPeers();
@@ -511,8 +518,8 @@ class Node extends Base {
      * @private
      */
     _onTick () {
-        // Try connecting more peers
-        return this._getOutgoingSlotsCount() < this.opts.outgoingMax
+        // Try connecting more peers. Master nodes do not actively connect (no outgoing connections).
+        return !this.opts.isMaster && this._getOutgoingSlotsCount() < this.opts.outgoingMax
             ? new Promise((resolve) => {
                 this.reconnectPeers();
                 resolve(false);

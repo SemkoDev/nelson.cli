@@ -32,9 +32,11 @@ describe('Heart', () => {
 
         setTimeout(() => {
             const p2 = heart.personality;
+            console.log(p2);
             expect(p1).not.toEqual(p2);
             setTimeout(() => {
                 const p3 = heart.personality;
+                console.log(p3);
                 expect(p3).not.toEqual(p2);
                 expect(p3).not.toEqual(p1);
                 done();
