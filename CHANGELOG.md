@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.3] - 2017-12-09
+
+### Added
+- Command line params for incoming/outgoing slots count.
+
+### Changed
+- How master nodes recycle peers (all) and treat outgoing connections.
+
 ## [0.0.2] - 2017-12-08
 
 ### Added
@@ -14,9 +22,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - Nelson API default port to 18600
-
-### Removed
-- Section about "changelog" vs "CHANGELOG".
 
 
 ## [0.0.1] - 2017-12-06
