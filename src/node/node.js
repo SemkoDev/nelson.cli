@@ -5,7 +5,7 @@ const { Base } = require('./base');
 const { Heart } = require('./heart');
 const { IRI, DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
 const { PeerList, DEFAULT_OPTIONS: DEFAULT_LIST_OPTIONS } = require('./peer-list');
-const { getPeerIdentifier, getRandomInt } = require('./utils');
+const { getPeerIdentifier, getRandomInt, getSecondsPassed } = require('./utils');
 
 const DEFAULT_OPTIONS = {
     cycleInterval: 60,
@@ -243,7 +243,8 @@ class Node extends Base {
         const onConnected = () => {
             this.log('connection established', peer.data.hostname, peer.data.port);
             this._sendNeighbors(ws);
-            this.list.markConnected(peer, !asServer)
+            const addWeight = !asServer && getSecondsPassed(peer.data.dateLastConnected) > this.opts.epochInterval * 10;
+            this.list.markConnected(peer, addWeight)
                 .then(this.iri.addNeighbors([ peer ]))
                 .then(this.opts.onPeerConnected);
         };

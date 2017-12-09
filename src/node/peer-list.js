@@ -10,6 +10,8 @@ const { Peer } = require('./peer');
 const { DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
 const { getSecondsPassed } = require('./utils');
 
+const CONNECTION_WEIGHT_MULTIPLIER = 1.0;
+
 const DEFAULT_OPTIONS = {
     dataPath: path.join(process.cwd(), 'data/neighbors.db'),
     multiPort: false,
@@ -96,7 +98,7 @@ class PeerList extends Base {
     markConnected (peer, increaseWeight=false) {
         return this.update(peer, {
             connected: peer.data.connected + 1,
-            weight: peer.data.weight * (increaseWeight ? 1.01 : 1),
+            weight: peer.data.weight * (increaseWeight ? CONNECTION_WEIGHT_MULTIPLIER : 1),
             dateLastConnected: new Date()
         });
     }
