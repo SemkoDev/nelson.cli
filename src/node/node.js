@@ -143,9 +143,9 @@ class Node extends Base {
      * @private
      */
     _getIRI () {
-        const { IRIPort } = this.opts;
+        const { IRIPort, silent } = this.opts;
 
-        return (new IRI({ logIdent: `${this.opts.port}::IRI`, port: IRIPort })).start().then((iri) => {
+        return (new IRI({ logIdent: `${this.opts.port}::IRI`, port: IRIPort, silent })).start().then((iri) => {
             this.iri = iri;
             return iri;
         })
