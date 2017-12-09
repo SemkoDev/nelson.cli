@@ -642,6 +642,13 @@ var Node = function (_Base) {
             var _this12 = this;
 
             this.log('new epoch and new id:', this.heart.personality.id);
+            // Master node should recycle all connections
+            if (this.opts.isMaster) {
+                return this._removeNeighbors(Array.from(this.sockets.keys())).then(function () {
+                    _this12.reconnectPeers();
+                    return false;
+                });
+            }
             return this._dropRandomNeighbors(getRandomInt(0, this._getOutgoingSlotsCount())).then(function () {
                 _this12.reconnectPeers();
                 return false;
@@ -686,8 +693,8 @@ var Node = function (_Base) {
         value: function _onTick() {
             var _this14 = this;
 
-            // Try connecting more peers
-            return this._getOutgoingSlotsCount() < this.opts.outgoingMax ? new Promise(function (resolve) {
+            // Try connecting more peers. Master nodes do not actively connect (no outgoing connections).
+            return !this.opts.isMaster && this._getOutgoingSlotsCount() < this.opts.outgoingMax ? new Promise(function (resolve) {
                 _this14.reconnectPeers();
                 resolve(false);
             }) : Promise.resolve(false);

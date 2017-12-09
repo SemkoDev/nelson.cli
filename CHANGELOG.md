@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## Added
+- Contributing message
+
+## Changed
+- forgotten dist and bin updates for 0.0.3
+
 ## [0.0.3] - 2017-12-09
 
 ### Added
