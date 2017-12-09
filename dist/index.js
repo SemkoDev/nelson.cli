@@ -6,7 +6,6 @@ var node = require('./node').node;
 var api = require('./node').api;
 
 // Some general TODOs:
-// TODO: add changelog/history
 // TODO: add linting
 // TODO: add editor config
 
