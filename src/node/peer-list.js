@@ -10,10 +10,12 @@ const { Peer } = require('./peer');
 const { DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
 const { getSecondsPassed } = require('./utils');
 
-const CONNECTION_WEIGHT_MULTIPLIER = 1.0;
+const CONNECTION_WEIGHT_MULTIPLIER = 1.01;
+const MAX_WEIGHT = 4000000.0;
 
 const DEFAULT_OPTIONS = {
     dataPath: path.join(process.cwd(), 'data/neighbors.db'),
+    isMaster: false,
     multiPort: false,
     temporary: false,
     logIdent: 'LIST'
@@ -98,7 +100,7 @@ class PeerList extends Base {
     markConnected (peer, increaseWeight=false) {
         return this.update(peer, {
             connected: peer.data.connected + 1,
-            weight: peer.data.weight * (increaseWeight ? CONNECTION_WEIGHT_MULTIPLIER : 1),
+            weight: Math.min(peer.data.weight * (increaseWeight ? CONNECTION_WEIGHT_MULTIPLIER : 1), MAX_WEIGHT),
             dateLastConnected: new Date()
         });
     }
@@ -188,8 +190,11 @@ class PeerList extends Base {
     getPeerWeight (peer, averageAge) {
         averageAge = averageAge || this._getAverageAge();
         const normalizedAge = Math.max(getSecondsPassed(peer.data.dateCreated) - averageAge, 1);
-        const weightedAgeMinutes = normalizedAge / 60.0 * peer.data.weight;
-        return Math.max(weightedAgeMinutes**2, 0.00001);
+        const weightedAge = this.opts.isMaster
+            // Master uses age and last connection time for weight purposes
+            ? normalizedAge / ( getSecondsPassed(peer.data.dateLastConnected) || 1000000000 )
+            : normalizedAge / 60.0 * peer.data.weight;
+        return Math.max(weightedAge**2, 0.00001);
     }
 
     /**

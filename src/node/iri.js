@@ -9,6 +9,8 @@ const DEFAULT_OPTIONS = {
     logIdent: 'IRI'
 };
 
+// TODO: Regular IRI health-checks needed. Prevent Nelson from connecting if IRI is down.
+
 /**
  * Class responsible to RUN and communicate with local IRI instance
  * @class

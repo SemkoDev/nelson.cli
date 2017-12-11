@@ -11,6 +11,7 @@ const DEFAULT_OPTIONS = {
     cycleInterval: 60,
     epochInterval: 300,
     beatInterval: 10,
+    epochsBetweenWeight: 10,
     dataPath: DEFAULT_LIST_OPTIONS.dataPath,
     port: 16600,
     apiPort: 18600,
@@ -18,7 +19,7 @@ const DEFAULT_OPTIONS = {
     TCPPort: 15600,
     UDPPort: 14600,
     weightDeflation: 0.65,
-    incomingMax: 8,
+    incomingMax: 9,
     outgoingMax: 6,
     maxShareableNodes: 16,
     localNodes: false,
@@ -122,12 +123,13 @@ class Node extends Base {
      * @private
      */
     _getList () {
-        const { localNodes, temporary, silent, neighbors, dataPath } = this.opts;
+        const { localNodes, temporary, silent, neighbors, dataPath, isMaster } = this.opts;
         this.list = new PeerList({
             multiPort: localNodes,
             temporary,
             silent,
             dataPath,
+            isMaster,
             logIdent: `${this.opts.port}::LIST`
         });
 
@@ -201,6 +203,10 @@ class Node extends Base {
             if (this._getIncomingSlotsCount() >= maxSlots) {
                 return deny();
             }
+            // TODO: for master: drop connections for recently connected nodes?
+            // As means of protection against siege
+
+            // TODO: additional protection measure: make the client solve a computational riddle!
 
             this.isAllowed(address, port).then((allowed) => allowed? accept() : deny());
         } });
@@ -243,7 +249,8 @@ class Node extends Base {
         const onConnected = () => {
             this.log('connection established', peer.data.hostname, peer.data.port);
             this._sendNeighbors(ws);
-            const addWeight = !asServer && getSecondsPassed(peer.data.dateLastConnected) > this.opts.epochInterval * 10;
+            const addWeight = !asServer &&
+                getSecondsPassed(peer.data.dateLastConnected) > this.opts.epochInterval * this.opts.epochsBetweenWeight;
             this.list.markConnected(peer, addWeight)
                 .then(this.iri.addNeighbors([ peer ]))
                 .then(this.opts.onPeerConnected);
@@ -347,6 +354,7 @@ class Node extends Base {
      * @private
      */
     _getHeaders () {
+        // TODO: add current Nelson version number. Prevent connections from other major Nelson verisions.
         return {
             'Content-Type': 'application/json',
             'Nelson-Port': `${this.opts.port}`,
