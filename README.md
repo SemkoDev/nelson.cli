@@ -36,6 +36,14 @@ points.
 
 Below is the list of all possible options.
 
+## Docker
+
+Provided you have docker installed, nelson can be started as follows:
+
+```
+docker run <docker opts> romansemko/nelson <nelson command line opts>
+```
+
 ## Building Locally
 
 If you are a developer you may want to build the project locally and play around with the sources.
