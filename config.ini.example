@@ -10,5 +10,6 @@ dataPath = data/neighbors.db
 isMaster = false
 silent = false
 ; add as many initial nelson neighbors, as you like
-neighbors[] = nelson1.carriota.com/14600
-neighbors[] = nelson2.carriota.com/14600
+neighbors[] = mainnet.deviota.com/14600
+neighbors[] = mainnet2.deviota.com/14600
+neighbors[] = mainnet3.deviota.com/14600

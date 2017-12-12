@@ -27,7 +27,7 @@ npm install -g nelson.cli
 And run it
 
 ```
-nelson --neighbors nelson1.carriota.com/14600 nelson2.carriota.com/14600
+nelson --neighbors mainnet.deviota.com/14600 mainnet2.deviota.com/14600 mainnet3.deviota.com/14600
 ```
 
 The  ```--neighbors``` option is used to provide an entry set of trusted nelson peers for new nelson instances.
@@ -63,7 +63,7 @@ yarn make
 Try to run Nelson:
 
 ```
-node ./dist/nelson.js --neighbors nelson1.carriota.com/14600 nelson2.carriota.com/14600
+node ./dist/nelson.js --neighbors mainnet.deviota.com/14600 mainnet2.deviota.com/14600 mainnet3.deviota.com/14600
 ```
 
 ## Configuration
@@ -94,8 +94,9 @@ dataPath = data/neighbors.db
 isMaster = false
 silent = false
 ; add as many initial nelson neighbors, as you like
-neighbors[] = nelson1.carriota.com/14600
-neighbors[] = nelson2.carriota.com/14600
+neighbors[] = mainnet.deviota.com/14600
+neighbors[] = mainnet2.deviota.com/14600
+neighbors[] = mainnet3.deviota.com/14600
 ```
 
 ### Command line options
