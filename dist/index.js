@@ -2,6 +2,7 @@
 
 var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
+require('colors');
 var node = require('./node').node;
 var api = require('./node').api;
 
@@ -23,7 +24,7 @@ module.exports = _extends({
 
         _node.start().then(function (n) {
             api.createAPI(n);
-            n.log('initialized!');
+            n.log('initialized!'.green.bold);
         });
     }
 }, node);
