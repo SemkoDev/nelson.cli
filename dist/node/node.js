@@ -10,6 +10,7 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
+require('colors');
 var WebSocket = require('ws');
 var ip = require('ip');
 var pip = require('public-ip');
@@ -310,7 +311,7 @@ var Node = function (_Base) {
                 _this7.list.add(address, port, TCPPort, UDPPort).then(function (peer) {
                     _this7._bindWebSocket(ws, peer, true);
                 }).catch(function (e) {
-                    _this7.log('Error binding/adding', address, port, e);
+                    _this7.log('Error binding/adding'.red, address, port, e);
                     _this7.sockets.delete(Array.from(_this7.sockets.keys()).find(function (p) {
                         return _this7.sockets.get(p) === ws;
                     }));
@@ -344,12 +345,12 @@ var Node = function (_Base) {
             var asServer = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
 
             var removeNeighbor = function removeNeighbor(e) {
-                _this8.log('closing connection', e);
+                _this8.log('closing connection'.red, e);
                 _this8._removeNeighbor(peer);
             };
 
             var onConnected = function onConnected() {
-                _this8.log('connection established', peer.data.hostname, peer.data.port);
+                _this8.log('connection established'.green, _this8.formatNode(peer.data.hostname, peer.data.port));
                 _this8._sendNeighbors(ws);
                 var addWeight = !asServer && getSecondsPassed(peer.data.dateLastConnected) > _this8.opts.epochInterval * _this8.opts.epochsBetweenWeight;
                 _this8.list.markConnected(peer, addWeight).then(_this8.iri.addNeighbors([peer])).then(_this8.opts.onPeerConnected);
@@ -538,7 +539,7 @@ var Node = function (_Base) {
     }, {
         key: '_removeNeighbor',
         value: function _removeNeighbor(peer) {
-            this.log('removing neighbor', peer.data.hostname, peer.data.port);
+            this.log('removing neighbor', this.formatNode(peer.data.hostname, peer.data.port));
             return this._removeNeighbors([peer]);
         }
 
@@ -604,7 +605,7 @@ var Node = function (_Base) {
     }, {
         key: 'connectPeer',
         value: function connectPeer(peer) {
-            this.log('connecting peer', peer.data.hostname, peer.data.port);
+            this.log('connecting peer', this.formatNode(peer.data.hostname, peer.data.port));
             this._bindWebSocket(new WebSocket('ws://' + peer.data.hostname + ':' + peer.data.port, {
                 headers: this._getHeaders(),
                 handshakeTimeout: 10000
