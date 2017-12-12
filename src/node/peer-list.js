@@ -10,7 +10,8 @@ const { Peer } = require('./peer');
 const { DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
 const { getSecondsPassed } = require('./utils');
 
-const CONNECTION_WEIGHT_MULTIPLIER = 1.01;
+// There is no weight increase by connection/age for now.
+const CONNECTION_WEIGHT_MULTIPLIER = 1;
 const MAX_WEIGHT = 4000000.0;
 
 const DEFAULT_OPTIONS = {
@@ -169,53 +170,40 @@ class PeerList extends Base {
     }
 
     /**
-     * Returns average age of all known peers.
-     * @returns {number}
-     * @private
-     */
-    _getAverageAge () {
-        if (!this.peers.length) {
-            return 1;
-        }
-        const ages = this.peers.map(p => getSecondsPassed(p.data.dateCreated));
-        return ages.reduce((sum, x) => sum + x) / this.peers.length;
-    }
-
-    /**
      * Calculates the weight of a peer
      * @param {Peer} peer
-     * @param {number} averageAge
      * @returns {number}
      */
-    getPeerWeight (peer, averageAge) {
-        averageAge = averageAge || this._getAverageAge();
-        const normalizedAge = Math.max(getSecondsPassed(peer.data.dateCreated) - averageAge, 1);
-        const weightedAge = this.opts.isMaster
-            // Master uses age and last connection time for weight purposes
-            ? normalizedAge / ( getSecondsPassed(peer.data.dateLastConnected) || 1000000000 )
-            : normalizedAge / 60.0 * peer.data.weight;
-        return Math.max(weightedAge**2, 0.00001);
+    getPeerWeight (peer) {
+        if (this.opts.isMaster) {
+            const weightedAge = ((peer.data.dateLastConnected || peer.data.dateCreated) - peer.data.dateCreated) / 1000;
+            return Math.max(weightedAge, 1);
+        }
+        const weightedAge = getSecondsPassed(peer.data.dateCreated) * peer.data.weight;
+        return Math.max(weightedAge, 1);
     }
 
     /**
-     * Get a certain amount of weighted random peers.
+     * Get a certain amount of weighted random peers. Return peers with their respective weight ratios
      * The weight depends on relationship age (connections) and trust (weight).
      * @param {number} amount
-     * @returns {Peer[]}
+     * @returns {Array<Peer, number>}
      */
     getWeighted (amount = 0) {
         amount = amount || this.peers.length;
-        const averageAge = this._getAverageAge();
         const peers = Array.from(this.peers);
         if (!peers.length) {
             return [];
         }
+        const allWeights = peers.map(p => this.getPeerWeight(p));
+        const weightsMax = Math.max(...allWeights);
 
         const choices = [];
         const getChoice = () => {
-            const peer = weighted(peers, peers.map(p => this.getPeerWeight(p, averageAge)));
+            const peer = weighted(peers, peers.map(p => this.getPeerWeight(p)));
             peers.splice(peers.indexOf(peer), 1);
-            choices.push(peer);
+            const weightsArray = allWeights.splice(peers.indexOf(peer), 1);
+            choices.push([peer, weightsArray[0] / weightsMax]);
         };
 
         for (let x = 0; x < amount; x++) {
@@ -224,8 +212,8 @@ class PeerList extends Base {
                 break;
             }
         }
-
-        return choices.filter(c => c);
+        const results = choices.filter(c => c && c[0]).map((c) => [c[0], c[0].isTrusted() ? 1 : c[1]]);
+        return results;
     }
 
     /**

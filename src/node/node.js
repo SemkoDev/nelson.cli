@@ -18,9 +18,9 @@ const DEFAULT_OPTIONS = {
     IRIPort: DEFAULT_IRI_OPTIONS.port,
     TCPPort: 15600,
     UDPPort: 14600,
-    weightDeflation: 0.65,
-    incomingMax: 9,
-    outgoingMax: 6,
+    weightDeflation: 0.75,
+    incomingMax: 8,
+    outgoingMax: 4,
     maxShareableNodes: 16,
     localNodes: false,
     isMaster: false,
@@ -203,8 +203,6 @@ class Node extends Base {
             if (this._getIncomingSlotsCount() >= maxSlots) {
                 return deny();
             }
-            // TODO: for master: drop connections for recently connected nodes?
-            // As means of protection against siege
 
             // TODO: additional protection measure: make the client solve a computational riddle!
 
@@ -260,8 +258,17 @@ class Node extends Base {
         ws.isAlive = true;
         this.sockets.set(peer, ws);
 
-        asServer && onConnected();
-        ws.incoming = asServer;
+        if (asServer) {
+            ws.incoming = asServer;
+            // Prevent spamming nodes from the same locations
+            if (peer.data.dateLastConnected && getSecondsPassed(peer.data.dateLastConnected) < this.opts.epochInterval * 2) {
+                removeNeighbor();
+                return;
+            }
+            else {
+                onConnected();
+            }
+        }
 
         ws.on('headers', (headers) => {
             // Check for valid headers
@@ -276,7 +283,7 @@ class Node extends Base {
             })
         });
         ws.on('message',
-            (data) => this._addNeighbors(data, ws.incoming ? 0 : peer.data.weight * this.opts.weightDeflation)
+            (data) => this._addNeighbors(data, ws.incoming ? 0 : peer.data.weight)
         );
         ws.on('open', onConnected);
         ws.on('close', removeNeighbor);
@@ -307,7 +314,7 @@ class Node extends Base {
      * @private
      */
     _sendNeighbors (ws) {
-        ws.send(JSON.stringify(this.getPeers().map((p) => p.getHostname())))
+        ws.send(JSON.stringify(this.getPeers().map((p) => `${p[0].getHostname()}/${p[1]}`)))
     }
 
     /**
@@ -325,7 +332,10 @@ class Node extends Base {
         }
         return this.isMyself(tokens[0], tokens[1])
             ? Promise.resolve(null)
-            : this.list.add(tokens[0], tokens[1], tokens[2], tokens[3], false, weight);
+            : this.list.add(
+                tokens[0], tokens[1], tokens[2], tokens[3], false,
+                weight * parseFloat(tokens[4] || 0) * this.opts.weightDeflation
+            );
     }
 
     /**
@@ -459,7 +469,7 @@ class Node extends Base {
         // TODO: remove old peers by inverse weight, maybe? Not urgent. Can be added at a later point.
         // this.log('reconnectPeers');
         // If max was reached, do nothing.
-        const toTry = Math.ceil((this.opts.outgoingMax - this._getOutgoingSlotsCount())  * 1.5);
+        const toTry = this.opts.outgoingMax - this._getOutgoingSlotsCount();
 
         if ( toTry < 1 || this.isMaster || this._getOutgoingSlotsCount() >= this.opts.outgoingMax) {
             return [];
@@ -467,14 +477,14 @@ class Node extends Base {
 
         // Get allowed peers:
         return this.list.getWeighted(192)
-            .filter((p) => !this.sockets.get(p))
+            .filter((p) => !this.sockets.get(p[0]))
             .slice(0, toTry)
-            .map(this.connectPeer);
+            .map((p) => this.connectPeer(p[0]));
     }
 
     /**
-     * Returns a set of peers ready to be shared. Only those that comply with certain identity rules.
-     * @returns {Peer[]}
+     * Returns a set of peers ready to be shared with their respective weight ratios.
+     * @returns {Array[]}
      */
     getPeers () {
         return this.list.getWeighted(this.opts.maxShareableNodes);
@@ -486,7 +496,7 @@ class Node extends Base {
      */
     _onEpoch () {
         this.log('new epoch and new id:', this.heart.personality.id);
-        // Master node should recycle all connections
+        // Master node should recycle all its connections
         if (this.opts.isMaster) {
             return this._removeNeighbors(Array.from(this.sockets.keys())).then(() => {
                 this.reconnectPeers();
@@ -559,7 +569,7 @@ class Node extends Base {
      * @param {number} easiness - how "easy" it is to get in
      * @returns {Promise<boolean>}
      */
-    isAllowed (address, port, checkTrust=true, easiness=8) {
+    isAllowed (address, port, checkTrust=true, easiness=16) {
         const allowed = () => getPeerIdentifier(`${this.heart.personality.id}:${this.opts.localNodes ? port : address}`)
                 .slice(0, this._getMinEasiness(easiness))
                 .indexOf(this.heart.personality.feature) >= 0;
@@ -573,17 +583,14 @@ class Node extends Base {
     /**
      * For new nodes, make it easy to find nodes and contact them
      * @param {number} easiness - how easy it is to get in/out
-     * @param {number} minConnections - expected approx. connections from incoming or to outgoing peers
      * @returns {number} updated easiness value
      * @private
      */
-    _getMinEasiness (easiness, minConnections = 2) {
-        const l = this._getIncomingSlotsCount();
-        const f = minConnections * 16.0 / easiness;
-        if (!l) {
-            return 16;
-        }
-        return l >= f ? easiness : Math.ceil(easiness * (f/l))
+    _getMinEasiness (easiness) {
+        // New nodes are trusting less the incoming connections.
+        // As the node matures in the community, it becomes more welcoming for inbound requests.
+        const l = this.list.all().filter(p => p.data.connected).length;
+        return Math.min(easiness, Math.max(5, parseInt(l/2)));
     }
 }
 
