@@ -4,6 +4,8 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
@@ -33,8 +35,15 @@ var _require4 = require('./iri'),
 var _require5 = require('./utils'),
     getSecondsPassed = _require5.getSecondsPassed;
 
+// There is no weight increase by connection/age for now.
+
+
+var CONNECTION_WEIGHT_MULTIPLIER = 1;
+var MAX_WEIGHT = 4000000.0;
+
 var DEFAULT_OPTIONS = {
     dataPath: path.join(process.cwd(), 'data/neighbors.db'),
+    isMaster: false,
     multiPort: false,
     temporary: false,
     logIdent: 'LIST'
@@ -156,7 +165,7 @@ var PeerList = function (_Base) {
 
             return this.update(peer, {
                 connected: peer.data.connected + 1,
-                weight: peer.data.weight * (increaseWeight ? 1.01 : 1),
+                weight: Math.min(peer.data.weight * (increaseWeight ? CONNECTION_WEIGHT_MULTIPLIER : 1), MAX_WEIGHT),
                 dateLastConnected: new Date()
             });
         }
@@ -245,46 +254,27 @@ var PeerList = function (_Base) {
         }
 
         /**
-         * Returns average age of all known peers.
-         * @returns {number}
-         * @private
-         */
-
-    }, {
-        key: '_getAverageAge',
-        value: function _getAverageAge() {
-            if (!this.peers.length) {
-                return 1;
-            }
-            var ages = this.peers.map(function (p) {
-                return getSecondsPassed(p.data.dateCreated);
-            });
-            return ages.reduce(function (sum, x) {
-                return sum + x;
-            }) / this.peers.length;
-        }
-
-        /**
          * Calculates the weight of a peer
          * @param {Peer} peer
-         * @param {number} averageAge
          * @returns {number}
          */
 
     }, {
         key: 'getPeerWeight',
-        value: function getPeerWeight(peer, averageAge) {
-            averageAge = averageAge || this._getAverageAge();
-            var normalizedAge = Math.max(getSecondsPassed(peer.data.dateCreated) - averageAge, 1);
-            var weightedAgeMinutes = normalizedAge / 60.0 * peer.data.weight;
-            return Math.max(Math.pow(weightedAgeMinutes, 2), 0.00001);
+        value: function getPeerWeight(peer) {
+            if (this.opts.isMaster) {
+                var _weightedAge = ((peer.data.dateLastConnected || peer.data.dateCreated) - peer.data.dateCreated) / 1000;
+                return Math.max(_weightedAge, 1);
+            }
+            var weightedAge = getSecondsPassed(peer.data.dateCreated) * peer.data.weight;
+            return Math.max(weightedAge, 1);
         }
 
         /**
-         * Get a certain amount of weighted random peers.
+         * Get a certain amount of weighted random peers. Return peers with their respective weight ratios
          * The weight depends on relationship age (connections) and trust (weight).
          * @param {number} amount
-         * @returns {Peer[]}
+         * @returns {Array<Peer, number>}
          */
 
     }, {
@@ -295,19 +285,23 @@ var PeerList = function (_Base) {
             var amount = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
 
             amount = amount || this.peers.length;
-            var averageAge = this._getAverageAge();
             var peers = Array.from(this.peers);
             if (!peers.length) {
                 return [];
             }
+            var allWeights = peers.map(function (p) {
+                return _this7.getPeerWeight(p);
+            });
+            var weightsMax = Math.max.apply(Math, _toConsumableArray(allWeights));
 
             var choices = [];
             var getChoice = function getChoice() {
                 var peer = weighted(peers, peers.map(function (p) {
-                    return _this7.getPeerWeight(p, averageAge);
+                    return _this7.getPeerWeight(p);
                 }));
                 peers.splice(peers.indexOf(peer), 1);
-                choices.push(peer);
+                var weightsArray = allWeights.splice(peers.indexOf(peer), 1);
+                choices.push([peer, weightsArray[0] / weightsMax]);
             };
 
             for (var x = 0; x < amount; x++) {
@@ -316,10 +310,12 @@ var PeerList = function (_Base) {
                     break;
                 }
             }
-
-            return choices.filter(function (c) {
-                return c;
+            var results = choices.filter(function (c) {
+                return c && c[0];
+            }).map(function (c) {
+                return [c[0], c[0].isTrusted() ? 1 : c[1]];
             });
+            return results;
         }
 
         /**

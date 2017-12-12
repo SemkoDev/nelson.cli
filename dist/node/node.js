@@ -30,21 +30,23 @@ var _require4 = require('./peer-list'),
 
 var _require5 = require('./utils'),
     getPeerIdentifier = _require5.getPeerIdentifier,
-    getRandomInt = _require5.getRandomInt;
+    getRandomInt = _require5.getRandomInt,
+    getSecondsPassed = _require5.getSecondsPassed;
 
 var DEFAULT_OPTIONS = {
     cycleInterval: 60,
     epochInterval: 300,
     beatInterval: 10,
+    epochsBetweenWeight: 10,
     dataPath: DEFAULT_LIST_OPTIONS.dataPath,
     port: 16600,
     apiPort: 18600,
     IRIPort: DEFAULT_IRI_OPTIONS.port,
     TCPPort: 15600,
     UDPPort: 14600,
-    weightDeflation: 0.65,
+    weightDeflation: 0.75,
     incomingMax: 8,
-    outgoingMax: 6,
+    outgoingMax: 4,
     maxShareableNodes: 16,
     localNodes: false,
     isMaster: false,
@@ -181,13 +183,15 @@ var Node = function (_Base) {
                 temporary = _opts2.temporary,
                 silent = _opts2.silent,
                 neighbors = _opts2.neighbors,
-                dataPath = _opts2.dataPath;
+                dataPath = _opts2.dataPath,
+                isMaster = _opts2.isMaster;
 
             this.list = new PeerList({
                 multiPort: localNodes,
                 temporary: temporary,
                 silent: silent,
                 dataPath: dataPath,
+                isMaster: isMaster,
                 logIdent: this.opts.port + '::LIST'
             });
 
@@ -208,10 +212,12 @@ var Node = function (_Base) {
         value: function _getIRI() {
             var _this5 = this;
 
-            var IRIPort = this.opts.IRIPort;
+            var _opts3 = this.opts,
+                IRIPort = _opts3.IRIPort,
+                silent = _opts3.silent;
 
 
-            return new IRI({ logIdent: this.opts.port + '::IRI', port: IRIPort }).start().then(function (iri) {
+            return new IRI({ logIdent: this.opts.port + '::IRI', port: IRIPort, silent: silent }).start().then(function (iri) {
                 _this5.iri = iri;
                 return iri;
             });
@@ -285,6 +291,8 @@ var Node = function (_Base) {
                         return deny();
                     }
 
+                    // TODO: additional protection measure: make the client solve a computational riddle!
+
                     _this7.isAllowed(address, port).then(function (allowed) {
                         return allowed ? accept() : deny();
                     });
@@ -343,15 +351,24 @@ var Node = function (_Base) {
             var onConnected = function onConnected() {
                 _this8.log('connection established', peer.data.hostname, peer.data.port);
                 _this8._sendNeighbors(ws);
-                _this8.list.markConnected(peer, !asServer).then(_this8.iri.addNeighbors([peer])).then(_this8.opts.onPeerConnected);
+                var addWeight = !asServer && getSecondsPassed(peer.data.dateLastConnected) > _this8.opts.epochInterval * _this8.opts.epochsBetweenWeight;
+                _this8.list.markConnected(peer, addWeight).then(_this8.iri.addNeighbors([peer])).then(_this8.opts.onPeerConnected);
             };
 
             var promise = null;
             ws.isAlive = true;
             this.sockets.set(peer, ws);
 
-            asServer && onConnected();
-            ws.incoming = asServer;
+            if (asServer) {
+                ws.incoming = asServer;
+                // Prevent spamming nodes from the same locations
+                if (peer.data.dateLastConnected && getSecondsPassed(peer.data.dateLastConnected) < this.opts.epochInterval * 2) {
+                    removeNeighbor();
+                    return;
+                } else {
+                    onConnected();
+                }
+            }
 
             ws.on('headers', function (headers) {
                 // Check for valid headers
@@ -370,7 +387,7 @@ var Node = function (_Base) {
                 });
             });
             ws.on('message', function (data) {
-                return _this8._addNeighbors(data, ws.incoming ? 0 : peer.data.weight * _this8.opts.weightDeflation);
+                return _this8._addNeighbors(data, ws.incoming ? 0 : peer.data.weight);
             });
             ws.on('open', onConnected);
             ws.on('close', removeNeighbor);
@@ -410,7 +427,7 @@ var Node = function (_Base) {
         key: '_sendNeighbors',
         value: function _sendNeighbors(ws) {
             ws.send(JSON.stringify(this.getPeers().map(function (p) {
-                return p.getHostname();
+                return p[0].getHostname() + '/' + p[1];
             })));
         }
 
@@ -430,7 +447,7 @@ var Node = function (_Base) {
             if (!isFinite(tokens[1]) || !isFinite(tokens[2]) || !isFinite(tokens[3])) {
                 return Promise.resolve(null);
             }
-            return this.isMyself(tokens[0], tokens[1]) ? Promise.resolve(null) : this.list.add(tokens[0], tokens[1], tokens[2], tokens[3], false, weight);
+            return this.isMyself(tokens[0], tokens[1]) ? Promise.resolve(null) : this.list.add(tokens[0], tokens[1], tokens[2], tokens[3], false, weight * parseFloat(tokens[4] || 0) * this.opts.weightDeflation);
         }
 
         /**
@@ -467,6 +484,7 @@ var Node = function (_Base) {
     }, {
         key: '_getHeaders',
         value: function _getHeaders() {
+            // TODO: add current Nelson version number. Prevent connections from other major Nelson verisions.
             return {
                 'Content-Type': 'application/json',
                 'Nelson-Port': '' + this.opts.port,
@@ -608,7 +626,7 @@ var Node = function (_Base) {
             // TODO: remove old peers by inverse weight, maybe? Not urgent. Can be added at a later point.
             // this.log('reconnectPeers');
             // If max was reached, do nothing.
-            var toTry = Math.ceil((this.opts.outgoingMax - this._getOutgoingSlotsCount()) * 1.5);
+            var toTry = this.opts.outgoingMax - this._getOutgoingSlotsCount();
 
             if (toTry < 1 || this.isMaster || this._getOutgoingSlotsCount() >= this.opts.outgoingMax) {
                 return [];
@@ -616,13 +634,15 @@ var Node = function (_Base) {
 
             // Get allowed peers:
             return this.list.getWeighted(192).filter(function (p) {
-                return !_this11.sockets.get(p);
-            }).slice(0, toTry).map(this.connectPeer);
+                return !_this11.sockets.get(p[0]);
+            }).slice(0, toTry).map(function (p) {
+                return _this11.connectPeer(p[0]);
+            });
         }
 
         /**
-         * Returns a set of peers ready to be shared. Only those that comply with certain identity rules.
-         * @returns {Peer[]}
+         * Returns a set of peers ready to be shared with their respective weight ratios.
+         * @returns {Array[]}
          */
 
     }, {
@@ -642,7 +662,7 @@ var Node = function (_Base) {
             var _this12 = this;
 
             this.log('new epoch and new id:', this.heart.personality.id);
-            // Master node should recycle all connections
+            // Master node should recycle all its connections
             if (this.opts.isMaster) {
                 return this._removeNeighbors(Array.from(this.sockets.keys())).then(function () {
                     _this12.reconnectPeers();
@@ -735,7 +755,7 @@ var Node = function (_Base) {
             var _this15 = this;
 
             var checkTrust = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
-            var easiness = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 8;
+            var easiness = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 16;
 
             var allowed = function allowed() {
                 return getPeerIdentifier(_this15.heart.personality.id + ':' + (_this15.opts.localNodes ? port : address)).slice(0, _this15._getMinEasiness(easiness)).indexOf(_this15.heart.personality.feature) >= 0;
@@ -751,7 +771,6 @@ var Node = function (_Base) {
         /**
          * For new nodes, make it easy to find nodes and contact them
          * @param {number} easiness - how easy it is to get in/out
-         * @param {number} minConnections - expected approx. connections from incoming or to outgoing peers
          * @returns {number} updated easiness value
          * @private
          */
@@ -759,14 +778,12 @@ var Node = function (_Base) {
     }, {
         key: '_getMinEasiness',
         value: function _getMinEasiness(easiness) {
-            var minConnections = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 2;
-
-            var l = this._getIncomingSlotsCount();
-            var f = minConnections * 16.0 / easiness;
-            if (!l) {
-                return 16;
-            }
-            return l >= f ? easiness : Math.ceil(easiness * (f / l));
+            // New nodes are trusting less the incoming connections.
+            // As the node matures in the community, it becomes more welcoming for inbound requests.
+            var l = this.list.all().filter(function (p) {
+                return p.data.connected;
+            }).length;
+            return Math.min(easiness, Math.max(5, parseInt(l / 2)));
         }
     }]);
 
