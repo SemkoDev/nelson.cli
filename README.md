@@ -144,11 +144,12 @@ to mature and he might accept you into his circle.
 The same happens to your own Nelson instance. It might deny contact from new neighbors or those he doesn't know well.
 The less trusted and less known a neighbor is, the less likely your Nelson will contact him. This is a security measure
 to slowly structure the network and give more weight to old, trusted neighborhood. You can read more about it in the
-Nelson's release article.
+Nelson's release article: https://medium.com/deviota/carriota-nelson-in-a-nutshell-1ee5317d8f19
 
 ## Authors
 
-* **Roman Semko** - *Initial work* - (https://github.com/romansemko)
+* **Roman Semko** - *SemkoDev* - (https://github.com/romansemko)
+* **Vitaly Semko** - *SemkoDev* - (https://github.com/witwit)
 
 ## License
 
