@@ -1,3 +1,5 @@
+require('colors');
+
 const DEFAULT_OPTIONS = {
     silent: false,
     logIdent: 'BASE',
@@ -15,12 +17,19 @@ class Base {
 
     log () {
         if (!this.opts || !this.opts.silent || arguments[0] === '!!') {
+            const date = new Date();
+            const timeString = `${date.toLocaleTimeString()}.${date.getMilliseconds()}`.dim;
             const space = this.opts.logIdent.length > this.opts.logIdentWidth
                 ? `\n${' '.repeat(this.opts.logIdentWidth)}`
                 : ' '.repeat(this.opts.logIdentWidth - this.opts.logIdent.length);
+            const logIdent = `${this.opts.logIdent}${space}`.dim.bold;
 
-            console.log(`${(new Date()).getTime()} ${this.opts.logIdent}${space}`, ...arguments);
+            console.log(`${timeString} ${logIdent}`, ...arguments);
         }
+    }
+
+    formatNode (hostname, port) {
+        return `${hostname}:${port}`.cyan
     }
 
     start () {}
