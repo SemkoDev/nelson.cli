@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 
+## [0.0.5] - 2017-12-12
+
+## Changed
+- Dynamic openness in function with node's maturity.
+- Sharing of opinion about neighbours.
+- Implemented improved weighting from tri-tests.
+- Decreased the average number of connected nodes to 8 (+/-4).
+
+
 ## [0.0.4] - 2017-12-09
 
 ## Added
