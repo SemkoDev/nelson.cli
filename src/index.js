@@ -1,7 +1,7 @@
-require('colors');
-const terminal = require('./node/tools/terminal');
+require('colors')
 const node = require('./node').node;
 const api = require('./node').api;
+const utils = require('./node').utils;
 
 // Some general TODOs:
 // TODO: add linting
@@ -23,7 +23,7 @@ module.exports = {
         _node.start().then((n) => {
             api.createAPI(n);
             terminal.init();
-            n.log('initialized!'.green.bold);
+            n.log(`Nelson v.${utils.getVersion()} initialized`.green.bold);
         });
     },
     ...node

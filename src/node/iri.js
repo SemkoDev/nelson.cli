@@ -6,6 +6,8 @@ tmp.setGracefulCleanup();
 
 const DEFAULT_OPTIONS = {
     port: 14600,
+    TCPPort: 15600,
+    UDPPort: 14600,
     logIdent: 'IRI'
 };
 

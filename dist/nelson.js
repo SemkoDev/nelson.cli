@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+require('colors');
+
 var ini = require('ini');
 var fs = require('fs');
 var program = require('commander');

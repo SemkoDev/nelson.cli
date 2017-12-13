@@ -1,5 +1,6 @@
 'use strict';
 
+var version = require('../../package.json').version;
 var crypto = require('crypto');
 var md5 = require('md5');
 
@@ -55,10 +56,27 @@ function shuffleArray(array) {
     });
 }
 
+/**
+ * Returns Nelson version number
+ */
+function getVersion() {
+    return version;
+}
+
+/**
+ * Returns whether the provided version number is the same major version as the current Nelson.
+ * @param {string} otherVersion
+ */
+function isSameMajorVersion(otherVersion) {
+    return version.split('.')[0] === otherVersion.split('.')[0];
+}
+
 module.exports = {
     createIdentifier: createIdentifier,
     getPeerIdentifier: getPeerIdentifier,
     getRandomInt: getRandomInt,
     getSecondsPassed: getSecondsPassed,
+    getVersion: getVersion,
+    isSameMajorVersion: isSameMajorVersion,
     shuffleArray: shuffleArray
 };
