@@ -5,6 +5,7 @@ const { Base } = require('./base');
 tmp.setGracefulCleanup();
 
 const DEFAULT_OPTIONS = {
+    hostname: 'localhost',
     port: 14600,
     TCPPort: 15600,
     UDPPort: 14600,
@@ -21,7 +22,7 @@ const DEFAULT_OPTIONS = {
 class IRI extends Base {
     constructor (options) {
         super({ ...DEFAULT_OPTIONS, ...options });
-        this.api = (new IOTA({ host: 'http://localhost', port: this.opts.port })).api;
+        this.api = (new IOTA({ host: `http://${this.opts.hostname}`, port: this.opts.port })).api;
         this.removeNeighbors = this.removeNeighbors.bind(this);
         this.addNeighbors = this.addNeighbors.bind(this);
         this.updateNeighbors = this.updateNeighbors.bind(this);

@@ -44,6 +44,15 @@ Provided you have docker installed, nelson can be started as follows:
 docker run <docker opts> romansemko/nelson <nelson command line opts>
 ```
 
+Hence, running IRI with Nelson can be achieved with two simple commands:
+```
+docker run -d --name iri --net host iotaledger/iri
+docker run --net host --name nelson -p 18600:18600 romansemko/nelson -r localhost -i 14265 -u 14777 -t 15777 --neighbors <initial neighbors here>
+```
+
+The options passed to nelson's docker (```-r localhost -i 14265 -u 14777 -t 15777 --neighbors ...```) set IRI's
+hostname and ports (api, TCP, UDP) and the initial neighbors. Please refer below for more info on options.
+
 ## Building Locally
 
 If you are a developer you may want to build the project locally and play around with the sources.
@@ -95,6 +104,7 @@ cycleInterval = 60
 epochInterval = 300
 apiPort = 18600
 port = 16600
+IRIHostname = localhost
 IRIPort = 14600
 TCPPort = 15600
 UDPPort = 14600
@@ -119,7 +129,8 @@ Some have additional short versions.
 | --neighbors, -n |  space-separated list of nelson neighbors ||
 | --apiPort, -a | Nelson API port to request current node status data|18600|
 | --port, -p | TCP port, on which to start your nelson instance|16600|
-| --IRIPort, -i| IRI API port of the locally running IRI node instance|14600|
+| --IRIHostname, -r| IRI API hostname of the running IRI node instance|localhost|
+| --IRIPort, -i| IRI API port of the running IRI node instance|14600|
 | --TCPPort, -t| IRI TCP Port|15600|
 | --UDPPort, -u| IRI UDP Port|14600|
 | --dataPath, -d| path to the file, that will be used as neighbor storage| data/neighbors.db|
@@ -144,10 +155,13 @@ The neighbors you provide in the beginning are treated as trusted neighbors. Thi
 to accept contact requests from these neighbors and also to recommend them to other neighbors. They are also used as
 initial contact for a young Nelson. They provide him with other neighbors' addresses.
 
-### Help! Nelson isn't connecting to neighbors xyz!
+### Help! Nelson isn't connecting to neighbors!
 
 Depending on Nelson's age/epoch he might or might not like a certain neighbor. That's okay. Just wait for the neighbor
 to mature and he might accept you into his circle.
+
+This is more acute for new nodes without any neighbors at all. 
+You might need to wait for quite some time to be accepted into the network.
 
 The same happens to your own Nelson instance. It might deny contact from new neighbors or those he doesn't know well.
 The less trusted and less known a neighbor is, the less likely your Nelson will contact him. This is a security measure

@@ -19,6 +19,7 @@ var _require = require('./base'),
 tmp.setGracefulCleanup();
 
 var DEFAULT_OPTIONS = {
+    hostname: 'localhost',
     port: 14600,
     TCPPort: 15600,
     UDPPort: 14600,
@@ -41,7 +42,7 @@ var IRI = function (_Base) {
 
         var _this = _possibleConstructorReturn(this, (IRI.__proto__ || Object.getPrototypeOf(IRI)).call(this, _extends({}, DEFAULT_OPTIONS, options)));
 
-        _this.api = new IOTA({ host: 'http://localhost', port: _this.opts.port }).api;
+        _this.api = new IOTA({ host: 'http://' + _this.opts.hostname, port: _this.opts.port }).api;
         _this.removeNeighbors = _this.removeNeighbors.bind(_this);
         _this.addNeighbors = _this.addNeighbors.bind(_this);
         _this.updateNeighbors = _this.updateNeighbors.bind(_this);
