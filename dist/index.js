@@ -5,6 +5,7 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 require('colors');
 var node = require('./node').node;
 var api = require('./node').api;
+var utils = require('./node').utils;
 
 // Some general TODOs:
 // TODO: add linting
@@ -24,7 +25,7 @@ module.exports = _extends({
 
         _node.start().then(function (n) {
             api.createAPI(n);
-            n.log('initialized!'.green.bold);
+            n.log(('Nelson v.' + utils.getVersion() + ' initialized').green.bold);
         });
     }
 }, node);
