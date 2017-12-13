@@ -36,7 +36,7 @@ var Base = function () {
                 var space = this.opts.logIdent.length > this.opts.logIdentWidth ? '\n' + ' '.repeat(this.opts.logIdentWidth) : ' '.repeat(this.opts.logIdentWidth - this.opts.logIdent.length);
                 var logIdent = ('' + this.opts.logIdent + space).dim.bold;
 
-                terminal.log.apply(terminal, [timeString + ' ' + logIdent].concat(Array.prototype.slice.call(arguments)));
+                terminal.log.apply(terminal, [timeString + '\t' + logIdent].concat(Array.prototype.slice.call(arguments)));
             }
         }
     }, {

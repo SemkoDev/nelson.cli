@@ -25,7 +25,7 @@ class Base {
                 : ' '.repeat(this.opts.logIdentWidth - this.opts.logIdent.length);
             const logIdent = `${this.opts.logIdent}${space}`.dim.bold;
 
-            terminal.log(`${timeString} ${logIdent}`, ...arguments);
+            terminal.log(`${timeString}\t${logIdent}`, ...arguments);
         }
     }
 
