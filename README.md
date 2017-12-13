@@ -44,10 +44,10 @@ Provided you have docker installed, nelson can be started as follows:
 docker run <docker opts> romansemko/nelson <nelson command line opts>
 ```
 
-Hence, running IRI with Nelson can be achieved with two simple commands:
+Hence, running IRI with Nelson can be done with two simple commands:
 ```
-docker run -d --name iri --net host iotaledger/iri
-docker run --net host --name nelson -p 18600:18600 romansemko/nelson -r localhost -i 14265 -u 14777 -t 15777 --neighbors <initial neighbors here>
+docker run -d --net host -p 14265:14265 --name iri iotaledger/iri
+docker run -d --net host -p 18600:18600 --name nelson romansemko/nelson -r localhost -i 14265 -u 14777 -t 15777 --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
 ```
 
 The options passed to nelson's docker (```-r localhost -i 14265 -u 14777 -t 15777 --neighbors ...```) set IRI's
@@ -168,6 +168,10 @@ The less trusted and less known a neighbor is, the less likely your Nelson will 
 to slowly structure the network and give more weight to old, trusted neighborhood. You can read more about it in the
 Nelson's release article: https://medium.com/deviota/carriota-nelson-in-a-nutshell-1ee5317d8f19
 
+## Monitor
+There is a simple Nelson http server/monitor available at: https://github.com/SemkoDev/nelson.mon
+This is work in progress, so please bear with the simplicity.
+
 ## Authors
 
 * **Roman Semko** - *SemkoDev* - (https://github.com/romansemko)
@@ -182,7 +186,6 @@ This project is licensed under the ICS License - see the [LICENSE.md](LICENSE.md
 There are some open TODO's in the source code. Most urging are:
 
 - node tests: tested using simulation tools (will be published separately), but some Jest tests would be nice.
-- node API interface: HTTP and process interfaces for easier integration.
 - structural/organizational work: linting, editor config, contributions specs
 - etc.?
 
