@@ -255,6 +255,10 @@ class Node extends Base {
      */
     _bindWebSocket (ws, peer, asServer=false) {
         const removeNeighbor = (e) => {
+            if (!ws || ws.removingNow) {
+                return;
+            }
+            ws.removingNow = true;
             this.log('closing connection'.red);
             this._removeNeighbor(peer);
         };
