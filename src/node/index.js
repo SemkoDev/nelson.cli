@@ -5,7 +5,7 @@ const iri = require('./iri');
 const node = require('./node');
 const peer = require('./peer');
 const peerList = require('./peer-list');
-const utils = require('./utils');
+const utils = require('./tools/utils');
 
 module.exports = {
     api,
