@@ -23,7 +23,8 @@ var DEFAULT_OPTIONS = {
     port: 14600,
     TCPPort: 15600,
     UDPPort: 14600,
-    logIdent: 'IRI'
+    logIdent: 'IRI',
+    onHealthCheck: function onHealthCheck(isHealthy, neighbors) {}
 };
 
 // TODO: Regular IRI health-checks needed. Prevent Nelson from connecting if IRI is down.
@@ -46,6 +47,9 @@ var IRI = function (_Base) {
         _this.removeNeighbors = _this.removeNeighbors.bind(_this);
         _this.addNeighbors = _this.addNeighbors.bind(_this);
         _this.updateNeighbors = _this.updateNeighbors.bind(_this);
+        _this._tick = _this._tick.bind(_this);
+        _this.ticker = null;
+        _this.isHealthy = false;
         return _this;
     }
 
@@ -64,12 +68,19 @@ var IRI = function (_Base) {
                 _this2.api.getNodeInfo(function (error) {
                     if (!error) {
                         _this2._isStarted = true;
+                        _this2.isHealthy = true;
+                        _this2.ticker = setInterval(_this2._tick, 12000);
                         resolve(_this2);
                     } else {
                         reject(error);
                     }
                 });
             });
+        }
+    }, {
+        key: 'end',
+        value: function end() {
+            this.ticker && clearTimeout(this.ticker);
         }
 
         /**
@@ -105,18 +116,37 @@ var IRI = function (_Base) {
         value: function removeNeighbors(peers) {
             var _this3 = this;
 
+            var uris = peers.map(function (p) {
+                return p.getTCPURI();
+            });
+            uris.concat(peers.map(function (p) {
+                return p.getUDPURI();
+            }));
             return new Promise(function (resolve, reject) {
-                _this3.api.removeNeighbors(peers.map(function (p) {
-                    return p.getTCPURI();
-                }), function (err) {
-                    if (err) {
-                        reject(err);
+                _this3.api.getNeighbors(function (error, neighbors) {
+                    if (error) {
+                        reject(error);
                         return;
                     }
-                    _this3.log('Neighbors removed', peers.map(function (p) {
-                        return p.getNelsonURI();
-                    }));
-                    resolve(peers);
+                    var toRemove = neighbors.map(function (n) {
+                        return n.connectionType + '://' + n.address;
+                    }).filter(function (n) {
+                        return uris.includes(n);
+                    });
+                    if (toRemove.length) {
+                        _this3.api.removeNeighbors(toRemove, function (err) {
+                            if (err) {
+                                reject(err);
+                                return;
+                            }
+                            _this3.log('Neighbors removed', peers.map(function (p) {
+                                return p.getNelsonURI();
+                            }));
+                            resolve(peers);
+                        });
+                    } else {
+                        resolve(peers);
+                    }
                 });
             });
         }
@@ -141,8 +171,8 @@ var IRI = function (_Base) {
                         reject(error);
                         return;
                     }
-                    resolve(peers);
                     _this4.log('Neighbors added:', data, uris.join(', '));
+                    resolve(peers);
                 });
             });
         }
@@ -177,6 +207,31 @@ var IRI = function (_Base) {
                         return n.connectionType + '://' + n.address;
                     }), addNeighbors) : addNeighbors();
                 });
+            });
+        }
+
+        /**
+         * Checks if the IRI instance is healthy, and its list of neighbors. Calls back the result to onHealthCheck.
+         * @private
+         */
+
+    }, {
+        key: '_tick',
+        value: function _tick() {
+            var _this6 = this;
+
+            var onHealthCheck = this.opts.onHealthCheck;
+
+            this.api.getNeighbors(function (error, neighbors) {
+                if (error) {
+                    _this6.isHealthy = false;
+                    onHealthCheck(false);
+                    return;
+                }
+                _this6.isHealthy = true;
+                onHealthCheck(true, neighbors.map(function (n) {
+                    return n.connectionType + '://' + n.address;
+                }));
             });
         }
     }]);
