@@ -9,7 +9,8 @@ const DEFAULT_OPTIONS = {
     port: 14600,
     TCPPort: 15600,
     UDPPort: 14600,
-    logIdent: 'IRI'
+    logIdent: 'IRI',
+    onHealthCheck: (isHealthy, neighbors) => {}
 };
 
 // TODO: Regular IRI health-checks needed. Prevent Nelson from connecting if IRI is down.
@@ -26,6 +27,9 @@ class IRI extends Base {
         this.removeNeighbors = this.removeNeighbors.bind(this);
         this.addNeighbors = this.addNeighbors.bind(this);
         this.updateNeighbors = this.updateNeighbors.bind(this);
+        this._tick = this._tick.bind(this);
+        this.ticker = null;
+        this.isHealthy = false;
     }
 
     /**
@@ -37,12 +41,18 @@ class IRI extends Base {
             this.api.getNodeInfo((error) => {
                 if (!error) {
                     this._isStarted = true;
+                    this.isHealthy = true;
+                    this.ticker = setInterval(this._tick, 12000);
                     resolve(this);
                 } else {
                     reject(error);
                 }
             });
         })
+    }
+
+    end () {
+        this.ticker && clearTimeout(this.ticker)
     }
 
     /**
@@ -67,14 +77,30 @@ class IRI extends Base {
      * @returns {Promise<Peer[]>}
      */
     removeNeighbors (peers) {
+        const uris = peers.map((p) => p.getTCPURI());
+        uris.concat(peers.map((p) => p.getUDPURI()));
         return new Promise ((resolve, reject) => {
-            this.api.removeNeighbors(peers.map((p) => p.getTCPURI()), (err) => {
-                if (err) {
-                    reject(err);
+            this.api.getNeighbors((error, neighbors) => {
+                if (error) {
+                    reject(error);
                     return;
                 }
-                this.log('Neighbors removed', peers.map(p => p.getNelsonURI()));
-                resolve(peers)
+                const toRemove = neighbors
+                    .map((n) => `${n.connectionType}://${n.address}`)
+                    .filter((n) => uris.includes(n));
+                if (toRemove.length) {
+                    this.api.removeNeighbors(toRemove, (err) => {
+                        if (err) {
+                            reject(err);
+                            return;
+                        }
+                        this.log('Neighbors removed', peers.map(p => p.getNelsonURI()));
+                        resolve(peers)
+                    });
+                }
+                else {
+                    resolve(peers);
+                }
             });
         })
     }
@@ -92,8 +118,8 @@ class IRI extends Base {
                     reject(error);
                     return;
                 }
-                resolve(peers);
                 this.log('Neighbors added:', data, uris.join(', '));
+                resolve(peers);
             });
         });
     }
@@ -123,6 +149,23 @@ class IRI extends Base {
                     ? this.api.removeNeighbors(neighbors.map((n) => `${n.connectionType}://${n.address}`), addNeighbors)
                     : addNeighbors();
             });
+        });
+    }
+
+    /**
+     * Checks if the IRI instance is healthy, and its list of neighbors. Calls back the result to onHealthCheck.
+     * @private
+     */
+    _tick () {
+        const { onHealthCheck } = this.opts;
+        this.api.getNeighbors((error, neighbors) => {
+            if(error) {
+                this.isHealthy = false;
+                onHealthCheck(false);
+                return;
+            }
+            this.isHealthy = true;
+            onHealthCheck(true, neighbors.map((n) => `${n.connectionType}://${n.address}`));
         });
     }
 
