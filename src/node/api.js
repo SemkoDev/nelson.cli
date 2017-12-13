@@ -6,7 +6,7 @@ function createAPI (node) {
         res.writeHead(200, {"Content-Type": "application/json"});
         res.end(JSON.stringify(getNodeStats(node), null, 4));
     });
-    server.listen(node.opts.apiPort, '127.0.0.1');
+    server.listen(node.opts.apiPort, node.opts.apiHostname);
 }
 
 function getNodeStats (node) {

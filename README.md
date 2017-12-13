@@ -44,6 +44,15 @@ Provided you have docker installed, nelson can be started as follows:
 docker run <docker opts> romansemko/nelson <nelson command line opts>
 ```
 
+Hence, running IRI with Nelson can be done with two simple commands:
+```
+docker run -d --net host -p 14265:14265 --name iri iotaledger/iri
+docker run -d --net host -p 18600:18600 --name nelson romansemko/nelson -r localhost -i 14265 -u 14777 -t 15777 --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
+```
+
+The options passed to nelson's docker (```-r localhost -i 14265 -u 14777 -t 15777 --neighbors ...```) set IRI's
+hostname and ports (api, TCP, UDP) and the initial neighbors. Please refer below for more info on options.
+
 ## Building Locally
 
 If you are a developer you may want to build the project locally and play around with the sources.
@@ -94,7 +103,9 @@ You can provide one or more of the following options in your ini file. Example:
 cycleInterval = 60
 epochInterval = 300
 apiPort = 18600
+apiHostname = 127.0.0.1
 port = 16600
+IRIHostname = localhost
 IRIPort = 14600
 TCPPort = 15600
 UDPPort = 14600
@@ -118,8 +129,10 @@ Some have additional short versions.
 |------------------------|-----------------------------------------|---------|
 | --neighbors, -n |  space-separated list of nelson neighbors ||
 | --apiPort, -a | Nelson API port to request current node status data|18600|
+| --apiHostname, -o | Nelson API hostname to request current node status data. Default value will only listen to local connections|127.0.0.1|
 | --port, -p | TCP port, on which to start your nelson instance|16600|
-| --IRIPort, -i| IRI API port of the locally running IRI node instance|14600|
+| --IRIHostname, -r| IRI API hostname of the running IRI node instance|localhost|
+| --IRIPort, -i| IRI API port of the running IRI node instance|14600|
 | --TCPPort, -t| IRI TCP Port|15600|
 | --UDPPort, -u| IRI UDP Port|14600|
 | --dataPath, -d| path to the file, that will be used as neighbor storage| data/neighbors.db|
@@ -144,15 +157,22 @@ The neighbors you provide in the beginning are treated as trusted neighbors. Thi
 to accept contact requests from these neighbors and also to recommend them to other neighbors. They are also used as
 initial contact for a young Nelson. They provide him with other neighbors' addresses.
 
-### Help! Nelson isn't connecting to neighbors xyz!
+### Help! Nelson isn't connecting to neighbors!
 
 Depending on Nelson's age/epoch he might or might not like a certain neighbor. That's okay. Just wait for the neighbor
 to mature and he might accept you into his circle.
+
+This is more acute for new nodes without any neighbors at all. 
+You might need to wait for quite some time to be accepted into the network.
 
 The same happens to your own Nelson instance. It might deny contact from new neighbors or those he doesn't know well.
 The less trusted and less known a neighbor is, the less likely your Nelson will contact him. This is a security measure
 to slowly structure the network and give more weight to old, trusted neighborhood. You can read more about it in the
 Nelson's release article: https://medium.com/deviota/carriota-nelson-in-a-nutshell-1ee5317d8f19
+
+## Monitor
+There is a simple Nelson http server/monitor available at: https://github.com/SemkoDev/nelson.mon
+This is work in progress, so please bear with the simplicity.
 
 ## Authors
 
@@ -168,7 +188,6 @@ This project is licensed under the ICS License - see the [LICENSE.md](LICENSE.md
 There are some open TODO's in the source code. Most urging are:
 
 - node tests: tested using simulation tools (will be published separately), but some Jest tests would be nice.
-- node API interface: HTTP and process interfaces for easier integration.
 - structural/organizational work: linting, editor config, contributions specs
 - etc.?
 

@@ -16,6 +16,8 @@ const DEFAULT_OPTIONS = {
     dataPath: DEFAULT_LIST_OPTIONS.dataPath,
     port: 16600,
     apiPort: 18600,
+    apiHostname: '127.0.0.1',
+    IRIHostname: DEFAULT_IRI_OPTIONS.hostname,
     IRIPort: DEFAULT_IRI_OPTIONS.port,
     TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
     UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
@@ -147,9 +149,14 @@ class Node extends Base {
      * @private
      */
     _getIRI () {
-        const { IRIPort, silent } = this.opts;
+        const { IRIHostname, IRIPort, silent } = this.opts;
 
-        return (new IRI({ logIdent: `${this.opts.port}::IRI`, port: IRIPort, silent })).start().then((iri) => {
+        return (new IRI({
+            logIdent: `${this.opts.port}::IRI`,
+            hostname: IRIHostname,
+            port: IRIPort,
+            silent
+        })).start().then((iri) => {
             this.iri = iri;
             return iri;
         })
@@ -249,6 +256,10 @@ class Node extends Base {
      */
     _bindWebSocket (ws, peer, asServer=false) {
         const removeNeighbor = (e) => {
+            if (!ws || ws.removingNow) {
+                return;
+            }
+            ws.removingNow = true;
             this.log('closing connection'.red);
             this._removeNeighbor(peer);
         };

@@ -43,6 +43,8 @@ var DEFAULT_OPTIONS = {
     dataPath: DEFAULT_LIST_OPTIONS.dataPath,
     port: 16600,
     apiPort: 18600,
+    apiHostname: '127.0.0.1',
+    IRIHostname: DEFAULT_IRI_OPTIONS.hostname,
     IRIPort: DEFAULT_IRI_OPTIONS.port,
     TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
     UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
@@ -217,11 +219,17 @@ var Node = function (_Base) {
             var _this5 = this;
 
             var _opts3 = this.opts,
+                IRIHostname = _opts3.IRIHostname,
                 IRIPort = _opts3.IRIPort,
                 silent = _opts3.silent;
 
 
-            return new IRI({ logIdent: this.opts.port + '::IRI', port: IRIPort, silent: silent }).start().then(function (iri) {
+            return new IRI({
+                logIdent: this.opts.port + '::IRI',
+                hostname: IRIHostname,
+                port: IRIPort,
+                silent: silent
+            }).start().then(function (iri) {
                 _this5.iri = iri;
                 return iri;
             });
@@ -355,6 +363,10 @@ var Node = function (_Base) {
             var asServer = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
 
             var removeNeighbor = function removeNeighbor(e) {
+                if (!ws || ws.removingNow) {
+                    return;
+                }
+                ws.removingNow = true;
                 _this8.log('closing connection'.red);
                 _this8._removeNeighbor(peer);
             };
