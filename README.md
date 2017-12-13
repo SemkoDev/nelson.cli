@@ -103,6 +103,7 @@ You can provide one or more of the following options in your ini file. Example:
 cycleInterval = 60
 epochInterval = 300
 apiPort = 18600
+apiHostname = 127.0.0.1
 port = 16600
 IRIHostname = localhost
 IRIPort = 14600
@@ -128,6 +129,7 @@ Some have additional short versions.
 |------------------------|-----------------------------------------|---------|
 | --neighbors, -n |  space-separated list of nelson neighbors ||
 | --apiPort, -a | Nelson API port to request current node status data|18600|
+| --apiHostname, -o | Nelson API hostname to request current node status data. Default value will only listen to local connections|127.0.0.1|
 | --port, -p | TCP port, on which to start your nelson instance|16600|
 | --IRIHostname, -r| IRI API hostname of the running IRI node instance|localhost|
 | --IRIPort, -i| IRI API port of the running IRI node instance|14600|

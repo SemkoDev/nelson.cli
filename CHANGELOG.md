@@ -6,8 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.1] - 2017-12-13
+
+### Added
+- Option for setting nelson api listening hostname.
+
 ### Changed
 - Cleaned Docker README section.
+- Cleaned up logs (double-removals of peers)
 
 ## [0.1.0] - 2017-12-13
 
