@@ -67,7 +67,7 @@ function init (version, onExit) {
     peersBox = blessed.box({
         top: '0%',
         left: '50%',
-        width: '50%',
+        width: '51%',
         height: '50%',
         content: 'Peers'.green.bold,
         tags: true,
@@ -132,7 +132,17 @@ function ports ({ port, apiPort, IRIPort, TCPPort, UDPPort }) {
 
 function nodes ({ nodes, connected }) {
     peersBox.setLine(2, `Count: ${nodes.length}`.bold);
-    connected.forEach((connection, i) => peersBox.setLine(4 + i, `${connection}`.bold));
+    peersBox.setLine(4, `Connections:`.bold);
+    if (!Array.isArray(connected) || connected.length === 0) {
+        peersBox.setLine(5, 'do not worry, this may take a while...'.dim);
+    }
+    else {
+        connected.forEach((connection, i) => {
+            const id = `${connection.hostname||connection.ip}:${connection.port}`.bold.cyan;
+            const weight = `[weight: ${connection.weight}]`.green;
+            peersBox.setLine(5 + i, `${id} ${weight}`);
+        });
+    }
     screen.render();
 }
 
