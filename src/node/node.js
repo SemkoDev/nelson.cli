@@ -15,6 +15,7 @@ const DEFAULT_OPTIONS = {
     dataPath: DEFAULT_LIST_OPTIONS.dataPath,
     port: 16600,
     apiPort: 18600,
+    IRIHostname: DEFAULT_IRI_OPTIONS.hostname,
     IRIPort: DEFAULT_IRI_OPTIONS.port,
     TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
     UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
@@ -146,9 +147,14 @@ class Node extends Base {
      * @private
      */
     _getIRI () {
-        const { IRIPort, silent } = this.opts;
+        const { IRIHostname, IRIPort, silent } = this.opts;
 
-        return (new IRI({ logIdent: `${this.opts.port}::IRI`, port: IRIPort, silent })).start().then((iri) => {
+        return (new IRI({
+            logIdent: `${this.opts.port}::IRI`,
+            hostname: IRIHostname,
+            port: IRIPort,
+            silent
+        })).start().then((iri) => {
             this.iri = iri;
             return iri;
         })

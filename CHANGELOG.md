@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- setting of IRI's hostname
+
+### Changed
+- Dockerfile to use specific nelson version
+- Readme about docker
+
 ## [0.0.7] - 2017-12-13
 
 ### Added
