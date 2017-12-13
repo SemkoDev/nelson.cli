@@ -111,6 +111,7 @@ var IRI = function (_Base) {
                 }), function (err) {
                     if (err) {
                         reject(err);
+                        return;
                     }
                     _this3.log('Neighbors removed', peers.map(function (p) {
                         return p.getNelsonURI();
