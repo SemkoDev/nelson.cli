@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.1.2] - 2017-12-13
+## [0.1.3] - 2017-12-13
 
 ### Added
 - Terminal GUI for Nelson
