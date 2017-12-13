@@ -137,6 +137,7 @@ function nodes ({ nodes, connected }) {
         peersBox.setLine(5, 'do not worry, this may take a while...'.dim);
     }
     else {
+        // TODO: clear lines first!! may lead to debris otherwise.
         connected.forEach((connection, i) => {
             const id = `${connection.hostname||connection.ip}:${connection.port}`.bold.cyan;
             const weight = `[weight: ${connection.weight}]`.green;
