@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ### Added
-- Oc
+- Option for setting nelson api listening hostname.
 
 ### Changed
 - Cleaned Docker README section.
