@@ -425,7 +425,7 @@ class Node extends Base {
         if (!this.sockets.get(peer)) {
             return Promise.resolve([]);
         }
-        this.log('removing neighbor', this.formatNode(peer.data.hostname, peer.data.port));
+        // this.log('removing neighbor', this.formatNode(peer.data.hostname, peer.data.port));
         return this._removeNeighbors([ peer ]);
     }
 
@@ -436,7 +436,7 @@ class Node extends Base {
      * @private
      */
     _removeNeighbors (peers) {
-        this.log('removing neighbors');
+        // this.log('removing neighbors');
 
         const doRemove = () => {
             peers.forEach((peer) => {
