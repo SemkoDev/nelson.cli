@@ -13,10 +13,12 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 var _require = require('./base'),
     Base = _require.Base;
 
-var _require2 = require('./utils'),
+var _require2 = require('./tools/utils'),
     getSecondsPassed = _require2.getSecondsPassed,
     getRandomInt = _require2.getRandomInt,
     createIdentifier = _require2.createIdentifier;
+
+var terminal = require('./tools/terminal');
 
 var DEFAULT_OPTIONS = {
     cycleInterval: 300,
@@ -64,10 +66,15 @@ var Heart = function (_Base) {
     _createClass(Heart, [{
         key: 'start',
         value: function start() {
-            this.log('Cycle/epoch intervals:', this.opts.cycleInterval, this.opts.epochInterval);
             this.startDate = new Date();
             this.startNewEpoch();
             this.lastCycle = new Date();
+            this.log('Cycle/epoch intervals:', this.opts.cycleInterval, this.opts.epochInterval);
+            terminal.settings({
+                epochInterval: this.opts.epochInterval,
+                cycleInterval: this.opts.cycleInterval,
+                startDate: this.startDate
+            });
             this._tick();
         }
     }, {
@@ -115,6 +122,7 @@ var Heart = function (_Base) {
             var _this2 = this;
 
             this.opts.onTick(this.currentCycle).then(function () {
+                terminal.beat(_this2.currentEpoch, _this2.currentCycle, _this2.startDate);
                 if (getSecondsPassed(_this2.lastCycle) > _this2.opts.cycleInterval) {
                     _this2.opts.onCycle(_this2.currentCycle).then(function (skipABeat) {
                         if (!skipABeat) {
