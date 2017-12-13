@@ -71,6 +71,7 @@ class IRI extends Base {
             this.api.removeNeighbors(peers.map((p) => p.getTCPURI()), (err) => {
                 if (err) {
                     reject(err);
+                    return;
                 }
                 this.log('Neighbors removed', peers.map(p => p.getNelsonURI()));
                 resolve(peers)
