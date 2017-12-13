@@ -566,7 +566,7 @@ var Node = function (_Base) {
             if (!this.sockets.get(peer)) {
                 return Promise.resolve([]);
             }
-            this.log('removing neighbor', this.formatNode(peer.data.hostname, peer.data.port));
+            // this.log('removing neighbor', this.formatNode(peer.data.hostname, peer.data.port));
             return this._removeNeighbors([peer]);
         }
 
@@ -582,7 +582,7 @@ var Node = function (_Base) {
         value: function _removeNeighbors(peers) {
             var _this10 = this;
 
-            this.log('removing neighbors');
+            // this.log('removing neighbors');
 
             var doRemove = function doRemove() {
                 peers.forEach(function (peer) {
