@@ -27,12 +27,14 @@ npm install -g nelson.cli
 And run it
 
 ```
-nelson --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
+nelson --gui --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
 ```
 
 The  ```--neighbors``` option is used to provide an entry set of trusted nelson peers for new nelson instances.
 As your nelson stays online and gets to know its neighbors, it will rely less and less on the initial entry
 points.
+
+The  ```--gui``` option is used to provide a simple GUI interface in the console.
 
 Below is the list of all possible options.
 
@@ -80,7 +82,7 @@ yarn make
 Try to run Nelson:
 
 ```
-node ./dist/nelson.js --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
+node ./dist/nelson.js --gui --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
 ```
 
 ## Configuration
@@ -112,6 +114,7 @@ UDPPort = 14600
 dataPath = data/neighbors.db
 isMaster = false
 silent = false
+gui = false
 ; add as many initial nelson neighbors, as you like
 neighbors[] = mainnet.deviota.com/16600
 neighbors[] = mainnet2.deviota.com/16600
@@ -137,6 +140,7 @@ Some have additional short versions.
 | --UDPPort, -u| IRI UDP Port|14600|
 | --dataPath, -d| path to the file, that will be used as neighbor storage| data/neighbors.db|
 | --silent, -s|Run the node without any output||
+| --gui, -g|Run the node in console-gui mode||
 | --cycleInterval| Interval between Nelson cycles|60|
 | --epochInterval| Interval between Nelson epochs|300|
 | --isMaster| Whether you are intending to run a master node||
