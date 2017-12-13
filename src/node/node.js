@@ -1,6 +1,7 @@
 const WebSocket = require('ws');
 const ip = require('ip');
 const pip = require('public-ip');
+const terminal = require('./tools/terminal');
 const { Base } = require('./base');
 const { Heart } = require('./heart');
 const { IRI, DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
@@ -550,6 +551,12 @@ class Node extends Base {
      */
     _onTick () {
         // Try connecting more peers. Master nodes do not actively connect (no outgoing connections).
+        terminal.nodes({
+            nodes: this.list.all(),
+            connected: Array.from(this.sockets.keys())
+                .filter((p) => this.sockets.get(p).readyState === 1)
+                .map((p) => p.data)
+        });
         return !this.opts.isMaster && this._getOutgoingSlotsCount() < this.opts.outgoingMax
             ? new Promise((resolve) => {
                 this.reconnectPeers();

@@ -1,5 +1,6 @@
 const { Base } = require('./base');
 const { getSecondsPassed, getRandomInt, createIdentifier } = require('./tools/utils');
+const terminal = require('./tools/terminal');
 
 const DEFAULT_OPTIONS = {
     cycleInterval: 300,
@@ -32,10 +33,15 @@ class Heart extends Base {
     }
 
     start () {
-        this.log('Cycle/epoch intervals:', this.opts.cycleInterval, this.opts.epochInterval);
         this.startDate = new Date();
         this.startNewEpoch();
         this.lastCycle = new Date();
+        this.log('Cycle/epoch intervals:', this.opts.cycleInterval, this.opts.epochInterval);
+        terminal.settings({
+            epochInterval: this.opts.epochInterval,
+            cycleInterval: this.opts.cycleInterval,
+            startDate: this.startDate
+        });
         this._tick();
     }
 
@@ -71,6 +77,7 @@ class Heart extends Base {
      */
     _tick () {
         this.opts.onTick(this.currentCycle).then(() => {
+            terminal.beat(this.currentEpoch, this.currentCycle, this.startDate);
             if (getSecondsPassed(this.lastCycle) > this.opts.cycleInterval) {
                 this.opts.onCycle(this.currentCycle).then((skipABeat) => {
                     if (!skipABeat) {

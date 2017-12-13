@@ -1,4 +1,5 @@
 require('colors');
+const terminal = require('./tools/terminal');
 
 const DEFAULT_OPTIONS = {
     silent: false,
@@ -24,7 +25,7 @@ class Base {
                 : ' '.repeat(this.opts.logIdentWidth - this.opts.logIdent.length);
             const logIdent = `${this.opts.logIdent}${space}`.dim.bold;
 
-            console.log(`${timeString} ${logIdent}`, ...arguments);
+            terminal.log(`${timeString} ${logIdent}`, ...arguments);
         }
     }
 

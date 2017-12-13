@@ -31,6 +31,7 @@ program
     .option('-d, --dataPath [value]', 'Peer database path', DEFAULT_LIST_OPTIONS.dataPath)
     .option('-m, --isMaster [value]', 'Is a master node', false)
     .option('-s, --silent [value]', 'Silent', false)
+    .option('-g, --gui [value]', 'GUI', false)
     .option('--temporary [value]', 'Create a temporary node', false)
     .option('--config [value]', 'Config file path', null)
     .parse(process.argv);
