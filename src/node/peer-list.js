@@ -239,8 +239,8 @@ class PeerList extends Base {
             // update existing with port. Otherwise just return the existing peer.
             if (existing) {
                 if (!this.opts.multiPort && (port !== existing.data.port ||
-                        TCPPort !== existing.data.TCPPort ||
-                        UDPPort !== existing.data.UDPPort
+                        (TCPPort && TCPPort !== existing.data.TCPPort) ||
+                        (UDPPort && UDPPort !== existing.data.UDPPort)
                     )) {
                     return this.update(existing, { port, TCPPort, UDPPort })
                 } else if (existing.data.weight < weight) {
@@ -252,8 +252,16 @@ class PeerList extends Base {
                 this.log('adding', hostname, port);
                 const peerIP = ip.isV4Format(addr) || ip.isV6Format(addr) ? addr : null;
                 const peer = new Peer(
-                    { port, hostname: addr, ip: peerIP, TCPPort, UDPPort, isTrusted, weight, dateCreated: new Date() },
-                    { onDataUpdate: this.onPeerUpdate }
+                    {
+                        port,
+                        hostname: addr,
+                        ip: peerIP,
+                        TCPPort: TCPPort || DEFAULT_IRI_OPTIONS.TCPPort,
+                        UDPPort: UDPPort || DEFAULT_IRI_OPTIONS.UDPPort,
+                        isTrusted,
+                        weight,
+                        dateCreated: new Date()
+                    }, { onDataUpdate: this.onPeerUpdate }
                 );
                 this.peers.push(peer);
                 this.log('added', hostname, port, this.peers.length);

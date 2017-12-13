@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## Added
+- Adds API versioning: drop connections from other major versions
+- Fixes neighbors default port setting
+
 ## [0.0.6] - 2017-12-12
 - improve console log visualization
 - added Dockerfile

@@ -1,4 +1,3 @@
-require('colors')
 const WebSocket = require('ws');
 const ip = require('ip');
 const pip = require('public-ip');
@@ -6,7 +5,7 @@ const { Base } = require('./base');
 const { Heart } = require('./heart');
 const { IRI, DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
 const { PeerList, DEFAULT_OPTIONS: DEFAULT_LIST_OPTIONS } = require('./peer-list');
-const { getPeerIdentifier, getRandomInt, getSecondsPassed } = require('./utils');
+const { getPeerIdentifier, getRandomInt, getSecondsPassed, getVersion, isSameMajorVersion } = require('./utils');
 
 const DEFAULT_OPTIONS = {
     cycleInterval: 60,
@@ -17,8 +16,8 @@ const DEFAULT_OPTIONS = {
     port: 16600,
     apiPort: 18600,
     IRIPort: DEFAULT_IRI_OPTIONS.port,
-    TCPPort: 15600,
-    UDPPort: 14600,
+    TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
+    UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
     weightDeflation: 0.75,
     incomingMax: 8,
     outgoingMax: 4,
@@ -186,7 +185,7 @@ class Node extends Base {
             const { req } = info;
             const { remoteAddress: address } = req.connection;
             const headers = this._getHeaderIdentifiers(req.headers);
-            const { port, nelsonID } = headers || {};
+            const { port, nelsonID, version } = headers || {};
             const wrongRequest = !headers;
 
             const deny = () => {
@@ -194,8 +193,8 @@ class Node extends Base {
             };
             const accept = () => cb(true);
 
-            if (wrongRequest || this.isMyself(address, port, nelsonID)) {
-                this.log('!!', 'Wrong request or myself', address, port, nelsonID, req.headers);
+            if (wrongRequest || !isSameMajorVersion(version) || this.isMyself(address, port, nelsonID)) {
+                this.log('Wrong request or myself', address, port, nelsonID, req.headers);
                 return deny();
             }
 
@@ -307,14 +306,15 @@ class Node extends Base {
      * @private
      */
     _getHeaderIdentifiers (headers) {
+        const version = headers['nelson-version'];
         const port = headers['nelson-port'];
         const nelsonID = headers['nelson-id'];
         const TCPPort = headers['nelson-tcp'];
         const UDPPort = headers['nelson-udp'];
-        if (!port || ! nelsonID || !TCPPort || !UDPPort) {
+        if (!version || !port || ! nelsonID || !TCPPort || !UDPPort) {
             return null;
         }
-        return { port, nelsonID, TCPPort, UDPPort };
+        return { version, port, nelsonID, TCPPort, UDPPort };
     }
 
     /**
@@ -373,9 +373,9 @@ class Node extends Base {
      * @private
      */
     _getHeaders () {
-        // TODO: add current Nelson version number. Prevent connections from other major Nelson verisions.
         return {
             'Content-Type': 'application/json',
+            'Nelson-Version': getVersion(),
             'Nelson-Port': `${this.opts.port}`,
             'Nelson-ID': this.heart.personality.publicId,
             'Nelson-TCP': this.opts.TCPPort,

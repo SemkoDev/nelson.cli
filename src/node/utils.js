@@ -1,3 +1,4 @@
+const version = require('../../package.json').version;
 const crypto = require('crypto');
 const md5 = require('md5');
 
@@ -51,10 +52,27 @@ function shuffleArray (array) {
     return array.sort(() => Math.random() - 0.5)
 }
 
+/**
+ * Returns Nelson version number
+ */
+function getVersion () {
+    return version;
+}
+
+/**
+ * Returns whether the provided version number is the same major version as the current Nelson.
+ * @param {string} otherVersion
+ */
+function isSameMajorVersion (otherVersion) {
+    return version.split('.')[0] === otherVersion.split('.')[0]
+}
+
 module.exports = {
     createIdentifier,
     getPeerIdentifier,
     getRandomInt,
     getSecondsPassed,
+    getVersion,
+    isSameMajorVersion,
     shuffleArray
 };
