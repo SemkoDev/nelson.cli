@@ -1,5 +1,5 @@
 const { Base } = require('./base');
-const { getSecondsPassed, getRandomInt, createIdentifier } = require('./utils');
+const { getSecondsPassed, getRandomInt, createIdentifier } = require('./tools/utils');
 
 const DEFAULT_OPTIONS = {
     cycleInterval: 300,

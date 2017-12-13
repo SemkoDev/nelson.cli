@@ -6,7 +6,7 @@ const { Base } = require('./base');
 const { Heart } = require('./heart');
 const { IRI, DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
 const { PeerList, DEFAULT_OPTIONS: DEFAULT_LIST_OPTIONS } = require('./peer-list');
-const { getPeerIdentifier, getRandomInt, getSecondsPassed } = require('./utils');
+const { getPeerIdentifier, getRandomInt, getSecondsPassed } = require('./tools/utils');
 
 const DEFAULT_OPTIONS = {
     cycleInterval: 60,
