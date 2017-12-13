@@ -6,8 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## Added
+## [0.0.7] - 2017-12-13
+
+### Added
 - Adds API versioning: drop connections from other major versions
+
+### Changed
 - Fixes neighbors default port setting
 
 ## [0.0.6] - 2017-12-12
@@ -16,7 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.0.5] - 2017-12-12
 
-## Changed
+### Changed
 - Dynamic openness in function with node's maturity.
 - Sharing of opinion about neighbours.
 - Implemented improved weighting from tri-tests.
@@ -25,10 +29,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.0.4] - 2017-12-09
 
-## Added
+### Added
 - Contributing message
 
-## Changed
+### Changed
 - forgotten dist and bin updates for 0.0.3
 
 ## [0.0.3] - 2017-12-09

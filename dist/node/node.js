@@ -10,7 +10,6 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-require('colors');
 var WebSocket = require('ws');
 var ip = require('ip');
 var pip = require('public-ip');
@@ -32,7 +31,9 @@ var _require4 = require('./peer-list'),
 var _require5 = require('./utils'),
     getPeerIdentifier = _require5.getPeerIdentifier,
     getRandomInt = _require5.getRandomInt,
-    getSecondsPassed = _require5.getSecondsPassed;
+    getSecondsPassed = _require5.getSecondsPassed,
+    getVersion = _require5.getVersion,
+    isSameMajorVersion = _require5.isSameMajorVersion;
 
 var DEFAULT_OPTIONS = {
     cycleInterval: 60,
@@ -43,8 +44,8 @@ var DEFAULT_OPTIONS = {
     port: 16600,
     apiPort: 18600,
     IRIPort: DEFAULT_IRI_OPTIONS.port,
-    TCPPort: 15600,
-    UDPPort: 14600,
+    TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
+    UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
     weightDeflation: 0.75,
     incomingMax: 8,
     outgoingMax: 4,
@@ -109,6 +110,7 @@ var Node = function (_Base) {
                         var _opts = _this2.opts,
                             cycleInterval = _opts.cycleInterval,
                             epochInterval = _opts.epochInterval,
+                            beatInterval = _opts.beatInterval,
                             silent = _opts.silent;
 
 
@@ -118,6 +120,7 @@ var Node = function (_Base) {
                             silent: silent,
                             cycleInterval: cycleInterval,
                             epochInterval: epochInterval,
+                            beatInterval: beatInterval,
                             logIdent: _this2.opts.port + '::HEART',
                             onCycle: _this2._onCycle,
                             onTick: _this2._onTick,
@@ -271,7 +274,8 @@ var Node = function (_Base) {
 
                     var _ref = headers || {},
                         port = _ref.port,
-                        nelsonID = _ref.nelsonID;
+                        nelsonID = _ref.nelsonID,
+                        version = _ref.version;
 
                     var wrongRequest = !headers;
 
@@ -282,8 +286,8 @@ var Node = function (_Base) {
                         return cb(true);
                     };
 
-                    if (wrongRequest || _this7.isMyself(address, port, nelsonID)) {
-                        _this7.log('!!', 'Wrong request or myself', address, port, nelsonID, req.headers);
+                    if (wrongRequest || !isSameMajorVersion(version) || _this7.isMyself(address, port, nelsonID)) {
+                        _this7.log('Wrong request or myself', address, port, nelsonID, req.headers);
                         return deny();
                     }
 
@@ -309,7 +313,13 @@ var Node = function (_Base) {
                     UDPPort = _getHeaderIdentifiers2.UDPPort;
 
                 _this7.list.add(address, port, TCPPort, UDPPort).then(function (peer) {
-                    _this7._bindWebSocket(ws, peer, true);
+                    // Prevent multiple connections from the same peer:
+                    if (!_this7.sockets.get(peer)) {
+                        _this7._bindWebSocket(ws, peer, true);
+                    } else {
+                        ws.close();
+                        ws.terminate();
+                    }
                 }).catch(function (e) {
                     _this7.log('Error binding/adding'.red, address, port, e);
                     _this7.sockets.delete(Array.from(_this7.sockets.keys()).find(function (p) {
@@ -345,7 +355,7 @@ var Node = function (_Base) {
             var asServer = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
 
             var removeNeighbor = function removeNeighbor(e) {
-                _this8.log('closing connection'.red, e);
+                _this8.log('closing connection'.red);
                 _this8._removeNeighbor(peer);
             };
 
@@ -408,14 +418,15 @@ var Node = function (_Base) {
     }, {
         key: '_getHeaderIdentifiers',
         value: function _getHeaderIdentifiers(headers) {
+            var version = headers['nelson-version'];
             var port = headers['nelson-port'];
             var nelsonID = headers['nelson-id'];
             var TCPPort = headers['nelson-tcp'];
             var UDPPort = headers['nelson-udp'];
-            if (!port || !nelsonID || !TCPPort || !UDPPort) {
+            if (!version || !port || !nelsonID || !TCPPort || !UDPPort) {
                 return null;
             }
-            return { port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort };
+            return { version: version, port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort };
         }
 
         /**
@@ -485,9 +496,9 @@ var Node = function (_Base) {
     }, {
         key: '_getHeaders',
         value: function _getHeaders() {
-            // TODO: add current Nelson version number. Prevent connections from other major Nelson verisions.
             return {
                 'Content-Type': 'application/json',
+                'Nelson-Version': getVersion(),
                 'Nelson-Port': '' + this.opts.port,
                 'Nelson-ID': this.heart.personality.publicId,
                 'Nelson-TCP': this.opts.TCPPort,
@@ -539,6 +550,9 @@ var Node = function (_Base) {
     }, {
         key: '_removeNeighbor',
         value: function _removeNeighbor(peer) {
+            if (!this.sockets.get(peer)) {
+                return Promise.resolve([]);
+            }
             this.log('removing neighbor', this.formatNode(peer.data.hostname, peer.data.port));
             return this._removeNeighbors([peer]);
         }
