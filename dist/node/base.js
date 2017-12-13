@@ -7,6 +7,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 require('colors');
+var terminal = require('./tools/terminal');
 
 var DEFAULT_OPTIONS = {
     silent: false,
@@ -30,14 +31,12 @@ var Base = function () {
         key: 'log',
         value: function log() {
             if (!this.opts || !this.opts.silent || arguments[0] === '!!') {
-                var _console;
-
                 var date = new Date();
                 var timeString = (date.toLocaleTimeString() + '.' + date.getMilliseconds()).dim;
                 var space = this.opts.logIdent.length > this.opts.logIdentWidth ? '\n' + ' '.repeat(this.opts.logIdentWidth) : ' '.repeat(this.opts.logIdentWidth - this.opts.logIdent.length);
                 var logIdent = ('' + this.opts.logIdent + space).dim.bold;
 
-                (_console = console).log.apply(_console, [timeString + ' ' + logIdent].concat(Array.prototype.slice.call(arguments)));
+                terminal.log.apply(terminal, [timeString + ' ' + logIdent].concat(Array.prototype.slice.call(arguments)));
             }
         }
     }, {

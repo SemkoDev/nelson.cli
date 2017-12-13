@@ -19,7 +19,7 @@ var _require = require('./base'),
 var _require2 = require('./iri'),
     DEFAULT_IRI_OPTIONS = _require2.DEFAULT_OPTIONS;
 
-var _require3 = require('./utils'),
+var _require3 = require('./tools/utils'),
     getSecondsPassed = _require3.getSecondsPassed;
 
 var DEFAULT_OPTIONS = {

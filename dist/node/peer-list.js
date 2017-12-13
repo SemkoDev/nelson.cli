@@ -32,7 +32,7 @@ var _require3 = require('./peer'),
 var _require4 = require('./iri'),
     DEFAULT_IRI_OPTIONS = _require4.DEFAULT_OPTIONS;
 
-var _require5 = require('./utils'),
+var _require5 = require('./tools/utils'),
     getSecondsPassed = _require5.getSecondsPassed;
 
 // There is no weight increase by connection/age for now.

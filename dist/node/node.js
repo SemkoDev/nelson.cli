@@ -13,6 +13,7 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 var WebSocket = require('ws');
 var ip = require('ip');
 var pip = require('public-ip');
+var terminal = require('./tools/terminal');
 
 var _require = require('./base'),
     Base = _require.Base;
@@ -28,7 +29,7 @@ var _require4 = require('./peer-list'),
     PeerList = _require4.PeerList,
     DEFAULT_LIST_OPTIONS = _require4.DEFAULT_OPTIONS;
 
-var _require5 = require('./utils'),
+var _require5 = require('./tools/utils'),
     getPeerIdentifier = _require5.getPeerIdentifier,
     getRandomInt = _require5.getRandomInt,
     getSecondsPassed = _require5.getSecondsPassed,
@@ -741,6 +742,14 @@ var Node = function (_Base) {
             var _this14 = this;
 
             // Try connecting more peers. Master nodes do not actively connect (no outgoing connections).
+            terminal.nodes({
+                nodes: this.list.all(),
+                connected: Array.from(this.sockets.keys()).filter(function (p) {
+                    return _this14.sockets.get(p).readyState === 1;
+                }).map(function (p) {
+                    return p.data;
+                })
+            });
             return !this.opts.isMaster && this._getOutgoingSlotsCount() < this.opts.outgoingMax ? new Promise(function (resolve) {
                 _this14.reconnectPeers();
                 resolve(false);
