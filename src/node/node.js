@@ -67,7 +67,7 @@ class Node extends Base {
                     throw new Error('IRI could not be started');
                 }
                 return this._getList().then(() =>{
-                    const { cycleInterval, epochInterval, silent } = this.opts;
+                    const { cycleInterval, epochInterval, beatInterval, silent } = this.opts;
 
                     this._createServer();
 
@@ -75,6 +75,7 @@ class Node extends Base {
                         silent,
                         cycleInterval,
                         epochInterval,
+                        beatInterval,
                         logIdent: `${this.opts.port}::HEART`,
                         onCycle: this._onCycle,
                         onTick: this._onTick,
@@ -216,7 +217,14 @@ class Node extends Base {
             const { port, TCPPort, UDPPort } = this._getHeaderIdentifiers(req.headers);
 
             this.list.add(address, port, TCPPort, UDPPort).then((peer) => {
-                this._bindWebSocket(ws, peer, true);
+                // Prevent multiple connections from the same peer:
+                if (!this.sockets.get(peer)) {
+                    this._bindWebSocket(ws, peer, true);
+                }
+                else {
+                    ws.close();
+                    ws.terminate();
+                }
             }).catch((e) => {
                 this.log('Error binding/adding'.red, address, port, e);
                 this.sockets.delete(Array.from(this.sockets.keys()).find(p => this.sockets.get(p) === ws));
@@ -241,7 +249,7 @@ class Node extends Base {
      */
     _bindWebSocket (ws, peer, asServer=false) {
         const removeNeighbor = (e) => {
-            this.log('closing connection'.red, e);
+            this.log('closing connection'.red);
             this._removeNeighbor(peer);
         };
 
@@ -402,6 +410,9 @@ class Node extends Base {
      * @private
      */
     _removeNeighbor (peer) {
+        if (!this.sockets.get(peer)) {
+            return Promise.resolve([]);
+        }
         this.log('removing neighbor', this.formatNode(peer.data.hostname, peer.data.port));
         return this._removeNeighbors([ peer ]);
     }
