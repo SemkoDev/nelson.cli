@@ -2,7 +2,7 @@ const ip = require('ip');
 const dns = require('dns');
 const { Base } = require('./base');
 const { DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
-const { getSecondsPassed } = require('./utils');
+const { getSecondsPassed } = require('./tools/utils');
 
 const DEFAULT_OPTIONS = {
     onDataUpdate: (data) => Promise.resolve(),

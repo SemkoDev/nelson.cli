@@ -8,7 +8,7 @@ const Datastore = require('nedb');
 const { Base } = require('./base');
 const { Peer } = require('./peer');
 const { DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
-const { getSecondsPassed } = require('./utils');
+const { getSecondsPassed } = require('./tools/utils');
 
 // There is no weight increase by connection/age for now.
 const CONNECTION_WEIGHT_MULTIPLIER = 1;

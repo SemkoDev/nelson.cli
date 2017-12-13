@@ -1,4 +1,4 @@
-const version = require('../../package.json').version;
+const version = require('../../../package.json').version;
 const crypto = require('crypto');
 const md5 = require('md5');
 
