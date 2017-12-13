@@ -11,7 +11,7 @@ These instructions will get you a copy of the project up and running on your loc
 ### Prerequisites
 
 It is expected that you have already installed Java, downloaded the IRI jar file
-and know how to start it.
+and know how to start it. The local IRI instance must have api enabled and allowing to add/remove neighbors.
 
 Nelson is running on Node.js You will have to install node and npm (node package manager) on your system.
 Alternatively to npm you can (and should) use yarn package manager.
@@ -27,7 +27,7 @@ npm install -g nelson.cli
 And run it
 
 ```
-nelson --neighbors mainnet.deviota.com/14600 mainnet2.deviota.com/14600 mainnet3.deviota.com/14600
+nelson --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
 ```
 
 The  ```--neighbors``` option is used to provide an entry set of trusted nelson peers for new nelson instances.
@@ -71,7 +71,7 @@ yarn make
 Try to run Nelson:
 
 ```
-node ./dist/nelson.js --neighbors mainnet.deviota.com/14600 mainnet2.deviota.com/14600 mainnet3.deviota.com/14600
+node ./dist/nelson.js --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
 ```
 
 ## Configuration
@@ -102,9 +102,9 @@ dataPath = data/neighbors.db
 isMaster = false
 silent = false
 ; add as many initial nelson neighbors, as you like
-neighbors[] = mainnet.deviota.com/14600
-neighbors[] = mainnet2.deviota.com/14600
-neighbors[] = mainnet3.deviota.com/14600
+neighbors[] = mainnet.deviota.com/16600
+neighbors[] = mainnet2.deviota.com/16600
+neighbors[] = mainnet3.deviota.com/16600
 ```
 
 ### Command line options

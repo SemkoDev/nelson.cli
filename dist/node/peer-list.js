@@ -351,7 +351,7 @@ var PeerList = function (_Base) {
                 // If the hostname already exists and no multiple ports from same hostname are allowed,
                 // update existing with port. Otherwise just return the existing peer.
                 if (existing) {
-                    if (!_this8.opts.multiPort && (port !== existing.data.port || TCPPort !== existing.data.TCPPort || UDPPort !== existing.data.UDPPort)) {
+                    if (!_this8.opts.multiPort && (port !== existing.data.port || TCPPort && TCPPort !== existing.data.TCPPort || UDPPort && UDPPort !== existing.data.UDPPort)) {
                         return _this8.update(existing, { port: port, TCPPort: TCPPort, UDPPort: UDPPort });
                     } else if (existing.data.weight < weight) {
                         return _this8.update(existing, { weight: weight });
@@ -361,7 +361,16 @@ var PeerList = function (_Base) {
                 } else {
                     _this8.log('adding', hostname, port);
                     var peerIP = ip.isV4Format(addr) || ip.isV6Format(addr) ? addr : null;
-                    var peer = new Peer({ port: port, hostname: addr, ip: peerIP, TCPPort: TCPPort, UDPPort: UDPPort, isTrusted: isTrusted, weight: weight, dateCreated: new Date() }, { onDataUpdate: _this8.onPeerUpdate });
+                    var peer = new Peer({
+                        port: port,
+                        hostname: addr,
+                        ip: peerIP,
+                        TCPPort: TCPPort || DEFAULT_IRI_OPTIONS.TCPPort,
+                        UDPPort: UDPPort || DEFAULT_IRI_OPTIONS.UDPPort,
+                        isTrusted: isTrusted,
+                        weight: weight,
+                        dateCreated: new Date()
+                    }, { onDataUpdate: _this8.onPeerUpdate });
                     _this8.peers.push(peer);
                     _this8.log('added', hostname, port, _this8.peers.length);
                     return new Promise(function (resolve, reject) {

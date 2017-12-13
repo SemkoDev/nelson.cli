@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('colors');
 
 const ini = require('ini');
 const fs = require('fs');
