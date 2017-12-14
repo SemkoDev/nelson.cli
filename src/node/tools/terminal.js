@@ -1,4 +1,5 @@
 const blessed = require('blessed');
+const contrib = require('blessed-contrib');
 require('colors');
 const moment = require('moment');
 
@@ -6,6 +7,7 @@ var screen = null;
 var mainBox = null;
 var statusBox = null;
 var peersBox = null;
+var progress = null;
 
 module.exports = {
     init,
@@ -49,8 +51,8 @@ function init (version, onExit) {
     statusBox = blessed.box({
         top: '0%',
         left: '0%',
-        width: '50%',
-        height: '50%',
+        width: '30%',
+        height: '51%',
         content: `Nelson v.${version} - Status`.green.bold,
         tags: true,
         border: {
@@ -68,9 +70,29 @@ function init (version, onExit) {
         top: '0%',
         left: '50%',
         width: '51%',
-        height: '50%',
+        height: '51%',
         content: 'Peers'.green.bold,
         tags: true,
+        border: {
+            type: 'line'
+        },
+        style: {
+            fg: 'white',
+            border: {
+                fg: '#f0f0f0'
+            }
+        }
+    });
+
+    progress = contrib.donut({
+        top: '0%',
+        left: '30%',
+        width: '21%',
+        height: '51%',
+        radius: 8,
+        arcWidth: 3,
+        remainColor: 'black',
+        yPadding: 2,
         border: {
             type: 'line'
         },
@@ -85,6 +107,7 @@ function init (version, onExit) {
     screen.append(mainBox);
     screen.append(statusBox);
     screen.append(peersBox);
+    screen.append(progress);
     mainBox.focus();
     screen.render();
 }
@@ -100,7 +123,7 @@ function log () {
     screen.render();
 }
 
-function beat (epoch, cycle, startDate) {
+function beat ({ epoch, cycle, startDate, pctEpoch, pctCycle }) {
     const now = moment();
     const diffDays = now.diff(startDate, 'days');
     const diffHours = now.diff(startDate, 'hours');
@@ -110,6 +133,10 @@ function beat (epoch, cycle, startDate) {
     statusBox.setLine(3, `Online: ${days}${hours}${diffMinutes} minutes`.bold.yellow);
     statusBox.setLine(4, `Epoch: ${epoch}`.bold);
     statusBox.setLine(5, `Cycle: ${cycle}`.bold);
+    progress.setData([
+        {percent: pctEpoch, label: 'epoch', color: 'green'},
+        {percent: pctCycle, label: 'cycle', color: 'green'}
+    ]);
     screen.render();
 }
 
