@@ -38,7 +38,7 @@ var _require5 = require('./tools/utils'),
 
 var DEFAULT_OPTIONS = {
     cycleInterval: 60,
-    epochInterval: 300,
+    epochInterval: 600,
     beatInterval: 10,
     epochsBetweenWeight: 10,
     dataPath: DEFAULT_LIST_OPTIONS.dataPath,
@@ -50,8 +50,8 @@ var DEFAULT_OPTIONS = {
     TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
     UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
     weightDeflation: 0.75,
-    incomingMax: 8,
-    outgoingMax: 4,
+    incomingMax: 7,
+    outgoingMax: 5,
     maxShareableNodes: 16,
     localNodes: false,
     isMaster: false,
@@ -274,39 +274,14 @@ var Node = function (_Base) {
 
             this.server = new WebSocket.Server({ port: this.opts.port, verifyClient: function verifyClient(info, cb) {
                     var req = info.req;
-                    var address = req.connection.remoteAddress;
-
-                    var headers = _this7._getHeaderIdentifiers(req.headers);
-
-                    var _ref = headers || {},
-                        port = _ref.port,
-                        nelsonID = _ref.nelsonID,
-                        version = _ref.version;
-
-                    var wrongRequest = !headers;
 
                     var deny = function deny() {
-                        cb(false, 401);
+                        return cb(false, 401);
                     };
                     var accept = function accept() {
                         return cb(true);
                     };
-
-                    if (wrongRequest || !isSameMajorVersion(version) || !_this7.iri.isHealthy || _this7.isMyself(address, port, nelsonID)) {
-                        _this7.log('Wrong request or myself', address, port, nelsonID, req.headers);
-                        return deny();
-                    }
-
-                    var maxSlots = _this7.opts.isMaster ? _this7.opts.incomingMax + _this7.opts.outgoingMax : _this7.opts.incomingMax;
-                    if (_this7._getIncomingSlotsCount() >= maxSlots) {
-                        return deny();
-                    }
-
-                    // TODO: additional protection measure: make the client solve a computational riddle!
-
-                    _this7.isAllowed(address, port).then(function (allowed) {
-                        return allowed ? accept() : deny();
-                    });
+                    _this7._canConnect(req).then(accept).catch(deny);
                 } });
 
             this.server.on('connection', function (ws, req) {
@@ -346,6 +321,101 @@ var Node = function (_Base) {
         }
 
         /**
+         * Resolves promise if the client is allowed to connect, otherwise rejection.
+         * @param {object} req
+         * @returns {Promise}
+         * @private
+         */
+
+    }, {
+        key: '_canConnect',
+        value: function _canConnect(req) {
+            var _this8 = this;
+
+            var address = req.connection.remoteAddress;
+
+            var headers = this._getHeaderIdentifiers(req.headers);
+
+            var _ref = headers || {},
+                port = _ref.port,
+                nelsonID = _ref.nelsonID,
+                version = _ref.version;
+
+            var wrongRequest = !headers;
+
+            return new Promise(function (resolve, reject) {
+                if (wrongRequest || !isSameMajorVersion(version) || !_this8.iri.isHealthy || _this8.isMyself(address, port, nelsonID)) {
+                    _this8.log('Wrong request or myself', address, port, nelsonID, req.headers);
+                    return reject();
+                }
+                _this8.list.findByAddress(address, port).then(function (peers) {
+
+                    // Deny too frequent connections from the same peer.
+                    if (peers.length && _this8.isSaturationReached() && peers[0].data.dateLastConnected && getSecondsPassed(peers[0].data.dateLastConnected) < _this8.opts.epochInterval * 2) {
+                        return reject();
+                    }
+
+                    var maxSlots = _this8.opts.isMaster ? _this8.opts.incomingMax + _this8.opts.outgoingMax : _this8.opts.incomingMax;
+                    var topCount = parseInt(Math.sqrt(_this8.list.all().length) / 2);
+                    var topPeers = _this8.list.getWeighted(300).sort(function (a, b) {
+                        return a[1] - b[1];
+                    }).map(function (p) {
+                        return p[0];
+                    }).slice(0, topCount);
+                    var isTop = false;
+
+                    peers.forEach(function (p) {
+                        if (topPeers.includes(p)) {
+                            isTop = true;
+                        }
+                    });
+
+                    // The usual way, accept based on personality.
+                    var normalPath = function normalPath() {
+                        if (_this8._getIncomingSlotsCount() >= maxSlots) {
+                            reject();
+                        }
+
+                        // TODO: additional protection measure: make the client solve a computational riddle!
+
+                        _this8.isAllowed(address, port).then(function (allowed) {
+                            return allowed ? resolve() : reject();
+                        });
+                    };
+
+                    // Accept old, established nodes.
+                    if (isTop && _this8.list.all().filter(function (p) {
+                        return p.data.connected;
+                    }).length > topCount) {
+                        if (_this8._getIncomingSlotsCount() >= maxSlots) {
+                            _this8._dropRandomNeighbors(1).then(resolve);
+                        } else {
+                            resolve();
+                        }
+                    }
+                    // Accept new nodes more easily.
+                    else if (!peers.length || getSecondsPassed(peers[0].data.dateCreated) < _this8.list.getAverageAge() / 2) {
+                            if (_this8._getIncomingSlotsCount() >= maxSlots) {
+                                var candidates = Array.from(_this8.sockets.keys()).filter(function (p) {
+                                    return getSecondsPassed(p.data.dateCreated) < _this8.list.getAverageAge();
+                                });
+                                if (candidates.length) {
+                                    _this8._removeNeighbor(candidates.splice(getRandomInt(0, peers.length), 1)[0]).then(resolve);
+                                } else {
+                                    normalPath();
+                                }
+                                _this8._dropRandomNeighbors(1).then(resolve);
+                            } else {
+                                resolve();
+                            }
+                        } else {
+                            normalPath();
+                        }
+                });
+            });
+        }
+
+        /**
          * Binds the websocket to the peer and adds callbacks.
          * @param {WebSocket} ws
          * @param {Peer} peer
@@ -356,7 +426,7 @@ var Node = function (_Base) {
     }, {
         key: '_bindWebSocket',
         value: function _bindWebSocket(ws, peer) {
-            var _this8 = this;
+            var _this9 = this;
 
             var asServer = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
 
@@ -365,15 +435,15 @@ var Node = function (_Base) {
                     return;
                 }
                 ws.removingNow = true;
-                _this8._removeNeighbor(peer);
-                _this8.log('connection closed'.red, _this8.formatNode(peer.data.hostname, peer.data.port));
+                _this9._removeNeighbor(peer);
+                _this9.log('connection closed'.red, _this9.formatNode(peer.data.hostname, peer.data.port));
             };
 
             var onConnected = function onConnected() {
-                _this8.log('connection established'.green, _this8.formatNode(peer.data.hostname, peer.data.port));
-                _this8._sendNeighbors(ws);
-                var addWeight = !asServer && getSecondsPassed(peer.data.dateLastConnected) > _this8.opts.epochInterval * _this8.opts.epochsBetweenWeight;
-                _this8.list.markConnected(peer, addWeight).then(_this8.iri.addNeighbors([peer])).then(_this8.opts.onPeerConnected);
+                _this9.log('connection established'.green, _this9.formatNode(peer.data.hostname, peer.data.port));
+                _this9._sendNeighbors(ws);
+                var addWeight = !asServer && getSecondsPassed(peer.data.dateLastConnected) > _this9.opts.epochInterval * _this9.opts.epochsBetweenWeight;
+                _this9.list.markConnected(peer, addWeight).then(_this9.iri.addNeighbors([peer])).then(_this9.opts.onPeerConnected);
             };
 
             var promise = null;
@@ -383,7 +453,7 @@ var Node = function (_Base) {
             if (asServer) {
                 ws.incoming = asServer;
                 // Prevent spamming nodes from the same locations
-                if (peer.data.dateLastConnected && getSecondsPassed(peer.data.dateLastConnected) < this.opts.epochInterval * 2) {
+                if (this.isSaturationReached() && peer.data.dateLastConnected && getSecondsPassed(peer.data.dateLastConnected) < this.opts.epochInterval * 2) {
                     removeNeighbor();
                     return;
                 } else {
@@ -393,9 +463,9 @@ var Node = function (_Base) {
 
             ws.on('headers', function (headers) {
                 // Check for valid headers
-                var head = _this8._getHeaderIdentifiers(headers);
+                var head = _this9._getHeaderIdentifiers(headers);
                 if (!head) {
-                    _this8.log('!!', 'wrong headers received', head);
+                    _this9.log('!!', 'wrong headers received', head);
                     return removeNeighbor();
                 }
                 var port = head.port,
@@ -403,12 +473,12 @@ var Node = function (_Base) {
                     TCPPort = head.TCPPort,
                     UDPPort = head.UDPPort;
 
-                _this8.list.update(peer, { port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort }).then(function (peer) {
+                _this9.list.update(peer, { port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort }).then(function (peer) {
                     promise = Promise.resolve(peer);
                 });
             });
             ws.on('message', function (data) {
-                return _this8._addNeighbors(data, ws.incoming ? 0 : peer.data.weight);
+                return _this9._addNeighbors(data, ws.incoming ? 0 : peer.data.weight);
             });
             ws.on('open', onConnected);
             ws.on('close', removeNeighbor);
@@ -483,13 +553,13 @@ var Node = function (_Base) {
     }, {
         key: '_addNeighbors',
         value: function _addNeighbors(data, weight) {
-            var _this9 = this;
+            var _this10 = this;
 
             this.log('add neighbors', data);
             return new Promise(function (resolve, reject) {
                 try {
-                    Promise.all(JSON.parse(data).slice(0, _this9.opts.maxShareableNodes).map(function (neighbor) {
-                        return _this9._addNeighbor(neighbor, weight);
+                    Promise.all(JSON.parse(data).slice(0, _this10.opts.maxShareableNodes).map(function (neighbor) {
+                        return _this10._addNeighbor(neighbor, weight);
                     })).then(resolve);
                 } catch (e) {
                     reject(e);
@@ -577,19 +647,19 @@ var Node = function (_Base) {
     }, {
         key: '_removeNeighbors',
         value: function _removeNeighbors(peers) {
-            var _this10 = this;
+            var _this11 = this;
 
             // this.log('removing neighbors');
 
             var doRemove = function doRemove() {
                 peers.forEach(function (peer) {
-                    var ws = _this10.sockets.get(peer);
+                    var ws = _this11.sockets.get(peer);
                     if (ws) {
                         ws.close();
                         ws.terminate();
                     }
-                    _this10.sockets.delete(peer);
-                    _this10.opts.onPeerRemoved(peer);
+                    _this11.sockets.delete(peer);
+                    _this11.opts.onPeerRemoved(peer);
                 });
                 return peers;
             };
@@ -634,6 +704,7 @@ var Node = function (_Base) {
         key: 'connectPeer',
         value: function connectPeer(peer) {
             this.log('connecting peer', this.formatNode(peer.data.hostname, peer.data.port));
+            this.list.update(peer, { dateTried: new Date() });
             this._bindWebSocket(new WebSocket('ws://' + peer.data.hostname + ':' + peer.data.port, {
                 headers: this._getHeaders(),
                 handshakeTimeout: 10000
@@ -650,7 +721,7 @@ var Node = function (_Base) {
     }, {
         key: 'reconnectPeers',
         value: function reconnectPeers() {
-            var _this11 = this;
+            var _this12 = this;
 
             // TODO: remove old peers by inverse weight, maybe? Not urgent. Can be added at a later point.
             // this.log('reconnectPeers');
@@ -663,9 +734,11 @@ var Node = function (_Base) {
 
             // Get allowed peers:
             return this.list.getWeighted(192).filter(function (p) {
-                return !_this11.sockets.get(p[0]);
+                return !p[0].data.dateTried || getSecondsPassed(p[0].data.dateTried) > _this12.opts.beatInterval * 2;
+            }).filter(function (p) {
+                return !_this12.sockets.get(p[0]);
             }).slice(0, toTry).map(function (p) {
-                return _this11.connectPeer(p[0]);
+                return _this12.connectPeer(p[0]);
             });
         }
 
@@ -688,38 +761,42 @@ var Node = function (_Base) {
     }, {
         key: '_onEpoch',
         value: function _onEpoch() {
-            var _this12 = this;
+            var _this13 = this;
 
             this.log('new epoch and new id:', this.heart.personality.id);
+            if (!this.isSaturationReached()) {
+                return Promise.resolve(false);
+            }
             // Master node should recycle all its connections
             if (this.opts.isMaster) {
                 return this._removeNeighbors(Array.from(this.sockets.keys())).then(function () {
-                    _this12.reconnectPeers();
+                    _this13.reconnectPeers();
                     return false;
                 });
             }
             return this._dropRandomNeighbors(getRandomInt(0, this._getOutgoingSlotsCount())).then(function () {
-                _this12.reconnectPeers();
+                _this13.reconnectPeers();
                 return false;
             });
         }
 
         /**
-         * Each cycle, disconnect all peers and reconnect new ones.
+         * Checks whether expired peers are still connectable.
+         * If not, disconnect/remove them.
          * @private
          */
 
     }, {
         key: '_onCycle',
         value: function _onCycle() {
-            var _this13 = this;
+            var _this14 = this;
 
             this.log('new cycle');
             var promises = [];
             // Remove closed or dead sockets. Otherwise set as not alive and ping:
             this.sockets.forEach(function (ws, peer) {
                 if (ws.readyState > 1 || !ws.isAlive) {
-                    promises.push(_this13._removeNeighbor(peer));
+                    promises.push(_this14._removeNeighbor(peer));
                 } else {
                     ws.isAlive = false;
                     ws.ping('', false, true);
@@ -731,8 +808,7 @@ var Node = function (_Base) {
         }
 
         /**
-         * Checks whether expired peers are still connectable (through re-cycle).
-         * If not, disconnect/remove them, too.
+         * Try connecting to more peers.
          * @returns {Promise}
          * @private
          */
@@ -740,19 +816,19 @@ var Node = function (_Base) {
     }, {
         key: '_onTick',
         value: function _onTick() {
-            var _this14 = this;
+            var _this15 = this;
 
             // Try connecting more peers. Master nodes do not actively connect (no outgoing connections).
             terminal.nodes({
                 nodes: this.list.all(),
                 connected: Array.from(this.sockets.keys()).filter(function (p) {
-                    return _this14.sockets.get(p).readyState === 1;
+                    return _this15.sockets.get(p).readyState === 1;
                 }).map(function (p) {
                     return p.data;
                 })
             });
             return !this.opts.isMaster && this._getOutgoingSlotsCount() < this.opts.outgoingMax ? new Promise(function (resolve) {
-                _this14.reconnectPeers();
+                _this15.reconnectPeers();
                 resolve(false);
             }) : Promise.resolve(false);
         }
@@ -821,13 +897,13 @@ var Node = function (_Base) {
     }, {
         key: 'isAllowed',
         value: function isAllowed(address, port) {
-            var _this15 = this;
+            var _this16 = this;
 
             var checkTrust = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
-            var easiness = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 16;
+            var easiness = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 24;
 
             var allowed = function allowed() {
-                return getPeerIdentifier(_this15.heart.personality.id + ':' + (_this15.opts.localNodes ? port : address)).slice(0, _this15._getMinEasiness(easiness)).indexOf(_this15.heart.personality.feature) >= 0;
+                return getPeerIdentifier(_this16.heart.personality.id + ':' + (_this16.opts.localNodes ? port : address)).slice(0, _this16._getMinEasiness(easiness)).indexOf(_this16.heart.personality.feature) >= 0;
             };
 
             return checkTrust ? this.list.findByAddress(address, port).then(function (ps) {
@@ -835,6 +911,18 @@ var Node = function (_Base) {
                     return p.isTrusted();
                 }).length || allowed();
             }) : Promise.resolve(allowed());
+        }
+
+        /**
+         * Returns whether the amount of connected nodes has reached a certain threshold.
+         * @returns {boolean}
+         */
+
+    }, {
+        key: 'isSaturationReached',
+        value: function isSaturationReached() {
+            var ratioConnected = (this._getOutgoingSlotsCount() + this._getIncomingSlotsCount()) / (this.opts.outgoingMax + this.opts.incomingMax);
+            return ratioConnected >= 0.5;
         }
 
         /**
