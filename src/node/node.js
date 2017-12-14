@@ -1,6 +1,6 @@
 const WebSocket = require('ws');
 const ip = require('ip');
-const pip = require('public-ip');
+const pip = require('external-ip')();
 const terminal = require('./tools/terminal');
 const { Base } = require('./base');
 const { Heart } = require('./heart');
@@ -45,6 +45,7 @@ class Node extends Base {
         this._onCycle = this._onCycle.bind(this);
         this._onEpoch = this._onEpoch.bind(this);
         this._onTick = this._onTick.bind(this);
+        this._onIRIHealth = this._onIRIHealth.bind(this);
         this._removeNeighbor = this._removeNeighbor.bind(this);
         this._removeNeighbors = this._removeNeighbors.bind(this);
         this._addNeighbor = this._addNeighbor.bind(this);
@@ -155,6 +156,7 @@ class Node extends Base {
             logIdent: `${this.opts.port}::IRI`,
             hostname: IRIHostname,
             port: IRIPort,
+            onHealthCheck: this._onIRIHealth,
             silent
         })).start().then((iri) => {
             this.iri = iri;
@@ -172,15 +174,12 @@ class Node extends Base {
             return Promise.resolve(0);
         }
         return new Promise((resolve) => {
-            const setv6 = () => pip.v6().then((ip) => {
-                this.ipv6 = ip;
-                resolve(0);
-            }).catch(resolve(0));
-
-            pip.v4().then((ip) => {
-                this.ipv4 = ip;
-                return setv6();
-            }).catch(setv6);
+            pip((err, ip) => {
+                if (!err) {
+                    this.ipv4 = ip;
+                    resolve(0);
+                }
+            });
         })
     }
 
@@ -201,7 +200,7 @@ class Node extends Base {
             };
             const accept = () => cb(true);
 
-            if (wrongRequest || !isSameMajorVersion(version) || this.isMyself(address, port, nelsonID)) {
+            if (wrongRequest || !isSameMajorVersion(version) || !this.iri.isHealthy || this.isMyself(address, port, nelsonID)) {
                 this.log('Wrong request or myself', address, port, nelsonID, req.headers);
                 return deny();
             }
@@ -260,8 +259,8 @@ class Node extends Base {
                 return;
             }
             ws.removingNow = true;
-            this.log('closing connection'.red);
             this._removeNeighbor(peer);
+            this.log('connection closed'.red, this.formatNode(peer.data.hostname, peer.data.port));
         };
 
         const onConnected = () => {
@@ -425,7 +424,7 @@ class Node extends Base {
         if (!this.sockets.get(peer)) {
             return Promise.resolve([]);
         }
-        this.log('removing neighbor', this.formatNode(peer.data.hostname, peer.data.port));
+        // this.log('removing neighbor', this.formatNode(peer.data.hostname, peer.data.port));
         return this._removeNeighbors([ peer ]);
     }
 
@@ -436,7 +435,7 @@ class Node extends Base {
      * @private
      */
     _removeNeighbors (peers) {
-        this.log('removing neighbors');
+        // this.log('removing neighbors');
 
         const doRemove = () => {
             peers.forEach((peer) => {
@@ -450,6 +449,10 @@ class Node extends Base {
             });
             return peers;
         };
+
+        if (!this.iri.isHealthy) {
+            return Promise.resolve(doRemove());
+        }
 
         return this.iri.removeNeighbors(peers).then(doRemove).catch(doRemove);
     }
@@ -495,7 +498,7 @@ class Node extends Base {
         // If max was reached, do nothing.
         const toTry = this.opts.outgoingMax - this._getOutgoingSlotsCount();
 
-        if ( toTry < 1 || this.isMaster || this._getOutgoingSlotsCount() >= this.opts.outgoingMax) {
+        if ( !this.iri.isHealthy || toTry < 1 || this.isMaster || this._getOutgoingSlotsCount() >= this.opts.outgoingMax) {
             return [];
         }
 
@@ -577,6 +580,33 @@ class Node extends Base {
     }
 
     /**
+     * Callback for IRI to check for health and neighbors.
+     * If unhealthy, disconnect all. Otherwise, disconnect peers that are not in IRI list any more for any reason.
+     * @param {boolean} healthy
+     * @param {string[]} neighbors
+     * @private
+     */
+    _onIRIHealth (healthy, neighbors) {
+        if (!healthy) {
+            this.log('IRI gone... closing all Nelson connections');
+            return this._removeNeighbors(Array.from(this.sockets.keys()));
+        }
+        const toRemove = [];
+        Array.from(this.sockets.keys()).forEach((peer) => {
+            if (!neighbors.includes(peer.getTCPURI()) && !neighbors.includes(peer.getUDPURI())) {
+                // It might be that the neighbour was just added and not yet included in IRI...
+                if (getSecondsPassed(peer.data.dateLastConnected) > 5) {
+                    toRemove.push(peer);
+                }
+            }
+        });
+        if (toRemove.length) {
+            this.log('Disconnecting Nelson nodes that are missing in IRI', toRemove.map((p) => p.getTCPURI()));
+            return this._removeNeighbors(toRemove);
+        }
+    }
+
+    /**
      * Returns whether the provided address/port/id matches this node
      * @param {string} address
      * @param {number|string} port
@@ -585,7 +615,7 @@ class Node extends Base {
      */
     isMyself (address, port, nelsonID=null) {
         const isPrivate = ip.isPrivate(address) || [ '127.0.0.1', 'localhost' ].includes(address);
-        const sameAddress = isPrivate || address === this.ipv4 || address === this.ipv6;
+        const sameAddress = isPrivate || address === this.ipv4;
         const samePort = parseInt(port) === this.opts.port;
         const sameID = this.heart && this.heart.personality && nelsonID === this.heart.personality.publicId;
         return sameID || (sameAddress && (!this.opts.localNodes || samePort));

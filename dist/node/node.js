@@ -12,7 +12,8 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 var WebSocket = require('ws');
 var ip = require('ip');
-var pip = require('public-ip');
+var pip = require('external-ip')();
+var terminal = require('./tools/terminal');
 
 var _require = require('./base'),
     Base = _require.Base;
@@ -28,7 +29,7 @@ var _require4 = require('./peer-list'),
     PeerList = _require4.PeerList,
     DEFAULT_LIST_OPTIONS = _require4.DEFAULT_OPTIONS;
 
-var _require5 = require('./utils'),
+var _require5 = require('./tools/utils'),
     getPeerIdentifier = _require5.getPeerIdentifier,
     getRandomInt = _require5.getRandomInt,
     getSecondsPassed = _require5.getSecondsPassed,
@@ -78,6 +79,7 @@ var Node = function (_Base) {
         _this._onCycle = _this._onCycle.bind(_this);
         _this._onEpoch = _this._onEpoch.bind(_this);
         _this._onTick = _this._onTick.bind(_this);
+        _this._onIRIHealth = _this._onIRIHealth.bind(_this);
         _this._removeNeighbor = _this._removeNeighbor.bind(_this);
         _this._removeNeighbors = _this._removeNeighbors.bind(_this);
         _this._addNeighbor = _this._addNeighbor.bind(_this);
@@ -228,6 +230,7 @@ var Node = function (_Base) {
                 logIdent: this.opts.port + '::IRI',
                 hostname: IRIHostname,
                 port: IRIPort,
+                onHealthCheck: this._onIRIHealth,
                 silent: silent
             }).start().then(function (iri) {
                 _this5.iri = iri;
@@ -250,17 +253,12 @@ var Node = function (_Base) {
                 return Promise.resolve(0);
             }
             return new Promise(function (resolve) {
-                var setv6 = function setv6() {
-                    return pip.v6().then(function (ip) {
-                        _this6.ipv6 = ip;
+                pip(function (err, ip) {
+                    if (!err) {
+                        _this6.ipv4 = ip;
                         resolve(0);
-                    }).catch(resolve(0));
-                };
-
-                pip.v4().then(function (ip) {
-                    _this6.ipv4 = ip;
-                    return setv6();
-                }).catch(setv6);
+                    }
+                });
             });
         }
 
@@ -294,7 +292,7 @@ var Node = function (_Base) {
                         return cb(true);
                     };
 
-                    if (wrongRequest || !isSameMajorVersion(version) || _this7.isMyself(address, port, nelsonID)) {
+                    if (wrongRequest || !isSameMajorVersion(version) || !_this7.iri.isHealthy || _this7.isMyself(address, port, nelsonID)) {
                         _this7.log('Wrong request or myself', address, port, nelsonID, req.headers);
                         return deny();
                     }
@@ -367,8 +365,8 @@ var Node = function (_Base) {
                     return;
                 }
                 ws.removingNow = true;
-                _this8.log('closing connection'.red);
                 _this8._removeNeighbor(peer);
+                _this8.log('connection closed'.red, _this8.formatNode(peer.data.hostname, peer.data.port));
             };
 
             var onConnected = function onConnected() {
@@ -565,7 +563,7 @@ var Node = function (_Base) {
             if (!this.sockets.get(peer)) {
                 return Promise.resolve([]);
             }
-            this.log('removing neighbor', this.formatNode(peer.data.hostname, peer.data.port));
+            // this.log('removing neighbor', this.formatNode(peer.data.hostname, peer.data.port));
             return this._removeNeighbors([peer]);
         }
 
@@ -581,7 +579,7 @@ var Node = function (_Base) {
         value: function _removeNeighbors(peers) {
             var _this10 = this;
 
-            this.log('removing neighbors');
+            // this.log('removing neighbors');
 
             var doRemove = function doRemove() {
                 peers.forEach(function (peer) {
@@ -595,6 +593,10 @@ var Node = function (_Base) {
                 });
                 return peers;
             };
+
+            if (!this.iri.isHealthy) {
+                return Promise.resolve(doRemove());
+            }
 
             return this.iri.removeNeighbors(peers).then(doRemove).catch(doRemove);
         }
@@ -655,7 +657,7 @@ var Node = function (_Base) {
             // If max was reached, do nothing.
             var toTry = this.opts.outgoingMax - this._getOutgoingSlotsCount();
 
-            if (toTry < 1 || this.isMaster || this._getOutgoingSlotsCount() >= this.opts.outgoingMax) {
+            if (!this.iri.isHealthy || toTry < 1 || this.isMaster || this._getOutgoingSlotsCount() >= this.opts.outgoingMax) {
                 return [];
             }
 
@@ -741,10 +743,50 @@ var Node = function (_Base) {
             var _this14 = this;
 
             // Try connecting more peers. Master nodes do not actively connect (no outgoing connections).
+            terminal.nodes({
+                nodes: this.list.all(),
+                connected: Array.from(this.sockets.keys()).filter(function (p) {
+                    return _this14.sockets.get(p).readyState === 1;
+                }).map(function (p) {
+                    return p.data;
+                })
+            });
             return !this.opts.isMaster && this._getOutgoingSlotsCount() < this.opts.outgoingMax ? new Promise(function (resolve) {
                 _this14.reconnectPeers();
                 resolve(false);
             }) : Promise.resolve(false);
+        }
+
+        /**
+         * Callback for IRI to check for health and neighbors.
+         * If unhealthy, disconnect all. Otherwise, disconnect peers that are not in IRI list any more for any reason.
+         * @param {boolean} healthy
+         * @param {string[]} neighbors
+         * @private
+         */
+
+    }, {
+        key: '_onIRIHealth',
+        value: function _onIRIHealth(healthy, neighbors) {
+            if (!healthy) {
+                this.log('IRI gone... closing all Nelson connections');
+                return this._removeNeighbors(Array.from(this.sockets.keys()));
+            }
+            var toRemove = [];
+            Array.from(this.sockets.keys()).forEach(function (peer) {
+                if (!neighbors.includes(peer.getTCPURI()) && !neighbors.includes(peer.getUDPURI())) {
+                    // It might be that the neighbour was just added and not yet included in IRI...
+                    if (getSecondsPassed(peer.data.dateLastConnected) > 5) {
+                        toRemove.push(peer);
+                    }
+                }
+            });
+            if (toRemove.length) {
+                this.log('Disconnecting Nelson nodes that are missing in IRI', toRemove.map(function (p) {
+                    return p.getTCPURI();
+                }));
+                return this._removeNeighbors(toRemove);
+            }
         }
 
         /**
@@ -761,7 +803,7 @@ var Node = function (_Base) {
             var nelsonID = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
 
             var isPrivate = ip.isPrivate(address) || ['127.0.0.1', 'localhost'].includes(address);
-            var sameAddress = isPrivate || address === this.ipv4 || address === this.ipv6;
+            var sameAddress = isPrivate || address === this.ipv4;
             var samePort = parseInt(port) === this.opts.port;
             var sameID = this.heart && this.heart.personality && nelsonID === this.heart.personality.publicId;
             return sameID || sameAddress && (!this.opts.localNodes || samePort);

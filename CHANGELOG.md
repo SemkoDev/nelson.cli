@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.4] - 2017-12-13
+
+### Added
+- Fixed IRI health checks
+
+## [0.1.3] - 2017-12-13
+
+### Added
+- Terminal GUI for Nelson
+- IRI health checks
+
+### Changed
+- Cleaned up logs (double-removals of peers)
+- Minor bugfixes.
+
+
 ## [0.1.1] - 2017-12-13
 
 ### Added

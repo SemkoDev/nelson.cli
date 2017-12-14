@@ -1,6 +1,6 @@
 {
   "name": "nelson.cli",
-  "version": "0.1.1",
+  "version": "0.1.4",
   "repository": {
     "type": "git",
     "url": "https://github.com/SemkoDev/nelson.cli.git"
@@ -38,6 +38,7 @@
   "dependencies": {
     "blessed": "^0.1.81",
     "commander": "^2.11.0",
+    "external-ip": "^1.3.1",
     "ini": "^1.3.5",
     "iota.lib.js": "^0.4.3",
     "ip": "^1.1.5",
@@ -45,7 +46,6 @@
     "md5": "^2.2.1",
     "moment": "^2.19.4",
     "nedb": "^1.8.0",
-    "public-ip": "^2.3.5",
     "request": "^2.83.0",
     "tmp": "^0.0.33",
     "weighted": "^0.3.0",

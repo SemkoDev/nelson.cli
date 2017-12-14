@@ -7,7 +7,7 @@ var iri = require('./iri');
 var node = require('./node');
 var peer = require('./peer');
 var peerList = require('./peer-list');
-var utils = require('./utils');
+var utils = require('./tools/utils');
 
 module.exports = {
     api: api,
