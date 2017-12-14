@@ -133,11 +133,14 @@ function ports ({ port, apiPort, IRIPort, TCPPort, UDPPort }) {
 function nodes ({ nodes, connected }) {
     peersBox.setLine(2, `Count: ${nodes.length}`.bold);
     peersBox.setLine(4, `Connections:`.bold);
+    const lines = peersBox.getLines().length;
+    for (let i = lines -1; i >= 5; i--) {
+        peersBox.clearLine(i)
+    }
     if (!Array.isArray(connected) || connected.length === 0) {
         peersBox.setLine(5, 'do not worry, this may take a while...'.dim);
     }
     else {
-        // TODO: clear lines first!! may lead to debris otherwise.
         connected.forEach((connection, i) => {
             const id = `${connection.hostname||connection.ip}:${connection.port}`.bold.cyan;
             const weight = `[weight: ${connection.weight}]`.green;
