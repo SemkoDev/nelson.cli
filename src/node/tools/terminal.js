@@ -156,7 +156,7 @@ function ports ({ port, apiPort, IRIPort, TCPPort, UDPPort }) {
 }
 
 function nodes ({ nodes, connected }) {
-    peersBox.setLine(2, `Count: ${nodes.length}`.bold);
+    peersBox.setLine(2, `Count: ${nodes.length} (Connected: ${connected.length || 0})`.bold);
     peersBox.setLine(4, `Connections:`.bold);
     const lines = peersBox.getLines().length;
     for (let i = lines -1; i >= 5; i--) {
