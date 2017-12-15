@@ -1,6 +1,24 @@
+const ip = require('ip');
+const dns = require('dns');
 const version = require('../../../package.json').version;
 const crypto = require('crypto');
 const md5 = require('md5');
+
+/**
+ * Resolves IP or hostname to IP. If failed, returns the input.
+ * @param {string} ipOrHostName
+ * @returns {Promise<string>}
+ */
+function getIP (ipOrHostName) {
+    return new Promise((resolve) => {
+        if (ip.isV4Format(ipOrHostName) || ip.isV6Format(ipOrHostName)) {
+            return resolve(ipOrHostName);
+        }
+        dns.resolve(ipOrHostName, 'A', (error, results) => {
+            resolve(error ? ipOrHostName : results[0]);
+        })
+    });
+}
 
 /**
  * Returns number of seconds that passed starting from a given time.
@@ -68,6 +86,7 @@ function isSameMajorVersion (otherVersion) {
 }
 
 module.exports = {
+    getIP,
     createIdentifier,
     getPeerIdentifier,
     getRandomInt,

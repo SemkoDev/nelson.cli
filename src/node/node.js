@@ -6,7 +6,9 @@ const { Base } = require('./base');
 const { Heart } = require('./heart');
 const { IRI, DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
 const { PeerList, DEFAULT_OPTIONS: DEFAULT_LIST_OPTIONS } = require('./peer-list');
-const { getPeerIdentifier, getRandomInt, getSecondsPassed, getVersion, isSameMajorVersion } = require('./tools/utils');
+const {
+    getPeerIdentifier, getRandomInt, getSecondsPassed, getVersion, isSameMajorVersion, getIP
+} = require('./tools/utils');
 
 const DEFAULT_OPTIONS = {
     cycleInterval: 60,
@@ -660,19 +662,22 @@ class Node extends Base {
             this.log('IRI gone... closing all Nelson connections'.red);
             return this._removeNeighbors(Array.from(this.sockets.keys()));
         }
-        const toRemove = [];
-        Array.from(this.sockets.keys())
-            // It might be that the neighbour was just added and not yet included in IRI...
-            .filter(p => getSecondsPassed(p.data.dateLastConnected) > 5)
-            .forEach((peer) => {
-            if (!neighbors.includes(peer.data.hostname) && peer.data.ip && !neighbors.includes(peer.data.ip)) {
-                toRemove.push(peer);
+        return Promise.all(neighbors.map(getIP)).then((neighbors) => {
+            const toRemove = [];
+            Array.from(this.sockets.keys())
+                // It might be that the neighbour was just added and not yet included in IRI...
+                .filter(p => getSecondsPassed(p.data.dateLastConnected) > 5)
+                .forEach((peer) => {
+                    if (!neighbors.includes(peer.data.hostname) && peer.data.ip && !neighbors.includes(peer.data.ip)) {
+                        toRemove.push(peer);
+                    }
+                });
+            if (toRemove.length) {
+                this.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map((p) => p.getTCPURI()));
+                return this._removeNeighbors(toRemove);
             }
+            return([]);
         });
-        if (toRemove.length) {
-            this.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map((p) => p.getTCPURI()));
-            return this._removeNeighbors(toRemove);
-        }
     }
 
     /**

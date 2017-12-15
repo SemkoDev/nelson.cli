@@ -69,7 +69,8 @@ var IRI = function (_Base) {
                     if (!error) {
                         _this2._isStarted = true;
                         _this2.isHealthy = true;
-                        _this2.ticker = setInterval(_this2._tick, 12000);
+                        // TODO: make ticker wait for result, like in the heart.
+                        _this2.ticker = setInterval(_this2._tick, 15000);
                         resolve(_this2);
                     } else {
                         reject(error);

@@ -2538,6 +2538,10 @@ minimist@~0.0.1:
   dependencies:
     minimist "0.0.8"
 
+moment-duration-format@^2.0.1:
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/moment-duration-format/-/moment-duration-format-2.0.1.tgz#a70a6b73ad6a66dfa9a3d98a39163768f66e1d30"
+
 moment@^2.19.4:
   version "2.19.4"
   resolved "https://registry.yarnpkg.com/moment/-/moment-2.19.4.tgz#17e5e2c6ead8819c8ecfad83a0acccb312e94682"
