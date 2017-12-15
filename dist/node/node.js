@@ -34,7 +34,8 @@ var _require5 = require('./tools/utils'),
     getRandomInt = _require5.getRandomInt,
     getSecondsPassed = _require5.getSecondsPassed,
     getVersion = _require5.getVersion,
-    isSameMajorVersion = _require5.isSameMajorVersion;
+    isSameMajorVersion = _require5.isSameMajorVersion,
+    getIP = _require5.getIP;
 
 var DEFAULT_OPTIONS = {
     cycleInterval: 60,
@@ -851,26 +852,31 @@ var Node = function (_Base) {
     }, {
         key: '_onIRIHealth',
         value: function _onIRIHealth(healthy, neighbors) {
+            var _this16 = this;
+
             if (!healthy) {
                 this.log('IRI gone... closing all Nelson connections'.red);
                 return this._removeNeighbors(Array.from(this.sockets.keys()));
             }
-            var toRemove = [];
-            Array.from(this.sockets.keys())
-            // It might be that the neighbour was just added and not yet included in IRI...
-            .filter(function (p) {
-                return getSecondsPassed(p.data.dateLastConnected) > 5;
-            }).forEach(function (peer) {
-                if (!neighbors.includes(peer.data.hostname) && peer.data.ip && !neighbors.includes(peer.data.ip)) {
-                    toRemove.push(peer);
+            return Promise.all(neighbors.map(getIP)).then(function (neighbors) {
+                var toRemove = [];
+                Array.from(_this16.sockets.keys())
+                // It might be that the neighbour was just added and not yet included in IRI...
+                .filter(function (p) {
+                    return getSecondsPassed(p.data.dateLastConnected) > 5;
+                }).forEach(function (peer) {
+                    if (!neighbors.includes(peer.data.hostname) && peer.data.ip && !neighbors.includes(peer.data.ip)) {
+                        toRemove.push(peer);
+                    }
+                });
+                if (toRemove.length) {
+                    _this16.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map(function (p) {
+                        return p.getTCPURI();
+                    }));
+                    return _this16._removeNeighbors(toRemove);
                 }
+                return [];
             });
-            if (toRemove.length) {
-                this.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map(function (p) {
-                    return p.getTCPURI();
-                }));
-                return this._removeNeighbors(toRemove);
-            }
         }
 
         /**
@@ -905,13 +911,13 @@ var Node = function (_Base) {
     }, {
         key: 'isAllowed',
         value: function isAllowed(address, port) {
-            var _this16 = this;
+            var _this17 = this;
 
             var checkTrust = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
             var easiness = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 24;
 
             var allowed = function allowed() {
-                return getPeerIdentifier(_this16.heart.personality.id + ':' + (_this16.opts.localNodes ? port : address)).slice(0, _this16._getMinEasiness(easiness)).indexOf(_this16.heart.personality.feature) >= 0;
+                return getPeerIdentifier(_this17.heart.personality.id + ':' + (_this17.opts.localNodes ? port : address)).slice(0, _this17._getMinEasiness(easiness)).indexOf(_this17.heart.personality.feature) >= 0;
             };
 
             return checkTrust ? this.list.findByAddress(address, port).then(function (ps) {

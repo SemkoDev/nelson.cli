@@ -4,6 +4,9 @@ var blessed = require('blessed');
 var contrib = require('blessed-contrib');
 require('colors');
 var moment = require('moment');
+var momentDurationFormatSetup = require("moment-duration-format");
+
+momentDurationFormatSetup(moment);
 
 var screen = null;
 var mainBox = null;
@@ -132,13 +135,8 @@ function beat(_ref) {
         pctEpoch = _ref.pctEpoch,
         pctCycle = _ref.pctCycle;
 
-    var now = moment();
-    var diffDays = now.diff(startDate, 'days');
-    var diffHours = now.diff(startDate, 'hours');
-    var diffMinutes = now.diff(startDate, 'minutes');
-    var days = '' + (diffDays > 0 ? diffDays + ' days ' : '');
-    var hours = '' + (diffHours > 0 ? diffHours + ' hours ' : '');
-    statusBox.setLine(3, ('Online: ' + days + hours + diffMinutes + ' minutes').bold.yellow);
+    var duration = moment.duration(moment().diff(startDate)).format('d [days] h [hours] m [minutes]');
+    statusBox.setLine(3, ('Online: ' + duration).bold.yellow);
     statusBox.setLine(4, ('Epoch: ' + epoch).bold);
     statusBox.setLine(5, ('Cycle: ' + cycle).bold);
     progress.setData([{ percent: pctEpoch, label: 'epoch', color: 'green' }, { percent: pctCycle, label: 'cycle', color: 'green' }]);
@@ -176,7 +174,7 @@ function nodes(_ref4) {
     var nodes = _ref4.nodes,
         connected = _ref4.connected;
 
-    peersBox.setLine(2, ('Count: ' + nodes.length).bold);
+    peersBox.setLine(2, ('Count: ' + nodes.length + ' (Connected: ' + (connected.length || 0) + ')').bold);
     peersBox.setLine(4, 'Connections:'.bold);
     var lines = peersBox.getLines().length;
     for (var i = lines - 1; i >= 5; i--) {
