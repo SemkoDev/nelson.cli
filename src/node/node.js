@@ -22,7 +22,7 @@ const DEFAULT_OPTIONS = {
     TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
     UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
     weightDeflation: 0.75,
-    incomingMax: 7,
+    incomingMax: 6,
     outgoingMax: 5,
     maxShareableNodes: 16,
     localNodes: false,
@@ -108,9 +108,11 @@ class Node extends Base {
             return new Promise((resolve) => {
                 if (this.server) {
                     this.server.close();
-                    this.sockets = new Map();
                 }
-                resolve(true);
+                return this._removeNeighbors(Array.from(this.sockets.keys())).then(() => {
+                    this.sockets = new Map();
+                    resolve(true);
+                });
             })
         };
 
@@ -196,7 +198,7 @@ class Node extends Base {
         } });
 
         this.server.on('connection', (ws, req) => {
-            this.log('incoming connection established', req.connection.remoteAddress);
+            this.log('incoming connection established'.green, req.connection.remoteAddress);
             const { remoteAddress: address } = req.connection;
             const { port, TCPPort, UDPPort } = this._getHeaderIdentifiers(req.headers);
 
@@ -293,7 +295,6 @@ class Node extends Base {
                         else {
                             normalPath();
                         }
-                        this._dropRandomNeighbors(1).then(resolve);
                     }
                     else {
                         resolve();
@@ -319,8 +320,9 @@ class Node extends Base {
                 return;
             }
             ws.removingNow = true;
-            this._removeNeighbor(peer);
-            this.log('connection closed'.red, this.formatNode(peer.data.hostname, peer.data.port));
+            this._removeNeighbor(peer).then(() => {
+                this.log('connection closed'.red, this.formatNode(peer.data.hostname, peer.data.port), `(${e})`);
+            });
         };
 
         const onConnected = () => {
@@ -341,32 +343,34 @@ class Node extends Base {
             ws.incoming = asServer;
             // Prevent spamming nodes from the same locations
             if (this.isSaturationReached() && peer.data.dateLastConnected && getSecondsPassed(peer.data.dateLastConnected) < this.opts.epochInterval * 2) {
-                removeNeighbor();
+                removeNeighbor('neighbor was connecting too often');
                 return;
             }
             else {
                 onConnected();
             }
         }
+        else {
+            ws.on('headers', (headers) => {
+                // Check for valid headers
+                const head = this._getHeaderIdentifiers(headers);
+                if (!head) {
+                    this.log('!!', 'wrong headers received', head);
+                    return removeNeighbor();
+                }
+                const { port, nelsonID, TCPPort, UDPPort } = head;
+                this.list.update(peer, { port, nelsonID, TCPPort, UDPPort }).then((peer) => {
+                    promise = Promise.resolve(peer);
+                })
+            });
+            ws.on('open', onConnected);
+        }
 
-        ws.on('headers', (headers) => {
-            // Check for valid headers
-            const head = this._getHeaderIdentifiers(headers);
-            if (!head) {
-                this.log('!!', 'wrong headers received', head);
-                return removeNeighbor();
-            }
-            const { port, nelsonID, TCPPort, UDPPort } = head;
-            this.list.update(peer, { port, nelsonID, TCPPort, UDPPort }).then((peer) => {
-                promise = Promise.resolve(peer);
-            })
-        });
         ws.on('message',
             (data) => this._addNeighbors(data, ws.incoming ? 0 : peer.data.weight)
         );
-        ws.on('open', onConnected);
-        ws.on('close', removeNeighbor);
-        ws.on('error', removeNeighbor);
+        ws.on('close', () => removeNeighbor('socket closed'));
+        ws.on('error', () => removeNeighbor('remotely dropped'));
         ws.on('pong', () => { ws.isAlive = true });
     }
 
@@ -426,7 +430,7 @@ class Node extends Base {
      * @private
      */
     _addNeighbors (data, weight) {
-        this.log('add neighbors', data);
+        // this.log('add neighbors', data);
         return new Promise((resolve, reject) => {
             try {
                 Promise.all(JSON.parse(data).slice(0, this.opts.maxShareableNodes).map(
@@ -538,12 +542,12 @@ class Node extends Base {
      * @param {Peer} peer
      * @returns {Peer}
      */
-    connectPeer (peer) {
-        this.log('connecting peer', this.formatNode(peer.data.hostname, peer.data.port));
+    connectPeer (peer, silent) {
+        this.log('connecting peer'.yellow, this.formatNode(peer.data.hostname, peer.data.port));
         this.list.update(peer, { dateTried: new Date() });
         this._bindWebSocket(new WebSocket(`ws://${peer.data.hostname}:${peer.data.port}`, {
             headers: this._getHeaders(),
-            handshakeTimeout: 10000
+            handshakeTimeout: 5000
         }), peer);
         return peer;
     }
@@ -653,20 +657,20 @@ class Node extends Base {
      */
     _onIRIHealth (healthy, neighbors) {
         if (!healthy) {
-            this.log('IRI gone... closing all Nelson connections');
+            this.log('IRI gone... closing all Nelson connections'.red);
             return this._removeNeighbors(Array.from(this.sockets.keys()));
         }
         const toRemove = [];
-        Array.from(this.sockets.keys()).forEach((peer) => {
-            if (!neighbors.includes(peer.getTCPURI()) && !neighbors.includes(peer.getUDPURI())) {
-                // It might be that the neighbour was just added and not yet included in IRI...
-                if (getSecondsPassed(peer.data.dateLastConnected) > 5) {
-                    toRemove.push(peer);
-                }
+        Array.from(this.sockets.keys())
+            // It might be that the neighbour was just added and not yet included in IRI...
+            .filter(p => getSecondsPassed(p.data.dateLastConnected) > 5)
+            .forEach((peer) => {
+            if (!neighbors.includes(peer.data.hostname) && peer.data.ip && !neighbors.includes(peer.data.ip)) {
+                toRemove.push(peer);
             }
         });
         if (toRemove.length) {
-            this.log('Disconnecting Nelson nodes that are missing in IRI', toRemove.map((p) => p.getTCPURI()));
+            this.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map((p) => p.getTCPURI()));
             return this._removeNeighbors(toRemove);
         }
     }
@@ -712,7 +716,7 @@ class Node extends Base {
     isSaturationReached () {
         const ratioConnected = ( this._getOutgoingSlotsCount() + this._getIncomingSlotsCount()) /
             (this.opts.outgoingMax + this.opts.incomingMax);
-        return ratioConnected >= 0.5
+        return ratioConnected >= 0.75
     }
 
     /**

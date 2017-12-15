@@ -139,7 +139,7 @@ var IRI = function (_Base) {
                                 reject(err);
                                 return;
                             }
-                            _this3.log('Neighbors removed', peers.map(function (p) {
+                            _this3.log('Neighbors removed:'.red, peers.map(function (p) {
                                 return p.getNelsonURI();
                             }));
                             resolve(peers);
@@ -171,7 +171,7 @@ var IRI = function (_Base) {
                         reject(error);
                         return;
                     }
-                    _this4.log('Neighbors added:', data, uris.join(', '));
+                    _this4.log('Neighbors added:'.green, data, uris.join(', '));
                     resolve(peers);
                 });
             });
@@ -211,6 +211,31 @@ var IRI = function (_Base) {
         }
 
         /**
+         * Removes all IRI neighbors.
+         * @returns {Promise}
+         */
+
+    }, {
+        key: 'removeAllNeighbors',
+        value: function removeAllNeighbors() {
+            var _this6 = this;
+
+            return new Promise(function (resolve) {
+                _this6.api.getNeighbors(function (error, neighbors) {
+                    if (error) {
+                        return resolve();
+                    }
+                    if (Array.isArray(neighbors) && neighbors.length) {
+                        return _this6.api.removeNeighbors(neighbors.map(function (n) {
+                            return n.connectionType + '://' + n.address;
+                        }), resolve);
+                    }
+                    resolve();
+                });
+            });
+        }
+
+        /**
          * Checks if the IRI instance is healthy, and its list of neighbors. Calls back the result to onHealthCheck.
          * @private
          */
@@ -218,19 +243,20 @@ var IRI = function (_Base) {
     }, {
         key: '_tick',
         value: function _tick() {
-            var _this6 = this;
+            var _this7 = this;
 
             var onHealthCheck = this.opts.onHealthCheck;
 
             this.api.getNeighbors(function (error, neighbors) {
                 if (error) {
-                    _this6.isHealthy = false;
+                    _this7.isHealthy = false;
                     onHealthCheck(false);
                     return;
                 }
-                _this6.isHealthy = true;
+                _this7.isHealthy = true;
+                // TODO: if the address is IPV6, could that pose a problem?
                 onHealthCheck(true, neighbors.map(function (n) {
-                    return n.connectionType + '://' + n.address;
+                    return n.address.split(':')[0];
                 }));
             });
         }

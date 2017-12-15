@@ -94,7 +94,7 @@ class IRI extends Base {
                             reject(err);
                             return;
                         }
-                        this.log('Neighbors removed', peers.map(p => p.getNelsonURI()));
+                        this.log('Neighbors removed:'.red, peers.map(p => p.getNelsonURI()));
                         resolve(peers)
                     });
                 }
@@ -118,7 +118,7 @@ class IRI extends Base {
                     reject(error);
                     return;
                 }
-                this.log('Neighbors added:', data, uris.join(', '));
+                this.log('Neighbors added:'.green, data, uris.join(', '));
                 resolve(peers);
             });
         });
@@ -153,6 +153,24 @@ class IRI extends Base {
     }
 
     /**
+     * Removes all IRI neighbors.
+     * @returns {Promise}
+     */
+    removeAllNeighbors () {
+        return new Promise((resolve) => {
+            this.api.getNeighbors((error, neighbors) => {
+                if(error) {
+                    return resolve();
+                }
+                if (Array.isArray(neighbors) && neighbors.length) {
+                    return this.api.removeNeighbors(neighbors.map((n) => `${n.connectionType}://${n.address}`), resolve);
+                }
+                resolve();
+            });
+        });
+    }
+
+    /**
      * Checks if the IRI instance is healthy, and its list of neighbors. Calls back the result to onHealthCheck.
      * @private
      */
@@ -165,7 +183,8 @@ class IRI extends Base {
                 return;
             }
             this.isHealthy = true;
-            onHealthCheck(true, neighbors.map((n) => `${n.connectionType}://${n.address}`));
+            // TODO: if the address is IPV6, could that pose a problem?
+            onHealthCheck(true, neighbors.map((n) => n.address.split(':')[0]));
         });
     }
 

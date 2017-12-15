@@ -49,7 +49,7 @@ class PeerList extends Base {
             this.db.find({}, (err, docs) => {
                 this.peers = docs.map((data) => new Peer(data, { onDataUpdate: this.onPeerUpdate }));
                 this.loadDefaults(defaultPeerURLs).then(() => {
-                    this.log('db and default peers loaded');
+                    this.log('DB and default peers loaded');
                     this.loaded = true;
                     resolve(this.peers);
                 });
@@ -91,7 +91,7 @@ class PeerList extends Base {
         const newData = { ...peer.data, ...data };
         const updater = () => new Promise((resolve) => {
             this.db.update({ _id: peer.data._id }, newData, { returnUpdatedDocs: true }, () => {
-                this.log(`updated peer ${peer.data.hostname}:${peer.data.port}`, data);
+                // this.log(`updated peer ${peer.data.hostname}:${peer.data.port}`, data);
                 resolve(peer);
             })
         });
@@ -118,11 +118,15 @@ class PeerList extends Base {
      * Removes all peers.
      */
     clear () {
-        this.log('Clearing');
+        this.log('Clearing all known peers');
         this.peers = [];
         return new Promise((resolve) => this.db.remove({}, { multi: true }, resolve));
     }
 
+    /**
+     * Gets the average age of all known peers
+     * @returns {number}
+     */
     getAverageAge () {
         return this.peers.map(p => getSecondsPassed(p.data.dateCreated)).reduce((s, x) => s + x, 0) / this.peers.length;
     }
@@ -253,7 +257,7 @@ class PeerList extends Base {
                     return existing;
                 }
             } else {
-                this.log('adding', hostname, port);
+                this.log(`Adding to the list of known Nelson peers: ${hostname}:${port}`);
                 const peerIP = ip.isV4Format(addr) || ip.isV6Format(addr) ? addr : null;
                 const peer = new Peer(
                     {
@@ -268,7 +272,6 @@ class PeerList extends Base {
                     }, { onDataUpdate: this.onPeerUpdate }
                 );
                 this.peers.push(peer);
-                this.log('added', hostname, port, this.peers.length);
                 return new Promise((resolve, reject) => {
                     this.db.insert(peer.data, (err, doc) => {
                         if (err) {

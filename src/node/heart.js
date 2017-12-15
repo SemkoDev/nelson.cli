@@ -77,13 +77,24 @@ class Heart extends Base {
      */
     _tick () {
         this.opts.onTick(this.currentCycle).then(() => {
-            terminal.beat(this.currentEpoch, this.currentCycle, this.startDate);
-            if (getSecondsPassed(this.lastCycle) > this.opts.cycleInterval) {
+            const passedSecondsEpoch = getSecondsPassed(this.lastEpoch);
+            const passedSecondsCycle = getSecondsPassed(this.lastCycle);
+            const pctEpoch = passedSecondsEpoch / this.opts.epochInterval;
+            const pctCycle = passedSecondsCycle / this.opts.cycleInterval;
+            terminal.beat({
+                epoch: this.currentEpoch,
+                cycle: this.currentCycle,
+                startDate: this.startDate,
+                pctEpoch,
+                pctCycle
+            });
+
+            if (passedSecondsCycle > this.opts.cycleInterval) {
                 this.opts.onCycle(this.currentCycle).then((skipABeat) => {
                     if (!skipABeat) {
                         this.lastCycle = new Date();
                         this.currentCycle += 1;
-                        if (getSecondsPassed(this.lastEpoch) > this.opts.epochInterval) {
+                        if (passedSecondsEpoch > this.opts.epochInterval) {
                             this.opts.onEpoch(this.currentEpoch).then((skipAge) => {
                                 !skipAge && this.startNewEpoch();
                                 this._setTicker();

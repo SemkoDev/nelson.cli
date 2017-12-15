@@ -23,12 +23,9 @@ module.exports = _extends({
 
         process.on('SIGINT', terminate);
         process.on('SIGTERM', terminate);
-        terminal.init(utils.getVersion(), terminate);
+        opts.gui && terminal.init(utils.getVersion(), terminate);
 
         _node.start().then(function (n) {
-            if (n.opts && !n.opts.gui) {
-                terminal.exit();
-            }
             api.createAPI(n);
             terminal.ports(n.opts);
             n.log(('Nelson v.' + utils.getVersion() + ' initialized').green.bold);

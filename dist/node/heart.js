@@ -122,13 +122,24 @@ var Heart = function (_Base) {
             var _this2 = this;
 
             this.opts.onTick(this.currentCycle).then(function () {
-                terminal.beat(_this2.currentEpoch, _this2.currentCycle, _this2.startDate);
-                if (getSecondsPassed(_this2.lastCycle) > _this2.opts.cycleInterval) {
+                var passedSecondsEpoch = getSecondsPassed(_this2.lastEpoch);
+                var passedSecondsCycle = getSecondsPassed(_this2.lastCycle);
+                var pctEpoch = passedSecondsEpoch / _this2.opts.epochInterval;
+                var pctCycle = passedSecondsCycle / _this2.opts.cycleInterval;
+                terminal.beat({
+                    epoch: _this2.currentEpoch,
+                    cycle: _this2.currentCycle,
+                    startDate: _this2.startDate,
+                    pctEpoch: pctEpoch,
+                    pctCycle: pctCycle
+                });
+
+                if (passedSecondsCycle > _this2.opts.cycleInterval) {
                     _this2.opts.onCycle(_this2.currentCycle).then(function (skipABeat) {
                         if (!skipABeat) {
                             _this2.lastCycle = new Date();
                             _this2.currentCycle += 1;
-                            if (getSecondsPassed(_this2.lastEpoch) > _this2.opts.epochInterval) {
+                            if (passedSecondsEpoch > _this2.opts.epochInterval) {
                                 _this2.opts.onEpoch(_this2.currentEpoch).then(function (skipAge) {
                                     !skipAge && _this2.startNewEpoch();
                                     _this2._setTicker();
