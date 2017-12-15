@@ -27,7 +27,7 @@ npm install -g nelson.cli
 And run it
 
 ```
-nelson --gui --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
+nelson --gui --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600 iotairi.tt-tec.net/16600"
 ```
 
 The  ```--neighbors``` option is used to provide an entry set of trusted nelson peers for new nelson instances.
@@ -49,7 +49,7 @@ docker run <docker opts> romansemko/nelson <nelson command line opts>
 Hence, running IRI with Nelson can be done with two simple commands:
 ```
 docker run -d --net host -p 14265:14265 --name iri iotaledger/iri
-docker run -d --net host -p 18600:18600 --name nelson romansemko/nelson -r localhost -i 14265 -u 14777 -t 15777 --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
+docker run -d --net host -p 18600:18600 --name nelson romansemko/nelson -r localhost -i 14265 -u 14777 -t 15777 --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600 iotairi.tt-tec.net/16600"
 ```
 
 The options passed to nelson's docker (```-r localhost -i 14265 -u 14777 -t 15777 --neighbors ...```) set IRI's
@@ -82,7 +82,7 @@ yarn make
 Try to run Nelson:
 
 ```
-node ./dist/nelson.js --gui --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
+node ./dist/nelson.js --gui --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600 iotairi.tt-tec.net/16600"
 ```
 
 ## Configuration
@@ -119,6 +119,7 @@ gui = false
 neighbors[] = mainnet.deviota.com/16600
 neighbors[] = mainnet2.deviota.com/16600
 neighbors[] = mainnet3.deviota.com/16600
+neighbors[] = iotairi.tt-tec.net/16600
 ```
 
 ### Command line options
