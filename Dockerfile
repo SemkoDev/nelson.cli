@@ -1,9 +1,18 @@
-FROM node:6.9.5-alpine
+FROM node:6.9.5-alpine as builder
+COPY . /usr/src/nelson
 
-RUN npm i -g nelson.cli@0.1.5
 WORKDIR /usr/src/nelson
+RUN npm install -g yarn \
+    && yarn install --pure-lockfile \
+    && yarn make \
+    && npm install -g . \
+    && npm uninstall -g yarn
+
+FROM node:6.9.5-alpine
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /usr/local/lib/node_modules /usr/local/lib/node_modules
 
 EXPOSE 16600
 EXPOSE 18600
 
-ENTRYPOINT ["nelson"]
+ENTRYPOINT ["/usr/local/bin/nelson"]
