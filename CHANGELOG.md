@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+- Default IRI ports: 14265, 14777, 15777
+
 ## [0.1.7] - 2017-12-15
 
 ### Changed

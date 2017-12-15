@@ -108,9 +108,9 @@ apiPort = 18600
 apiHostname = 127.0.0.1
 port = 16600
 IRIHostname = localhost
-IRIPort = 14600
-TCPPort = 15600
-UDPPort = 14600
+IRIPort = 14265
+TCPPort = 15777
+UDPPort = 14777
 dataPath = data/neighbors.db
 isMaster = false
 silent = false
@@ -135,9 +135,9 @@ Some have additional short versions.
 | --apiHostname, -o | Nelson API hostname to request current node status data. Default value will only listen to local connections|127.0.0.1|
 | --port, -p | TCP port, on which to start your nelson instance|16600|
 | --IRIHostname, -r| IRI API hostname of the running IRI node instance|localhost|
-| --IRIPort, -i| IRI API port of the running IRI node instance|14600|
-| --TCPPort, -t| IRI TCP Port|15600|
-| --UDPPort, -u| IRI UDP Port|14600|
+| --IRIPort, -i| IRI API port of the running IRI node instance|14265|
+| --TCPPort, -t| IRI TCP Port|15777|
+| --UDPPort, -u| IRI UDP Port|14777|
 | --dataPath, -d| path to the file, that will be used as neighbor storage| data/neighbors.db|
 | --silent, -s|Run the node without any output||
 | --gui, -g|Run the node in console-gui mode||

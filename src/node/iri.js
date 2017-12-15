@@ -6,9 +6,9 @@ tmp.setGracefulCleanup();
 
 const DEFAULT_OPTIONS = {
     hostname: 'localhost',
-    port: 14600,
-    TCPPort: 15600,
-    UDPPort: 14600,
+    port: 14265,
+    TCPPort: 15777,
+    UDPPort: 14777,
     logIdent: 'IRI',
     onHealthCheck: (isHealthy, neighbors) => {}
 };
