@@ -123,11 +123,15 @@ class PeerList extends Base {
         return new Promise((resolve) => this.db.remove({}, { multi: true }, resolve));
     }
 
+    getAverageAge () {
+        return this.peers.map(p => getSecondsPassed(p.data.dateCreated)).reduce((s, x) => s + x, 0) / this.peers.length;
+    }
+
     /**
      * Returns peer, which hostname or IP equals the address.
      * Port is only considered if mutiPort option is true.
      * @param address
-     * @returns {Promise<Peer|null>}
+     * @returns {Promise<Peer[]|null>}
      */
     findByAddress (address, port) {
         const addr = PeerList.cleanAddress(address);

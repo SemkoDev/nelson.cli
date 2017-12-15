@@ -196,12 +196,21 @@ var PeerList = function (_Base) {
                 return _this5.db.remove({}, { multi: true }, resolve);
             });
         }
+    }, {
+        key: 'getAverageAge',
+        value: function getAverageAge() {
+            return this.peers.map(function (p) {
+                return getSecondsPassed(p.data.dateCreated);
+            }).reduce(function (s, x) {
+                return s + x;
+            }, 0) / this.peers.length;
+        }
 
         /**
          * Returns peer, which hostname or IP equals the address.
          * Port is only considered if mutiPort option is true.
          * @param address
-         * @returns {Promise<Peer|null>}
+         * @returns {Promise<Peer[]|null>}
          */
 
     }, {

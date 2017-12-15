@@ -1,5 +1,6 @@
 FROM node:6.9.5-alpine as builder
 COPY . /usr/src/nelson
+
 WORKDIR /usr/src/nelson
 RUN npm install -g yarn \
     && yarn install --pure-lockfile \
