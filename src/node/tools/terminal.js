@@ -2,6 +2,9 @@ const blessed = require('blessed');
 const contrib = require('blessed-contrib');
 require('colors');
 const moment = require('moment');
+const momentDurationFormatSetup = require("moment-duration-format");
+
+momentDurationFormatSetup(moment);
 
 var screen = null;
 var mainBox = null;
@@ -124,13 +127,8 @@ function log () {
 }
 
 function beat ({ epoch, cycle, startDate, pctEpoch, pctCycle }) {
-    const now = moment();
-    const diffDays = now.diff(startDate, 'days');
-    const diffHours = now.diff(startDate, 'hours');
-    const diffMinutes = now.diff(startDate, 'minutes');
-    const days = `${diffDays > 0 ? diffDays + ' days ' : ''}`;
-    const hours = `${diffHours > 0 ? diffHours + ' hours ' : ''}`;
-    statusBox.setLine(3, `Online: ${days}${hours}${diffMinutes} minutes`.bold.yellow);
+    const duration = moment.duration(moment().diff(startDate)).format('d [days] h [hours] m [minutes]');
+    statusBox.setLine(3, `Online: ${duration}`.bold.yellow);
     statusBox.setLine(4, `Epoch: ${epoch}`.bold);
     statusBox.setLine(5, `Cycle: ${cycle}`.bold);
     progress.setData([
@@ -158,7 +156,7 @@ function ports ({ port, apiPort, IRIPort, TCPPort, UDPPort }) {
 }
 
 function nodes ({ nodes, connected }) {
-    peersBox.setLine(2, `Count: ${nodes.length}`.bold);
+    peersBox.setLine(2, `Count: ${nodes.length} (Connected: ${connected.length || 0})`.bold);
     peersBox.setLine(4, `Connections:`.bold);
     const lines = peersBox.getLines().length;
     for (let i = lines -1; i >= 5; i--) {
