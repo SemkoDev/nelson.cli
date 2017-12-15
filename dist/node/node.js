@@ -50,7 +50,7 @@ var DEFAULT_OPTIONS = {
     TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
     UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
     weightDeflation: 0.75,
-    incomingMax: 7,
+    incomingMax: 6,
     outgoingMax: 5,
     maxShareableNodes: 16,
     localNodes: false,
@@ -163,9 +163,11 @@ var Node = function (_Base) {
                 return new Promise(function (resolve) {
                     if (_this3.server) {
                         _this3.server.close();
-                        _this3.sockets = new Map();
                     }
-                    resolve(true);
+                    return _this3._removeNeighbors(Array.from(_this3.sockets.keys())).then(function () {
+                        _this3.sockets = new Map();
+                        resolve(true);
+                    });
                 });
             };
 
@@ -285,7 +287,7 @@ var Node = function (_Base) {
                 } });
 
             this.server.on('connection', function (ws, req) {
-                _this7.log('incoming connection established', req.connection.remoteAddress);
+                _this7.log('incoming connection established'.green, req.connection.remoteAddress);
                 var address = req.connection.remoteAddress;
 
                 var _getHeaderIdentifiers2 = _this7._getHeaderIdentifiers(req.headers),
@@ -404,7 +406,6 @@ var Node = function (_Base) {
                                 } else {
                                     normalPath();
                                 }
-                                _this8._dropRandomNeighbors(1).then(resolve);
                             } else {
                                 resolve();
                             }
@@ -435,8 +436,9 @@ var Node = function (_Base) {
                     return;
                 }
                 ws.removingNow = true;
-                _this9._removeNeighbor(peer);
-                _this9.log('connection closed'.red, _this9.formatNode(peer.data.hostname, peer.data.port));
+                _this9._removeNeighbor(peer).then(function () {
+                    _this9.log('connection closed'.red, _this9.formatNode(peer.data.hostname, peer.data.port), '(' + e + ')');
+                });
             };
 
             var onConnected = function onConnected() {
@@ -454,35 +456,40 @@ var Node = function (_Base) {
                 ws.incoming = asServer;
                 // Prevent spamming nodes from the same locations
                 if (this.isSaturationReached() && peer.data.dateLastConnected && getSecondsPassed(peer.data.dateLastConnected) < this.opts.epochInterval * 2) {
-                    removeNeighbor();
+                    removeNeighbor('neighbor was connecting too often');
                     return;
                 } else {
                     onConnected();
                 }
+            } else {
+                ws.on('headers', function (headers) {
+                    // Check for valid headers
+                    var head = _this9._getHeaderIdentifiers(headers);
+                    if (!head) {
+                        _this9.log('!!', 'wrong headers received', head);
+                        return removeNeighbor();
+                    }
+                    var port = head.port,
+                        nelsonID = head.nelsonID,
+                        TCPPort = head.TCPPort,
+                        UDPPort = head.UDPPort;
+
+                    _this9.list.update(peer, { port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort }).then(function (peer) {
+                        promise = Promise.resolve(peer);
+                    });
+                });
+                ws.on('open', onConnected);
             }
 
-            ws.on('headers', function (headers) {
-                // Check for valid headers
-                var head = _this9._getHeaderIdentifiers(headers);
-                if (!head) {
-                    _this9.log('!!', 'wrong headers received', head);
-                    return removeNeighbor();
-                }
-                var port = head.port,
-                    nelsonID = head.nelsonID,
-                    TCPPort = head.TCPPort,
-                    UDPPort = head.UDPPort;
-
-                _this9.list.update(peer, { port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort }).then(function (peer) {
-                    promise = Promise.resolve(peer);
-                });
-            });
             ws.on('message', function (data) {
                 return _this9._addNeighbors(data, ws.incoming ? 0 : peer.data.weight);
             });
-            ws.on('open', onConnected);
-            ws.on('close', removeNeighbor);
-            ws.on('error', removeNeighbor);
+            ws.on('close', function () {
+                return removeNeighbor('socket closed');
+            });
+            ws.on('error', function () {
+                return removeNeighbor('remotely dropped');
+            });
             ws.on('pong', function () {
                 ws.isAlive = true;
             });
@@ -555,7 +562,7 @@ var Node = function (_Base) {
         value: function _addNeighbors(data, weight) {
             var _this10 = this;
 
-            this.log('add neighbors', data);
+            // this.log('add neighbors', data);
             return new Promise(function (resolve, reject) {
                 try {
                     Promise.all(JSON.parse(data).slice(0, _this10.opts.maxShareableNodes).map(function (neighbor) {
@@ -702,12 +709,12 @@ var Node = function (_Base) {
 
     }, {
         key: 'connectPeer',
-        value: function connectPeer(peer) {
-            this.log('connecting peer', this.formatNode(peer.data.hostname, peer.data.port));
+        value: function connectPeer(peer, silent) {
+            this.log('connecting peer'.yellow, this.formatNode(peer.data.hostname, peer.data.port));
             this.list.update(peer, { dateTried: new Date() });
             this._bindWebSocket(new WebSocket('ws://' + peer.data.hostname + ':' + peer.data.port, {
                 headers: this._getHeaders(),
-                handshakeTimeout: 10000
+                handshakeTimeout: 5000
             }), peer);
             return peer;
         }
@@ -845,20 +852,21 @@ var Node = function (_Base) {
         key: '_onIRIHealth',
         value: function _onIRIHealth(healthy, neighbors) {
             if (!healthy) {
-                this.log('IRI gone... closing all Nelson connections');
+                this.log('IRI gone... closing all Nelson connections'.red);
                 return this._removeNeighbors(Array.from(this.sockets.keys()));
             }
             var toRemove = [];
-            Array.from(this.sockets.keys()).forEach(function (peer) {
-                if (!neighbors.includes(peer.getTCPURI()) && !neighbors.includes(peer.getUDPURI())) {
-                    // It might be that the neighbour was just added and not yet included in IRI...
-                    if (getSecondsPassed(peer.data.dateLastConnected) > 5) {
-                        toRemove.push(peer);
-                    }
+            Array.from(this.sockets.keys())
+            // It might be that the neighbour was just added and not yet included in IRI...
+            .filter(function (p) {
+                return getSecondsPassed(p.data.dateLastConnected) > 5;
+            }).forEach(function (peer) {
+                if (!neighbors.includes(peer.data.hostname) && peer.data.ip && !neighbors.includes(peer.data.ip)) {
+                    toRemove.push(peer);
                 }
             });
             if (toRemove.length) {
-                this.log('Disconnecting Nelson nodes that are missing in IRI', toRemove.map(function (p) {
+                this.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map(function (p) {
                     return p.getTCPURI();
                 }));
                 return this._removeNeighbors(toRemove);
@@ -922,7 +930,7 @@ var Node = function (_Base) {
         key: 'isSaturationReached',
         value: function isSaturationReached() {
             var ratioConnected = (this._getOutgoingSlotsCount() + this._getIncomingSlotsCount()) / (this.opts.outgoingMax + this.opts.incomingMax);
-            return ratioConnected >= 0.5;
+            return ratioConnected >= 0.75;
         }
 
         /**

@@ -91,7 +91,7 @@ var PeerList = function (_Base) {
                         return new Peer(data, { onDataUpdate: _this2.onPeerUpdate });
                     });
                     _this2.loadDefaults(defaultPeerURLs).then(function () {
-                        _this2.log('db and default peers loaded');
+                        _this2.log('DB and default peers loaded');
                         _this2.loaded = true;
                         resolve(_this2.peers);
                     });
@@ -151,7 +151,7 @@ var PeerList = function (_Base) {
             var updater = function updater() {
                 return new Promise(function (resolve) {
                     _this4.db.update({ _id: peer.data._id }, newData, { returnUpdatedDocs: true }, function () {
-                        _this4.log('updated peer ' + peer.data.hostname + ':' + peer.data.port, data);
+                        // this.log(`updated peer ${peer.data.hostname}:${peer.data.port}`, data);
                         resolve(peer);
                     });
                 });
@@ -190,12 +190,18 @@ var PeerList = function (_Base) {
         value: function clear() {
             var _this5 = this;
 
-            this.log('Clearing');
+            this.log('Clearing all known peers');
             this.peers = [];
             return new Promise(function (resolve) {
                 return _this5.db.remove({}, { multi: true }, resolve);
             });
         }
+
+        /**
+         * Gets the average age of all known peers
+         * @returns {number}
+         */
+
     }, {
         key: 'getAverageAge',
         value: function getAverageAge() {
@@ -368,7 +374,7 @@ var PeerList = function (_Base) {
                         return existing;
                     }
                 } else {
-                    _this8.log('adding', hostname, port);
+                    _this8.log('Adding to the list of known Nelson peers: ' + hostname + ':' + port);
                     var peerIP = ip.isV4Format(addr) || ip.isV6Format(addr) ? addr : null;
                     var peer = new Peer({
                         port: port,
@@ -381,7 +387,6 @@ var PeerList = function (_Base) {
                         dateCreated: new Date()
                     }, { onDataUpdate: _this8.onPeerUpdate });
                     _this8.peers.push(peer);
-                    _this8.log('added', hostname, port, _this8.peers.length);
                     return new Promise(function (resolve, reject) {
                         _this8.db.insert(peer.data, function (err, doc) {
                             if (err) {
