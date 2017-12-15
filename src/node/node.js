@@ -662,13 +662,11 @@ class Node extends Base {
         }
         const toRemove = [];
         Array.from(this.sockets.keys())
-            .filter(p => getSecondsPassed(p.data.dateLastConnected) > 15)
+            // It might be that the neighbour was just added and not yet included in IRI...
+            .filter(p => getSecondsPassed(p.data.dateLastConnected) > 5)
             .forEach((peer) => {
-            if (!neighbors.includes(peer.getTCPURI()) && !neighbors.includes(peer.getUDPURI())) {
-                // It might be that the neighbour was just added and not yet included in IRI...
-                if (getSecondsPassed(peer.data.dateLastConnected) > 5) {
-                    toRemove.push(peer);
-                }
+            if (!neighbors.includes(peer.data.hostname) && peer.data.ip && !neighbors.includes(peer.data.ip)) {
+                toRemove.push(peer);
             }
         });
         if (toRemove.length) {

@@ -183,7 +183,8 @@ class IRI extends Base {
                 return;
             }
             this.isHealthy = true;
-            onHealthCheck(true, neighbors.map((n) => `${n.connectionType}://${n.address}`));
+            // TODO: if the address is IPV6, could that pose a problem?
+            onHealthCheck(true, neighbors.map((n) => n.address.split(':')[0]));
         });
     }
 
