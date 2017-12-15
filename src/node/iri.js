@@ -42,7 +42,8 @@ class IRI extends Base {
                 if (!error) {
                     this._isStarted = true;
                     this.isHealthy = true;
-                    this.ticker = setInterval(this._tick, 12000);
+                    // TODO: make ticker wait for result, like in the heart.
+                    this.ticker = setInterval(this._tick, 15000);
                     resolve(this);
                 } else {
                     reject(error);

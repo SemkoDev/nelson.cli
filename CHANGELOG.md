@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+- DNS resolve hostnames provided by IRI in health checks.
+
 ## [0.1.6] - 2017-12-14
 
 ### Changed
