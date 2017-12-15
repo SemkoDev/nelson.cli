@@ -293,7 +293,6 @@ class Node extends Base {
                         else {
                             normalPath();
                         }
-                        this._dropRandomNeighbors(1).then(resolve);
                     }
                     else {
                         resolve();
@@ -712,7 +711,7 @@ class Node extends Base {
     isSaturationReached () {
         const ratioConnected = ( this._getOutgoingSlotsCount() + this._getIncomingSlotsCount()) /
             (this.opts.outgoingMax + this.opts.incomingMax);
-        return ratioConnected >= 0.5
+        return ratioConnected >= 0.75
     }
 
     /**

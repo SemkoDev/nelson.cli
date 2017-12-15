@@ -123,6 +123,10 @@ class PeerList extends Base {
         return new Promise((resolve) => this.db.remove({}, { multi: true }, resolve));
     }
 
+    /**
+     * Gets the average age of all known peers
+     * @returns {number}
+     */
     getAverageAge () {
         return this.peers.map(p => getSecondsPassed(p.data.dateCreated)).reduce((s, x) => s + x, 0) / this.peers.length;
     }
