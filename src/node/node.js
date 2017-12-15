@@ -10,7 +10,7 @@ const { getPeerIdentifier, getRandomInt, getSecondsPassed, getVersion, isSameMaj
 
 const DEFAULT_OPTIONS = {
     cycleInterval: 60,
-    epochInterval: 300,
+    epochInterval: 600,
     beatInterval: 10,
     epochsBetweenWeight: 10,
     dataPath: DEFAULT_LIST_OPTIONS.dataPath,
@@ -22,8 +22,8 @@ const DEFAULT_OPTIONS = {
     TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
     UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
     weightDeflation: 0.75,
-    incomingMax: 8,
-    outgoingMax: 4,
+    incomingMax: 7,
+    outgoingMax: 5,
     maxShareableNodes: 16,
     localNodes: false,
     isMaster: false,
@@ -190,31 +190,9 @@ class Node extends Base {
     _createServer () {
         this.server = new WebSocket.Server({ port: this.opts.port, verifyClient: (info, cb) => {
             const { req } = info;
-            const { remoteAddress: address } = req.connection;
-            const headers = this._getHeaderIdentifiers(req.headers);
-            const { port, nelsonID, version } = headers || {};
-            const wrongRequest = !headers;
-
-            const deny = () => {
-                cb(false, 401);
-            };
+            const deny = () => cb(false, 401);
             const accept = () => cb(true);
-
-            if (wrongRequest || !isSameMajorVersion(version) || !this.iri.isHealthy || this.isMyself(address, port, nelsonID)) {
-                this.log('Wrong request or myself', address, port, nelsonID, req.headers);
-                return deny();
-            }
-
-            const maxSlots = this.opts.isMaster
-                ? this.opts.incomingMax + this.opts.outgoingMax
-                : this.opts.incomingMax;
-            if (this._getIncomingSlotsCount() >= maxSlots) {
-                return deny();
-            }
-
-            // TODO: additional protection measure: make the client solve a computational riddle!
-
-            this.isAllowed(address, port).then((allowed) => allowed? accept() : deny());
+            this._canConnect(req).then(accept).catch(deny);
         } });
 
         this.server.on('connection', (ws, req) => {
@@ -244,6 +222,87 @@ class Node extends Base {
             Object.keys(myHeaders).forEach((key) => headers.push(`${key}: ${myHeaders[key]}`));
         });
         this.log('server created...');
+    }
+
+    /**
+     * Resolves promise if the client is allowed to connect, otherwise rejection.
+     * @param {object} req
+     * @returns {Promise}
+     * @private
+     */
+    _canConnect (req) {
+        const { remoteAddress: address } = req.connection;
+        const headers = this._getHeaderIdentifiers(req.headers);
+        const { port, nelsonID, version } = headers || {};
+        const wrongRequest = !headers;
+
+        return new Promise((resolve, reject) => {
+            if (wrongRequest || !isSameMajorVersion(version) || !this.iri.isHealthy || this.isMyself(address, port, nelsonID)) {
+                this.log('Wrong request or myself', address, port, nelsonID, req.headers);
+                return reject();
+            }
+            this.list.findByAddress(address, port).then((peers) => {
+
+                // Deny too frequent connections from the same peer.
+                if (peers.length && this.isSaturationReached() && peers[0].data.dateLastConnected && getSecondsPassed(peers[0].data.dateLastConnected) < this.opts.epochInterval * 2) {
+                    return reject();
+                }
+
+                const maxSlots = this.opts.isMaster
+                    ? this.opts.incomingMax + this.opts.outgoingMax
+                    : this.opts.incomingMax;
+                const topCount = parseInt(Math.sqrt(this.list.all().length) / 2);
+                const topPeers = this.list.getWeighted(300).sort((a, b) => a[1] - b[1]).map(p => p[0])
+                    .slice(0, topCount);
+                let isTop = false;
+
+                peers.forEach((p) => {
+                    if (topPeers.includes(p)) {
+                        isTop = true;
+                    }
+                });
+
+                // The usual way, accept based on personality.
+                const normalPath = () => {
+                    if (this._getIncomingSlotsCount() >= maxSlots) {
+                        reject();
+                    }
+
+                    // TODO: additional protection measure: make the client solve a computational riddle!
+
+                    this.isAllowed(address, port).then((allowed) => allowed ? resolve() : reject());
+                };
+
+                // Accept old, established nodes.
+                if (isTop && this.list.all().filter(p => p.data.connected).length > topCount) {
+                    if (this._getIncomingSlotsCount() >= maxSlots) {
+                        this._dropRandomNeighbors(1).then(resolve);
+                    }
+                    else {
+                        resolve();
+                    }
+                }
+                // Accept new nodes more easily.
+                else if (!peers.length || getSecondsPassed(peers[0].data.dateCreated) < this.list.getAverageAge() / 2) {
+                    if (this._getIncomingSlotsCount() >= maxSlots) {
+                        const candidates = Array.from(this.sockets.keys())
+                            .filter(p => getSecondsPassed(p.data.dateCreated) < this.list.getAverageAge());
+                        if (candidates.length) {
+                            this._removeNeighbor(candidates.splice(getRandomInt(0, peers.length), 1)[0]).then(resolve);
+                        }
+                        else {
+                            normalPath();
+                        }
+                    }
+                    else {
+                        resolve();
+                    }
+                }
+                else {
+                    normalPath();
+                }
+            });
+        });
     }
 
     /**
@@ -280,7 +339,7 @@ class Node extends Base {
         if (asServer) {
             ws.incoming = asServer;
             // Prevent spamming nodes from the same locations
-            if (peer.data.dateLastConnected && getSecondsPassed(peer.data.dateLastConnected) < this.opts.epochInterval * 2) {
+            if (this.isSaturationReached() && peer.data.dateLastConnected && getSecondsPassed(peer.data.dateLastConnected) < this.opts.epochInterval * 2) {
                 removeNeighbor();
                 return;
             }
@@ -480,6 +539,7 @@ class Node extends Base {
      */
     connectPeer (peer) {
         this.log('connecting peer', this.formatNode(peer.data.hostname, peer.data.port));
+        this.list.update(peer, { dateTried: new Date() });
         this._bindWebSocket(new WebSocket(`ws://${peer.data.hostname}:${peer.data.port}`, {
             headers: this._getHeaders(),
             handshakeTimeout: 10000
@@ -504,6 +564,7 @@ class Node extends Base {
 
         // Get allowed peers:
         return this.list.getWeighted(192)
+            .filter((p) => !p[0].data.dateTried || getSecondsPassed(p[0].data.dateTried) > this.opts.beatInterval * 2)
             .filter((p) => !this.sockets.get(p[0]))
             .slice(0, toTry)
             .map((p) => this.connectPeer(p[0]));
@@ -523,6 +584,9 @@ class Node extends Base {
      */
     _onEpoch () {
         this.log('new epoch and new id:', this.heart.personality.id);
+        if (!this.isSaturationReached()) {
+            return Promise.resolve(false);
+        }
         // Master node should recycle all its connections
         if (this.opts.isMaster) {
             return this._removeNeighbors(Array.from(this.sockets.keys())).then(() => {
@@ -538,7 +602,8 @@ class Node extends Base {
     }
 
     /**
-     * Each cycle, disconnect all peers and reconnect new ones.
+     * Checks whether expired peers are still connectable.
+     * If not, disconnect/remove them.
      * @private
      */
     _onCycle () {
@@ -558,8 +623,7 @@ class Node extends Base {
     }
 
     /**
-     * Checks whether expired peers are still connectable (through re-cycle).
-     * If not, disconnect/remove them, too.
+     * Try connecting to more peers.
      * @returns {Promise}
      * @private
      */
@@ -629,15 +693,25 @@ class Node extends Base {
      * @param {number} easiness - how "easy" it is to get in
      * @returns {Promise<boolean>}
      */
-    isAllowed (address, port, checkTrust=true, easiness=16) {
+    isAllowed (address, port, checkTrust=true, easiness=24) {
         const allowed = () => getPeerIdentifier(`${this.heart.personality.id}:${this.opts.localNodes ? port : address}`)
-                .slice(0, this._getMinEasiness(easiness))
-                .indexOf(this.heart.personality.feature) >= 0;
+            .slice(0, this._getMinEasiness(easiness))
+            .indexOf(this.heart.personality.feature) >= 0;
 
         return checkTrust
             ? this.list.findByAddress(address, port).then((ps) => ps.filter((p) => p.isTrusted()).length || allowed())
             : Promise.resolve(allowed());
 
+    }
+
+    /**
+     * Returns whether the amount of connected nodes has reached a certain threshold.
+     * @returns {boolean}
+     */
+    isSaturationReached () {
+        const ratioConnected = ( this._getOutgoingSlotsCount() + this._getIncomingSlotsCount()) /
+            (this.opts.outgoingMax + this.opts.incomingMax);
+        return ratioConnected >= 0.75
     }
 
     /**

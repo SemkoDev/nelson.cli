@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.5] - 2017-12-14
+
+### Changed
+- Improved connection strategy to minimize reconnects.
+- Improved incoming connection strategy to minimize dead nodes.
+
 ## [0.1.4] - 2017-12-13
 
 ### Added
