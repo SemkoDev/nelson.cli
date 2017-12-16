@@ -13,7 +13,7 @@ These instructions will get you a copy of the project up and running on your loc
 It is expected that you have already installed Java, downloaded the IRI jar file
 and know how to start it. The local IRI instance must have api enabled and allowing to add/remove neighbors.
 
-Nelson is running on Node.js You will have to install node and npm (node package manager) on your system.
+Nelson is running on Node.js You will have to install **node (at least version LTS 6.9.1) ** and *npm* (node package manager) on your system.
 Alternatively to npm you can (and should) use yarn package manager.
 
 ### Installing
@@ -27,7 +27,7 @@ npm install -g nelson.cli
 And run it
 
 ```
-nelson --gui --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
+nelson --gui --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600 iotairi.tt-tec.net/16600"
 ```
 
 The  ```--neighbors``` option is used to provide an entry set of trusted nelson peers for new nelson instances.
@@ -49,7 +49,7 @@ docker run <docker opts> romansemko/nelson <nelson command line opts>
 Hence, running IRI with Nelson can be done with two simple commands:
 ```
 docker run -d --net host -p 14265:14265 --name iri iotaledger/iri
-docker run -d --net host -p 18600:18600 --name nelson romansemko/nelson -r localhost -i 14265 -u 14600 -t 15600 --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
+docker run -d --net host -p 18600:18600 --name nelson romansemko/nelson -r localhost -i 14265 -u 14600 -t 15600 --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600 iotairi.tt-tec.net/16600"
 ```
 
 The options passed to nelson's docker (```-r localhost -i 14265 -u 14600 -t 15600 --neighbors ...```) set IRI's
@@ -82,7 +82,7 @@ yarn make
 Try to run Nelson:
 
 ```
-node ./dist/nelson.js --gui --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
+node ./dist/nelson.js --gui --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600 iotairi.tt-tec.net/16600"
 ```
 
 ## Configuration
@@ -119,6 +119,7 @@ gui = false
 neighbors[] = mainnet.deviota.com/16600
 neighbors[] = mainnet2.deviota.com/16600
 neighbors[] = mainnet3.deviota.com/16600
+neighbors[] = iotairi.tt-tec.net/16600
 ```
 
 ### Command line options
@@ -186,6 +187,33 @@ This is work in progress, so please bear with the simplicity.
 ## License
 
 This project is licensed under the ICS License - see the [LICENSE.md](LICENSE.md) file for details
+
+## Contributing
+
+### Donations
+
+**Donations always welcome**: 
+
+```
+IQJGHISHRMV9LEAEMSUIXMFTLLZIJWXIQOAZLGNXCFY9BLPTFTBNBPGU9YQFQKC9GEBPNNFO9DMGKYUECCG9ZSHMRW
+```
+
+### Running your own entry node
+
+As the network grows, we will need more entry nodes. These "master" nodes serve as gates to the
+network for new nodes. They accept slightly more connections and do not actively connect to others.
+The entry nodes only share info about the nodes that have contacted them sometime in the past.
+
+You can run a master node by adding these options to Nelson:
+
+```
+--isMaster --epochInterval 180
+```
+The first value tells Nelson to run in "master" mode. The second decreases the epoch time so that
+the connected nodes are rotated faster, giving space to new nodes.
+
+You can contact the maintainer of this repo (http://www.twitter.com/RomanSemko) to get your node
+included here. An initiative for donations to entry nodes is under way. 
 
 ## TODO
 

@@ -20,7 +20,7 @@ tmp.setGracefulCleanup();
 
 var DEFAULT_OPTIONS = {
     hostname: 'localhost',
-    port: 14600,
+    port: 14265,
     TCPPort: 15600,
     UDPPort: 14600,
     logIdent: 'IRI',
@@ -124,31 +124,33 @@ var IRI = function (_Base) {
                 return p.getUDPURI();
             }));
             return new Promise(function (resolve, reject) {
-                _this3.api.getNeighbors(function (error, neighbors) {
-                    if (error) {
-                        reject(error);
-                        return;
-                    }
-                    var toRemove = neighbors.map(function (n) {
-                        return n.connectionType + '://' + n.address;
-                    }).filter(function (n) {
-                        return uris.includes(n);
-                    });
-                    if (toRemove.length) {
-                        _this3.api.removeNeighbors(toRemove, function (err) {
-                            if (err) {
-                                reject(err);
-                                return;
-                            }
-                            _this3.log('Neighbors removed:'.red, peers.map(function (p) {
-                                return p.getNelsonURI();
-                            }));
-                            resolve(peers);
+                setTimeout(function () {
+                    _this3.api.getNeighbors(function (error, neighbors) {
+                        if (error) {
+                            reject(error);
+                            return;
+                        }
+                        var toRemove = neighbors.map(function (n) {
+                            return n.connectionType + '://' + n.address;
+                        }).filter(function (n) {
+                            return uris.includes(n);
                         });
-                    } else {
-                        resolve(peers);
-                    }
-                });
+                        if (toRemove.length) {
+                            _this3.api.removeNeighbors(toRemove, function (err) {
+                                if (err) {
+                                    reject(err);
+                                    return;
+                                }
+                                _this3.log('Neighbors removed:'.red, peers.map(function (p) {
+                                    return p.getNelsonURI();
+                                }));
+                                resolve(peers);
+                            });
+                        } else {
+                            resolve(peers);
+                        }
+                    });
+                }, 2000);
             });
         }
 
