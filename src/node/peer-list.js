@@ -100,6 +100,7 @@ class PeerList extends Base {
 
     markConnected (peer, increaseWeight=false) {
         return this.update(peer, {
+            tried: 0,
             connected: peer.data.connected + 1,
             weight: Math.min(peer.data.weight * (increaseWeight ? CONNECTION_WEIGHT_MULTIPLIER : 1), MAX_WEIGHT),
             dateLastConnected: new Date()
@@ -195,11 +196,12 @@ class PeerList extends Base {
      * Get a certain amount of weighted random peers. Return peers with their respective weight ratios
      * The weight depends on relationship age (connections) and trust (weight).
      * @param {number} amount
+     * @param {Peer[]} sourcePeers list of peers to use. Optional for filtering purposes.
      * @returns {Array<Peer, number>}
      */
-    getWeighted (amount = 0) {
+    getWeighted (amount = 0, sourcePeers=null) {
         amount = amount || this.peers.length;
-        const peers = Array.from(this.peers);
+        const peers = sourcePeers || Array.from(this.peers);
         if (!peers.length) {
             return [];
         }

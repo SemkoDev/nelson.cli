@@ -6,8 +6,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Delayed retry of unavailable peers.
+
 ### Changed
-- Default IRI ports: 14265, 14777, 15777
+- Default IRI API port: 14265
+- Epoch time to 15 minutes
+- Delayed neighbors remove from IRI (prevent orphans)
+
+### Removed
+- Removed instant drops after handshake due to oft reconnects (moved into handshake)
 
 ## [0.1.7] - 2017-12-15
 

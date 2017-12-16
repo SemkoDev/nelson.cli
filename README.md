@@ -49,10 +49,10 @@ docker run <docker opts> romansemko/nelson <nelson command line opts>
 Hence, running IRI with Nelson can be done with two simple commands:
 ```
 docker run -d --net host -p 14265:14265 --name iri iotaledger/iri
-docker run -d --net host -p 18600:18600 --name nelson romansemko/nelson -r localhost -i 14265 -u 14777 -t 15777 --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
+docker run -d --net host -p 18600:18600 --name nelson romansemko/nelson -r localhost -i 14265 -u 14600 -t 15600 --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600"
 ```
 
-The options passed to nelson's docker (```-r localhost -i 14265 -u 14777 -t 15777 --neighbors ...```) set IRI's
+The options passed to nelson's docker (```-r localhost -i 14265 -u 14600 -t 15600 --neighbors ...```) set IRI's
 hostname and ports (api, TCP, UDP) and the initial neighbors. Please refer below for more info on options.
 
 ## Building Locally
@@ -109,8 +109,8 @@ apiHostname = 127.0.0.1
 port = 16600
 IRIHostname = localhost
 IRIPort = 14265
-TCPPort = 15777
-UDPPort = 14777
+TCPPort = 15600
+UDPPort = 14600
 dataPath = data/neighbors.db
 isMaster = false
 silent = false
@@ -136,8 +136,8 @@ Some have additional short versions.
 | --port, -p | TCP port, on which to start your nelson instance|16600|
 | --IRIHostname, -r| IRI API hostname of the running IRI node instance|localhost|
 | --IRIPort, -i| IRI API port of the running IRI node instance|14265|
-| --TCPPort, -t| IRI TCP Port|15777|
-| --UDPPort, -u| IRI UDP Port|14777|
+| --TCPPort, -t| IRI TCP Port|15600|
+| --UDPPort, -u| IRI UDP Port|14600|
 | --dataPath, -d| path to the file, that will be used as neighbor storage| data/neighbors.db|
 | --silent, -s|Run the node without any output||
 | --gui, -g|Run the node in console-gui mode||

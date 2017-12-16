@@ -7,8 +7,8 @@ tmp.setGracefulCleanup();
 const DEFAULT_OPTIONS = {
     hostname: 'localhost',
     port: 14265,
-    TCPPort: 15777,
-    UDPPort: 14777,
+    TCPPort: 15600,
+    UDPPort: 14600,
     logIdent: 'IRI',
     onHealthCheck: (isHealthy, neighbors) => {}
 };
@@ -81,28 +81,30 @@ class IRI extends Base {
         const uris = peers.map((p) => p.getTCPURI());
         uris.concat(peers.map((p) => p.getUDPURI()));
         return new Promise ((resolve, reject) => {
-            this.api.getNeighbors((error, neighbors) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
-                const toRemove = neighbors
-                    .map((n) => `${n.connectionType}://${n.address}`)
-                    .filter((n) => uris.includes(n));
-                if (toRemove.length) {
-                    this.api.removeNeighbors(toRemove, (err) => {
-                        if (err) {
-                            reject(err);
-                            return;
-                        }
-                        this.log('Neighbors removed:'.red, peers.map(p => p.getNelsonURI()));
-                        resolve(peers)
-                    });
-                }
-                else {
-                    resolve(peers);
-                }
-            });
+            setTimeout(() => {
+                this.api.getNeighbors((error, neighbors) => {
+                    if (error) {
+                        reject(error);
+                        return;
+                    }
+                    const toRemove = neighbors
+                        .map((n) => `${n.connectionType}://${n.address}`)
+                        .filter((n) => uris.includes(n));
+                    if (toRemove.length) {
+                        this.api.removeNeighbors(toRemove, (err) => {
+                            if (err) {
+                                reject(err);
+                                return;
+                            }
+                            this.log('Neighbors removed:'.red, peers.map(p => p.getNelsonURI()));
+                            resolve(peers)
+                        });
+                    }
+                    else {
+                        resolve(peers);
+                    }
+                });
+            }, 2000)
         })
     }
 
