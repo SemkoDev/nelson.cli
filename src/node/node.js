@@ -670,7 +670,7 @@ class Node extends Base {
                     }
                 });
             if (toRemove.length) {
-                this.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map((p) => p.getTCPURI()));
+                this.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map((p) => p.getUDPURI()));
                 return this._removeNeighbors(toRemove);
             }
             return([]);
