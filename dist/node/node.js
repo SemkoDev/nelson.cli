@@ -39,7 +39,7 @@ var _require5 = require('./tools/utils'),
 
 var DEFAULT_OPTIONS = {
     cycleInterval: 60,
-    epochInterval: 600,
+    epochInterval: 900,
     beatInterval: 10,
     epochsBetweenWeight: 10,
     dataPath: DEFAULT_LIST_OPTIONS.dataPath,
@@ -297,13 +297,7 @@ var Node = function (_Base) {
                     UDPPort = _getHeaderIdentifiers2.UDPPort;
 
                 _this7.list.add(address, port, TCPPort, UDPPort).then(function (peer) {
-                    // Prevent multiple connections from the same peer:
-                    if (!_this7.sockets.get(peer)) {
-                        _this7._bindWebSocket(ws, peer, true);
-                    } else {
-                        ws.close();
-                        ws.terminate();
-                    }
+                    _this7._bindWebSocket(ws, peer, true);
                 }).catch(function (e) {
                     _this7.log('Error binding/adding'.red, address, port, e);
                     _this7.sockets.delete(Array.from(_this7.sockets.keys()).find(function (p) {
@@ -347,11 +341,23 @@ var Node = function (_Base) {
             var wrongRequest = !headers;
 
             return new Promise(function (resolve, reject) {
-                if (wrongRequest || !isSameMajorVersion(version) || !_this8.iri.isHealthy || _this8.isMyself(address, port, nelsonID)) {
-                    _this8.log('Wrong request or myself', address, port, nelsonID, req.headers);
+                if (wrongRequest || !isSameMajorVersion(version)) {
+                    _this8.log('Wrong request or other Nelson version', address, port, version, nelsonID, req.headers);
+                    return reject();
+                }
+                if (!_this8.iri || !_this8.iri.isHealthy) {
+                    _this8.log('IRI down, denying connections meanwhile', address, port, nelsonID);
+                    return reject();
+                }
+                if (_this8.isMyself(address, port, nelsonID)) {
                     return reject();
                 }
                 _this8.list.findByAddress(address, port).then(function (peers) {
+
+                    if (peers.length && _this8.sockets.get(peers[0])) {
+                        _this8.log('Peer already connected', address, port);
+                        return reject();
+                    }
 
                     // Deny too frequent connections from the same peer.
                     if (peers.length && _this8.isSaturationReached() && peers[0].data.dateLastConnected && getSecondsPassed(peers[0].data.dateLastConnected) < _this8.opts.epochInterval * 2) {
@@ -446,22 +452,20 @@ var Node = function (_Base) {
                 _this9.log('connection established'.green, _this9.formatNode(peer.data.hostname, peer.data.port));
                 _this9._sendNeighbors(ws);
                 var addWeight = !asServer && getSecondsPassed(peer.data.dateLastConnected) > _this9.opts.epochInterval * _this9.opts.epochsBetweenWeight;
-                _this9.list.markConnected(peer, addWeight).then(_this9.iri.addNeighbors([peer])).then(_this9.opts.onPeerConnected);
+                _this9.list.markConnected(peer, addWeight).then(function () {
+                    return _this9.iri.addNeighbors([peer]);
+                }).then(function () {
+                    return _this9.opts.onPeerConnected(peer);
+                });
             };
 
             var promise = null;
             ws.isAlive = true;
+            ws.incoming = asServer;
             this.sockets.set(peer, ws);
 
             if (asServer) {
-                ws.incoming = asServer;
-                // Prevent spamming nodes from the same locations
-                if (this.isSaturationReached() && peer.data.dateLastConnected && getSecondsPassed(peer.data.dateLastConnected) < this.opts.epochInterval * 2) {
-                    removeNeighbor('neighbor was connecting too often');
-                    return;
-                } else {
-                    onConnected();
-                }
+                onConnected();
             } else {
                 ws.on('headers', function (headers) {
                     // Check for valid headers
@@ -672,7 +676,7 @@ var Node = function (_Base) {
                 return peers;
             };
 
-            if (!this.iri.isHealthy) {
+            if (!this.iri || !this.iri.isHealthy) {
                 return Promise.resolve(doRemove());
             }
 
@@ -710,9 +714,9 @@ var Node = function (_Base) {
 
     }, {
         key: 'connectPeer',
-        value: function connectPeer(peer, silent) {
+        value: function connectPeer(peer) {
             this.log('connecting peer'.yellow, this.formatNode(peer.data.hostname, peer.data.port));
-            this.list.update(peer, { dateTried: new Date() });
+            this.list.update(peer, { dateTried: new Date(), tried: (peer.data.tried || 0) + 1 });
             this._bindWebSocket(new WebSocket('ws://' + peer.data.hostname + ':' + peer.data.port, {
                 headers: this._getHeaders(),
                 handshakeTimeout: 5000
@@ -736,14 +740,14 @@ var Node = function (_Base) {
             // If max was reached, do nothing.
             var toTry = this.opts.outgoingMax - this._getOutgoingSlotsCount();
 
-            if (!this.iri.isHealthy || toTry < 1 || this.isMaster || this._getOutgoingSlotsCount() >= this.opts.outgoingMax) {
+            if (!this.iri || !this.iri.isHealthy || toTry < 1 || this.isMaster || this._getOutgoingSlotsCount() >= this.opts.outgoingMax) {
                 return [];
             }
 
             // Get allowed peers:
-            return this.list.getWeighted(192).filter(function (p) {
-                return !p[0].data.dateTried || getSecondsPassed(p[0].data.dateTried) > _this12.opts.beatInterval * 2;
-            }).filter(function (p) {
+            return this.list.getWeighted(192, this.list.all().filter(function (p) {
+                return !p.data.dateTried || getSecondsPassed(p.data.dateTried) > _this12.opts.beatInterval * Math.max(2, 2 * p.data.tried || 0);
+            })).filter(function (p) {
                 return !_this12.sockets.get(p[0]);
             }).slice(0, toTry).map(function (p) {
                 return _this12.connectPeer(p[0]);

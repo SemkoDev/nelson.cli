@@ -164,6 +164,7 @@ var PeerList = function (_Base) {
             var increaseWeight = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
 
             return this.update(peer, {
+                tried: 0,
                 connected: peer.data.connected + 1,
                 weight: Math.min(peer.data.weight * (increaseWeight ? CONNECTION_WEIGHT_MULTIPLIER : 1), MAX_WEIGHT),
                 dateLastConnected: new Date()
@@ -289,6 +290,7 @@ var PeerList = function (_Base) {
          * Get a certain amount of weighted random peers. Return peers with their respective weight ratios
          * The weight depends on relationship age (connections) and trust (weight).
          * @param {number} amount
+         * @param {Peer[]} sourcePeers list of peers to use. Optional for filtering purposes.
          * @returns {Array<Peer, number>}
          */
 
@@ -298,9 +300,10 @@ var PeerList = function (_Base) {
             var _this7 = this;
 
             var amount = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
+            var sourcePeers = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
 
             amount = amount || this.peers.length;
-            var peers = Array.from(this.peers);
+            var peers = sourcePeers || Array.from(this.peers);
             if (!peers.length) {
                 return [];
             }
