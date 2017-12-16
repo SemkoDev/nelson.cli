@@ -78,33 +78,16 @@ class IRI extends Base {
      * @returns {Promise<Peer[]>}
      */
     removeNeighbors (peers) {
-        const uris = peers.map((p) => p.getTCPURI());
-        uris.concat(peers.map((p) => p.getUDPURI()));
+        const uris = peers.map((p) => p.getUDPURI());
         return new Promise ((resolve, reject) => {
-            setTimeout(() => {
-                this.api.getNeighbors((error, neighbors) => {
-                    if (error) {
-                        reject(error);
-                        return;
-                    }
-                    const toRemove = neighbors
-                        .map((n) => `${n.connectionType}://${n.address}`)
-                        .filter((n) => uris.includes(n));
-                    if (toRemove.length) {
-                        this.api.removeNeighbors(toRemove, (err) => {
-                            if (err) {
-                                reject(err);
-                                return;
-                            }
-                            this.log('Neighbors removed:'.red, peers.map(p => p.getNelsonURI()));
-                            resolve(peers)
-                        });
-                    }
-                    else {
-                        resolve(peers);
-                    }
-                });
-            }, 1000)
+            this.api.removeNeighbors(uris, (err) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                this.log('Neighbors removed (if there were any):'.red, peers.map(p => p.getNelsonURI()));
+                resolve(peers)
+            });
         })
     }
 
