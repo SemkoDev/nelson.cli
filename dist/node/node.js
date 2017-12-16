@@ -397,7 +397,7 @@ var Node = function (_Base) {
                         return p.data.connected;
                     }).length > topCount) {
                         if (_this8._getIncomingSlotsCount() >= maxSlots) {
-                            _this8._dropRandomNeighbors(1).then(resolve);
+                            _this8._dropRandomNeighbors(1, true).then(resolve);
                         } else {
                             resolve();
                         }
@@ -693,9 +693,14 @@ var Node = function (_Base) {
     }, {
         key: '_dropRandomNeighbors',
         value: function _dropRandomNeighbors() {
-            var amount = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 1;
+            var _this12 = this;
 
-            var peers = Array.from(this.sockets.keys());
+            var amount = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 1;
+            var incomingOnly = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+            var peers = incomingOnly ? Array.from(this.sockets.keys()).filter(function (p) {
+                return _this12.sockets.get(p).incoming;
+            }) : Array.from(this.sockets.keys());
             var selectRandomPeer = function selectRandomPeer() {
                 return peers.splice(getRandomInt(0, peers.length), 1)[0];
             };
@@ -733,7 +738,7 @@ var Node = function (_Base) {
     }, {
         key: 'reconnectPeers',
         value: function reconnectPeers() {
-            var _this12 = this;
+            var _this13 = this;
 
             // TODO: remove old peers by inverse weight, maybe? Not urgent. Can be added at a later point.
             // this.log('reconnectPeers');
@@ -746,11 +751,11 @@ var Node = function (_Base) {
 
             // Get allowed peers:
             return this.list.getWeighted(192, this.list.all().filter(function (p) {
-                return !p.data.dateTried || getSecondsPassed(p.data.dateTried) > _this12.opts.beatInterval * Math.max(2, 2 * p.data.tried || 0);
+                return !p.data.dateTried || getSecondsPassed(p.data.dateTried) > _this13.opts.beatInterval * Math.max(2, 2 * p.data.tried || 0);
             })).filter(function (p) {
-                return !_this12.sockets.get(p[0]);
+                return !_this13.sockets.get(p[0]);
             }).slice(0, toTry).map(function (p) {
-                return _this12.connectPeer(p[0]);
+                return _this13.connectPeer(p[0]);
             });
         }
 
@@ -773,7 +778,7 @@ var Node = function (_Base) {
     }, {
         key: '_onEpoch',
         value: function _onEpoch() {
-            var _this13 = this;
+            var _this14 = this;
 
             this.log('new epoch and new id:', this.heart.personality.id);
             if (!this.isSaturationReached()) {
@@ -782,12 +787,12 @@ var Node = function (_Base) {
             // Master node should recycle all its connections
             if (this.opts.isMaster) {
                 return this._removeNeighbors(Array.from(this.sockets.keys())).then(function () {
-                    _this13.reconnectPeers();
+                    _this14.reconnectPeers();
                     return false;
                 });
             }
             return this._dropRandomNeighbors(getRandomInt(0, this._getOutgoingSlotsCount())).then(function () {
-                _this13.reconnectPeers();
+                _this14.reconnectPeers();
                 return false;
             });
         }
@@ -801,14 +806,14 @@ var Node = function (_Base) {
     }, {
         key: '_onCycle',
         value: function _onCycle() {
-            var _this14 = this;
+            var _this15 = this;
 
             this.log('new cycle');
             var promises = [];
             // Remove closed or dead sockets. Otherwise set as not alive and ping:
             this.sockets.forEach(function (ws, peer) {
                 if (ws.readyState > 1 || !ws.isAlive) {
-                    promises.push(_this14._removeNeighbor(peer));
+                    promises.push(_this15._removeNeighbor(peer));
                 } else {
                     ws.isAlive = false;
                     ws.ping('', false, true);
@@ -828,19 +833,19 @@ var Node = function (_Base) {
     }, {
         key: '_onTick',
         value: function _onTick() {
-            var _this15 = this;
+            var _this16 = this;
 
             // Try connecting more peers. Master nodes do not actively connect (no outgoing connections).
             terminal.nodes({
                 nodes: this.list.all(),
                 connected: Array.from(this.sockets.keys()).filter(function (p) {
-                    return _this15.sockets.get(p).readyState === 1;
+                    return _this16.sockets.get(p).readyState === 1;
                 }).map(function (p) {
                     return p.data;
                 })
             });
             return !this.opts.isMaster && this._getOutgoingSlotsCount() < this.opts.outgoingMax ? new Promise(function (resolve) {
-                _this15.reconnectPeers();
+                _this16.reconnectPeers();
                 resolve(false);
             }) : Promise.resolve(false);
         }
@@ -856,7 +861,7 @@ var Node = function (_Base) {
     }, {
         key: '_onIRIHealth',
         value: function _onIRIHealth(healthy, neighbors) {
-            var _this16 = this;
+            var _this17 = this;
 
             if (!healthy) {
                 this.log('IRI gone... closing all Nelson connections'.red);
@@ -864,7 +869,7 @@ var Node = function (_Base) {
             }
             return Promise.all(neighbors.map(getIP)).then(function (neighbors) {
                 var toRemove = [];
-                Array.from(_this16.sockets.keys())
+                Array.from(_this17.sockets.keys())
                 // It might be that the neighbour was just added and not yet included in IRI...
                 .filter(function (p) {
                     return getSecondsPassed(p.data.dateLastConnected) > 5;
@@ -874,10 +879,10 @@ var Node = function (_Base) {
                     }
                 });
                 if (toRemove.length) {
-                    _this16.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map(function (p) {
+                    _this17.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map(function (p) {
                         return p.getUDPURI();
                     }));
-                    return _this16._removeNeighbors(toRemove);
+                    return _this17._removeNeighbors(toRemove);
                 }
                 return [];
             });
@@ -915,13 +920,13 @@ var Node = function (_Base) {
     }, {
         key: 'isAllowed',
         value: function isAllowed(address, port) {
-            var _this17 = this;
+            var _this18 = this;
 
             var checkTrust = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
             var easiness = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 24;
 
             var allowed = function allowed() {
-                return getPeerIdentifier(_this17.heart.personality.id + ':' + (_this17.opts.localNodes ? port : address)).slice(0, _this17._getMinEasiness(easiness)).indexOf(_this17.heart.personality.feature) >= 0;
+                return getPeerIdentifier(_this18.heart.personality.id + ':' + (_this18.opts.localNodes ? port : address)).slice(0, _this18._getMinEasiness(easiness)).indexOf(_this18.heart.personality.feature) >= 0;
             };
 
             return checkTrust ? this.list.findByAddress(address, port).then(function (ps) {

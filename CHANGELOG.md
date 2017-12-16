@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.10] - 2017-12-16
+
+### Changed
+- Replacing only incoming nodes with trusted nodes (possible limit breaker)
+
 ## [0.1.9] - 2017-12-16
 
 ### Changed

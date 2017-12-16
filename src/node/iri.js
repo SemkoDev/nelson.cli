@@ -104,7 +104,7 @@ class IRI extends Base {
                         resolve(peers);
                     }
                 });
-            }, 2000)
+            }, 1000)
         })
     }
 

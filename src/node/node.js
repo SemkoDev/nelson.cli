@@ -285,7 +285,7 @@ class Node extends Base {
                 // Accept old, established nodes.
                 if (isTop && this.list.all().filter(p => p.data.connected).length > topCount) {
                     if (this._getIncomingSlotsCount() >= maxSlots) {
-                        this._dropRandomNeighbors(1).then(resolve);
+                        this._dropRandomNeighbors(1, true).then(resolve);
                     }
                     else {
                         resolve();
@@ -527,8 +527,10 @@ class Node extends Base {
      * @returns {Promise.<Peer[]>} removed peers
      * @private
      */
-    _dropRandomNeighbors (amount=1) {
-        const peers = Array.from(this.sockets.keys());
+    _dropRandomNeighbors (amount=1, incomingOnly=false) {
+        const peers = incomingOnly
+            ? Array.from(this.sockets.keys()).filter(p => this.sockets.get(p).incoming)
+            : Array.from(this.sockets.keys());
         const selectRandomPeer = () => peers.splice(getRandomInt(0, peers.length), 1)[0];
         const toRemove = [];
         for (let x = 0; x < amount; x++) {
