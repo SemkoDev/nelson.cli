@@ -150,7 +150,7 @@ var IRI = function (_Base) {
                             resolve(peers);
                         }
                     });
-                }, 2000);
+                }, 1000);
             });
         }
 
