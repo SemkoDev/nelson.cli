@@ -114,7 +114,7 @@ class IRI extends Base {
      * @returns {Promise<Peer[]>}
      */
     addNeighbors (peers) {
-        const uris = peers.map((p) => p.getTCPURI());
+        const uris = peers.map((p) => p.getUDPURI());
         return new Promise((resolve, reject) => {
             this.api.addNeighbors(uris, (error, data) => {
                 if(error) {
