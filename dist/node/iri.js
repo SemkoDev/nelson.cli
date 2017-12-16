@@ -118,39 +118,19 @@ var IRI = function (_Base) {
             var _this3 = this;
 
             var uris = peers.map(function (p) {
-                return p.getTCPURI();
-            });
-            uris.concat(peers.map(function (p) {
                 return p.getUDPURI();
-            }));
+            });
             return new Promise(function (resolve, reject) {
-                setTimeout(function () {
-                    _this3.api.getNeighbors(function (error, neighbors) {
-                        if (error) {
-                            reject(error);
-                            return;
-                        }
-                        var toRemove = neighbors.map(function (n) {
-                            return n.connectionType + '://' + n.address;
-                        }).filter(function (n) {
-                            return uris.includes(n);
-                        });
-                        if (toRemove.length) {
-                            _this3.api.removeNeighbors(toRemove, function (err) {
-                                if (err) {
-                                    reject(err);
-                                    return;
-                                }
-                                _this3.log('Neighbors removed:'.red, peers.map(function (p) {
-                                    return p.getNelsonURI();
-                                }));
-                                resolve(peers);
-                            });
-                        } else {
-                            resolve(peers);
-                        }
-                    });
-                }, 1000);
+                _this3.api.removeNeighbors(uris, function (err) {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    _this3.log('Neighbors removed (if there were any):'.red, peers.map(function (p) {
+                        return p.getNelsonURI();
+                    }));
+                    resolve(peers);
+                });
             });
         }
 
