@@ -12,7 +12,7 @@ const {
 
 const DEFAULT_OPTIONS = {
     cycleInterval: 60,
-    epochInterval: 600,
+    epochInterval: 900,
     beatInterval: 10,
     epochsBetweenWeight: 10,
     dataPath: DEFAULT_LIST_OPTIONS.dataPath,
@@ -205,14 +205,7 @@ class Node extends Base {
             const { port, TCPPort, UDPPort } = this._getHeaderIdentifiers(req.headers);
 
             this.list.add(address, port, TCPPort, UDPPort).then((peer) => {
-                // Prevent multiple connections from the same peer:
-                if (!this.sockets.get(peer)) {
-                    this._bindWebSocket(ws, peer, true);
-                }
-                else {
-                    ws.close();
-                    ws.terminate();
-                }
+                this._bindWebSocket(ws, peer, true);
             }).catch((e) => {
                 this.log('Error binding/adding'.red, address, port, e);
                 this.sockets.delete(Array.from(this.sockets.keys()).find(p => this.sockets.get(p) === ws));
@@ -241,11 +234,23 @@ class Node extends Base {
         const wrongRequest = !headers;
 
         return new Promise((resolve, reject) => {
-            if (wrongRequest || !isSameMajorVersion(version) || !this.iri.isHealthy || this.isMyself(address, port, nelsonID)) {
-                this.log('Wrong request or myself', address, port, nelsonID, req.headers);
+            if (wrongRequest || !isSameMajorVersion(version)) {
+                this.log('Wrong request or other Nelson version', address, port, version, nelsonID, req.headers);
+                return reject();
+            }
+            if (!this.iri || !this.iri.isHealthy) {
+                this.log('IRI down, denying connections meanwhile', address, port, nelsonID);
+                return reject();
+            }
+            if (this.isMyself(address, port, nelsonID)) {
                 return reject();
             }
             this.list.findByAddress(address, port).then((peers) => {
+
+                if(peers.length && this.sockets.get(peers[0])) {
+                    this.log('Peer already connected', address, port);
+                    return reject();
+                }
 
                 // Deny too frequent connections from the same peer.
                 if (peers.length && this.isSaturationReached() && peers[0].data.dateLastConnected && getSecondsPassed(peers[0].data.dateLastConnected) < this.opts.epochInterval * 2) {
@@ -333,24 +338,17 @@ class Node extends Base {
             const addWeight = !asServer &&
                 getSecondsPassed(peer.data.dateLastConnected) > this.opts.epochInterval * this.opts.epochsBetweenWeight;
             this.list.markConnected(peer, addWeight)
-                .then(this.iri.addNeighbors([ peer ]))
-                .then(this.opts.onPeerConnected);
+                .then(() => this.iri.addNeighbors([ peer ]))
+                .then(() => this.opts.onPeerConnected(peer));
         };
 
         let promise = null;
         ws.isAlive = true;
+        ws.incoming = asServer;
         this.sockets.set(peer, ws);
 
         if (asServer) {
-            ws.incoming = asServer;
-            // Prevent spamming nodes from the same locations
-            if (this.isSaturationReached() && peer.data.dateLastConnected && getSecondsPassed(peer.data.dateLastConnected) < this.opts.epochInterval * 2) {
-                removeNeighbor('neighbor was connecting too often');
-                return;
-            }
-            else {
-                onConnected();
-            }
+            onConnected();
         }
         else {
             ws.on('headers', (headers) => {
@@ -516,7 +514,7 @@ class Node extends Base {
             return peers;
         };
 
-        if (!this.iri.isHealthy) {
+        if (!this.iri || !this.iri.isHealthy) {
             return Promise.resolve(doRemove());
         }
 
@@ -544,9 +542,9 @@ class Node extends Base {
      * @param {Peer} peer
      * @returns {Peer}
      */
-    connectPeer (peer, silent) {
+    connectPeer (peer) {
         this.log('connecting peer'.yellow, this.formatNode(peer.data.hostname, peer.data.port));
-        this.list.update(peer, { dateTried: new Date() });
+        this.list.update(peer, { dateTried: new Date(), tried: (peer.data.tried || 0) + 1 });
         this._bindWebSocket(new WebSocket(`ws://${peer.data.hostname}:${peer.data.port}`, {
             headers: this._getHeaders(),
             handshakeTimeout: 5000
@@ -565,13 +563,12 @@ class Node extends Base {
         // If max was reached, do nothing.
         const toTry = this.opts.outgoingMax - this._getOutgoingSlotsCount();
 
-        if ( !this.iri.isHealthy || toTry < 1 || this.isMaster || this._getOutgoingSlotsCount() >= this.opts.outgoingMax) {
+        if (!this.iri || !this.iri.isHealthy || toTry < 1 || this.isMaster || this._getOutgoingSlotsCount() >= this.opts.outgoingMax) {
             return [];
         }
 
         // Get allowed peers:
-        return this.list.getWeighted(192)
-            .filter((p) => !p[0].data.dateTried || getSecondsPassed(p[0].data.dateTried) > this.opts.beatInterval * 2)
+        return this.list.getWeighted(192, this.list.all().filter((p) => !p.data.dateTried || getSecondsPassed(p.data.dateTried) > this.opts.beatInterval * Math.max(2, 2 * p.data.tried || 0)))
             .filter((p) => !this.sockets.get(p[0]))
             .slice(0, toTry)
             .map((p) => this.connectPeer(p[0]));
@@ -665,7 +662,7 @@ class Node extends Base {
         return Promise.all(neighbors.map(getIP)).then((neighbors) => {
             const toRemove = [];
             Array.from(this.sockets.keys())
-                // It might be that the neighbour was just added and not yet included in IRI...
+            // It might be that the neighbour was just added and not yet included in IRI...
                 .filter(p => getSecondsPassed(p.data.dateLastConnected) > 5)
                 .forEach((peer) => {
                     if (!neighbors.includes(peer.data.hostname) && peer.data.ip && !neighbors.includes(peer.data.ip)) {
