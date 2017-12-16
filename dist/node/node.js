@@ -875,7 +875,7 @@ var Node = function (_Base) {
                 });
                 if (toRemove.length) {
                     _this16.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map(function (p) {
-                        return p.getTCPURI();
+                        return p.getUDPURI();
                     }));
                     return _this16._removeNeighbors(toRemove);
                 }

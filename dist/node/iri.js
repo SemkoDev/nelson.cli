@@ -166,7 +166,7 @@ var IRI = function (_Base) {
             var _this4 = this;
 
             var uris = peers.map(function (p) {
-                return p.getTCPURI();
+                return p.getUDPURI();
             });
             return new Promise(function (resolve, reject) {
                 _this4.api.addNeighbors(uris, function (error, data) {
