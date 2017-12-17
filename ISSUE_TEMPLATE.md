@@ -5,11 +5,12 @@
 ### Steps to reproduce
 
 ### Basic Info
-Nelson version:
-IRI Version:
-Operating System:
+* Operating System:
+* Node (npm) Version:
+* IRI Version:
+* Nelson version:
 
 ### Nelson Info
-Epoch:
-Cycle:
-Connected peers:
+* Epoch:
+* Cycle:
+* Connected peers:
