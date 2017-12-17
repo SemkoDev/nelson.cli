@@ -18,7 +18,7 @@ Alternatively to npm you can (and should) use yarn package manager.
 
 ### Installing
 
-Globally install nelson
+Globally install Nelson
 
 ```
 npm install -g nelson.cli
@@ -27,11 +27,11 @@ npm install -g nelson.cli
 And run it
 
 ```
-nelson --gui --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600 iotairi.tt-tec.net/16600"
+nelson --gui --getNeighbors
 ```
 
-The  ```--neighbors``` option is used to provide an entry set of trusted nelson peers for new nelson instances.
-As your nelson stays online and gets to know its neighbors, it will rely less and less on the initial entry
+The  ```--getNeighbors``` option is used to download an entry set of trusted Nelson peers for new Nelson instances.
+As your Nelson stays online and gets to know its neighbors, it will rely less and less on the initial entry
 points.
 
 The  ```--gui``` option is used to provide a simple GUI interface in the console.
@@ -40,7 +40,7 @@ Below is the list of all possible options.
 
 ## Docker
 
-Provided you have docker installed, nelson can be started as follows:
+Provided you have docker installed, Nelson can be started as follows:
 
 ```
 docker run <docker opts> romansemko/nelson <nelson command line opts>
@@ -52,8 +52,9 @@ docker run -d --net host -p 14265:14265 --name iri iotaledger/iri
 docker run -d --net host -p 18600:18600 --name nelson romansemko/nelson -r localhost -i 14265 -u 14600 -t 15600 --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600 iotairi.tt-tec.net/16600"
 ```
 
-The options passed to nelson's docker (```-r localhost -i 14265 -u 14600 -t 15600 --neighbors ...```) set IRI's
-hostname and ports (api, TCP, UDP) and the initial neighbors. Please refer below for more info on options.
+The options passed to Nelson's docker (```-r localhost -i 14265 -u 14600 -t 15600 --neighbors ...```) set IRI's
+hostname and ports (api, TCP, UDP) and the initial neighbors (You could also have used ```--getNeighbors```).
+Please refer below for more info on options.
 
 ## Building Locally
 
@@ -115,7 +116,8 @@ dataPath = data/neighbors.db
 isMaster = false
 silent = false
 gui = false
-; add as many initial nelson neighbors, as you like
+getNeighbors = https://raw.githubusercontent.com/SemkoDev/nelson.cli/master/ENTRYNODES
+; add as many initial Nelson neighbors, as you like
 neighbors[] = mainnet.deviota.com/16600
 neighbors[] = mainnet2.deviota.com/16600
 neighbors[] = mainnet3.deviota.com/16600
@@ -131,10 +133,11 @@ Some have additional short versions.
 
 | Option                 |      Description                        | Default |
 |------------------------|-----------------------------------------|---------|
-| --neighbors, -n |  space-separated list of nelson neighbors ||
+| --neighbors, -n |  space-separated list of entry Nelson neighbors ||
+| --getNeighbors |  Downloads a list of entry Nelson neighbors. If no URL is provided, will use a default URL (https://raw.githubusercontent.com/SemkoDev/nelson.cli/master/ENTRYNODES). If this option is not set, no neighbors will be downloaded. This option can be used together with ````--neighbors`` |false|
 | --apiPort, -a | Nelson API port to request current node status data|18600|
 | --apiHostname, -o | Nelson API hostname to request current node status data. Default value will only listen to local connections|127.0.0.1|
-| --port, -p | TCP port, on which to start your nelson instance|16600|
+| --port, -p | TCP port, on which to start your Nelson instance|16600|
 | --IRIHostname, -r| IRI API hostname of the running IRI node instance|localhost|
 | --IRIPort, -i| IRI API port of the running IRI node instance|14265|
 | --TCPPort, -t| IRI TCP Port|15600|

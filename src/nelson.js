@@ -19,6 +19,7 @@ process.on('unhandledRejection', (reason, p) => {
 program
     .version(version)
     .option('-n, --neighbors [value]', 'Trusted neighbors', parseNeighbors, [])
+    .option('--getNeighbors [url]', 'Download default set of neighbors', false)
     .option('-c, --cycleInterval [value]', 'Cycle interval in seconds', parseNumber, DEFAULT_OPTIONS.cycleInterval)
     .option('-e, --epochInterval [value]', 'Epoch interval in seconds', parseNumber, DEFAULT_OPTIONS.epochInterval)
     .option('--incomingMax [value]', 'Maximal incoming connection slots', parseNumber, DEFAULT_OPTIONS.incomingMax)
