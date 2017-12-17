@@ -5,9 +5,10 @@
 ### Steps to reproduce
 
 ### Basic Info
-Nelson version:
-IRI Version:
 Operating System:
+Node (npm) Version:
+IRI Version:
+Nelson version:
 
 ### Nelson Info
 Epoch:
