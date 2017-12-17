@@ -1,10 +1,24 @@
 const http = require('http');
-
+const HttpDispatcher = require('httpdispatcher');
 
 function createAPI (node) {
-    const server = http.createServer((req, res) => {
+    const dispatcher = new HttpDispatcher();
+    dispatcher.onGet('/', function(req, res) {
         res.writeHead(200, {"Content-Type": "application/json"});
         res.end(JSON.stringify(getNodeStats(node), null, 4));
+    });
+
+    dispatcher.onGet('/peers', function(req, res) {
+        res.writeHead(200, {"Content-Type": "application/json"});
+        res.end(JSON.stringify(node.list.all(), null, 4));
+    });
+
+    const server = http.createServer((request, response) => {
+        try {
+            dispatcher.dispatch(request, response);
+        } catch(err) {
+            console.log(err);
+        }
     });
     server.listen(node.opts.apiPort, node.opts.apiHostname);
 }
