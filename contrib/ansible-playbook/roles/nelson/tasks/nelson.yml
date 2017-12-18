@@ -58,6 +58,7 @@
     state: present
     user: "{{ nelson_uid.stdout }}"
     restart_policy: unless-stopped
+    network_mode: host
     image: "{{ nelson_image }}:{{ nelson_tag }}"
     ports:
       - "{{ nelson_api_port }}:{{ nelson_api_port }}"
