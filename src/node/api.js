@@ -46,12 +46,14 @@ function getNodeStats (node) {
         startDate
     } = node.heart;
     const totalPeers = node.list.all().length;
+    const isIRIHealthy = node.iri && node.iri.isHealthy;
     const connectedPeers = Array.from(node.sockets.keys())
         .filter((p) => node.sockets.get(p).readyState === 1)
         .map((p) => p.data);
 
     return {
         ready: node._ready,
+        isIRIHealthy,
         totalPeers,
         connectedPeers,
         config: {

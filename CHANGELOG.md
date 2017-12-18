@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Automatic entry nodes list downloading
 - IRI healthchecks on startup without throwing an error.
 - Actively remove peers, if the limit is trespassed at any point for any reason.
+- Improved Dockerfile.
 
 ## [0.1.11] - 2017-12-16
 

@@ -13,7 +13,7 @@ These instructions will get you a copy of the project up and running on your loc
 It is expected that you have already installed Java, downloaded the IRI jar file
 and know how to start it. The local IRI instance must have api enabled and allowing to add/remove neighbors.
 
-Nelson is running on Node.js You will have to install **node (at least version LTS 6.9.1) ** and *npm* (node package manager) on your system.
+Nelson is running on Node.js You will have to install **node (at least version LTS 6.9.1)** and *npm* (node package manager) on your system.
 Alternatively to npm you can (and should) use yarn package manager.
 
 ### Installing
@@ -149,7 +149,15 @@ Some have additional short versions.
 | --epochInterval| Interval between Nelson epochs|300|
 | --isMaster| Whether you are intending to run a master node||
 
-## Epochs and Cycles
+## Running Nelson
+
+### Initial nodes
+
+The neighbors you provide in the beginning are treated as trusted neighbors. This means that Nelson will be more inclined
+to accept contact requests from these neighbors and also to recommend them to other neighbors. They are also used as
+initial contact for a young Nelson. They provide him with other neighbors' addresses.
+
+### Epochs and Cycles
 
 Nelson grows. And with each new age (epoch), he treats his neighbors differently. A neighbor that he didn't like in the
 past, might become his best friend in the new epoch. The epoch option defines the interval in seconds between each epoch
@@ -159,11 +167,72 @@ Nelson checks upon its neighbors from time to time to make sure they are okay. S
 a word or maybe move somewhere else. Nelson wants to know, with whom he should keep in contact. Each cycle Nelson pings
 the neighbors, to make sure they are okay. You can control the cycle interval with the ```cycleInterval``` option.
 
-## Initial nodes
+### API
 
-The neighbors you provide in the beginning are treated as trusted neighbors. This means that Nelson will be more inclined
-to accept contact requests from these neighbors and also to recommend them to other neighbors. They are also used as
-initial contact for a young Nelson. They provide him with other neighbors' addresses.
+Nelson comes with a simple API to get its current status:
+
+```
+# Replace the port, if you changed it when starting Nelson:
+curl http://localhost:18600
+
+# Answer:
+{
+    "ready": true,
+    "totalPeers": 200,
+    "connectedPeers": [
+        {
+            "hostname": "xxxxxxxxxxxxxxx",
+            "ip": "xxxxxxxxxxxxxxxx",
+            "port": 16600,
+            "TCPPort": 15600,
+            "UDPPort": 14600,
+            "seen": 1,
+            "connected": 50,
+            "tried": 0,
+            "weight": 0.75,
+            "dateTried": "2017-12-18T07:58:10.614Z",
+            "dateLastConnected": "2017-12-18T07:58:10.705Z",
+            "dateCreated": "2017-12-17T00:07:16.787Z",
+            "isTrusted": false,
+            "_id": "pOsnVKeGtWufM6AI",
+            "nelsonID": "544a0355"
+        },
+        ...
+    ],
+    "config": {
+        "cycleInterval": 60,
+        "epochInterval": 900,
+        "beatInterval": 10,
+        "dataPath": "/data/neighbors.db",
+        "port": 16600,
+        "apiPort": 18600,
+        "IRIPort": 14265,
+        "TCPPort": 15777,
+        "UDPPort": 14777,
+        "isMaster": false,
+        "temporary": false
+    },
+    "heart": {
+        "lastCycle": "2017-12-18T08:10:07.806Z",
+        "lastEpoch": "2017-12-18T08:01:02.967Z",
+        "personality": {
+            "id": "d856113128efbb33d313f7a5bd2c6befa40923544a5ae478613e4ac4c0cd0314341f1b4c6fcc30fd5cfe08a1db709a2f",
+            "publicId": "d8561131",
+            "feature": "e"
+        },
+        "currentCycle": 1944,
+        "currentEpoch": 130,
+        "startDate": "2017-12-16T23:40:04.615Z"
+    }
+```
+
+You can also get the full list of known peers:
+
+```
+curl http://localhost:18600/peers
+```
+
+## FAQ
 
 ### Help! Nelson isn't connecting to neighbors!
 
@@ -177,6 +246,29 @@ The same happens to your own Nelson instance. It might deny contact from new nei
 The less trusted and less known a neighbor is, the less likely your Nelson will contact him. This is a security measure
 to slowly structure the network and give more weight to old, trusted neighborhood. You can read more about it in the
 Nelson's release article: https://medium.com/deviota/carriota-nelson-in-a-nutshell-1ee5317d8f19
+
+### Nelson is still not connecting!
+
+Make sure that Nelson's port (default: 16600) is not firewalled.
+
+### Nelson connects to the neighbors, but I am not getting any transactions
+
+Make sure that you provided the correct TCP/UDP IRI ports to Nelson. If your ports differ from the defaults
+(TCP: 15600 and UDP: 14600) you have to provide them!
+
+### Nelson constantly connects/disconnects
+
+Nelson generates a lot of log output. Each handshake try and fail generates at least 3 lines of logs:
+
+- Connecting
+- Closing connection
+- Removing neighbor from IRI (although non has been added, yet).
+
+This is Normal.
+
+### I have too many neighbors
+
+Nelson adds up to 10/11 additional neighbors. If you have a lot of "manual" neighbors, this might be too much.
 
 ## Monitor
 There is a simple Nelson http server/monitor available at: https://github.com/SemkoDev/nelson.mon
@@ -224,6 +316,9 @@ There are some open TODO's in the source code. Most urging are:
 
 - node tests: tested using simulation tools (will be published separately), but some Jest tests would be nice.
 - structural/organizational work: linting, editor config, contributions specs
+- Throttling of incoming requests.
+- Load balancing: running a Nelson swarm behind a balancer. How?
+- Use static IDs to identify nodes instead of static IPs. Need something similar to public/private keys sharing.
 - etc.?
 
 Any help welcome!
