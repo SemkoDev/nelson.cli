@@ -15,4 +15,5 @@ COPY --from=builder /usr/local/lib/node_modules /usr/local/lib/node_modules
 EXPOSE 16600
 EXPOSE 18600
 
+CMD ["/usr/local/bin/nelson"]
 ENTRYPOINT ["/usr/local/bin/nelson"]

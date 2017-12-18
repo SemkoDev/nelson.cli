@@ -64,18 +64,22 @@ var IRI = function (_Base) {
         value: function start() {
             var _this2 = this;
 
-            return new Promise(function (resolve, reject) {
-                _this2.api.getNodeInfo(function (error) {
-                    if (!error) {
-                        _this2._isStarted = true;
-                        _this2.isHealthy = true;
-                        // TODO: make ticker wait for result, like in the heart.
-                        _this2.ticker = setInterval(_this2._tick, 15000);
-                        resolve(_this2);
-                    } else {
-                        reject(error);
-                    }
-                });
+            return new Promise(function (resolve) {
+                var getNodeInfo = function getNodeInfo() {
+                    return _this2.api.getNodeInfo(function (error) {
+                        if (!error) {
+                            _this2._isStarted = true;
+                            _this2.isHealthy = true;
+                            // TODO: make ticker wait for result, like in the heart.
+                            _this2.ticker = setInterval(_this2._tick, 15000);
+                            resolve(_this2);
+                        } else {
+                            _this2.log(('IRI not ready on ' + _this2.opts.hostname + ':' + _this2.opts.port + ', retrying...').yellow);
+                            setTimeout(getNodeInfo, 5000);
+                        }
+                    });
+                };
+                getNodeInfo();
             });
         }
     }, {
