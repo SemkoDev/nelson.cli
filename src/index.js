@@ -52,7 +52,7 @@ module.exports = {
                         return null;
                     }
                 }).filter(n => n);
-                opts.neighbors = [ ...opts.neighbors, ...neighbors ];
+                opts.neighbors = [ ...(opts.neighbors ? opts.neighbors : []), ...neighbors ];
                 init(opts);
             });
         }
