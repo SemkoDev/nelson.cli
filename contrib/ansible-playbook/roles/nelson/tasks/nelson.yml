@@ -1,0 +1,81 @@
+- name: set variables centos/redhat
+  set_fact:
+    systemd_dir: /usr/lib/systemd/system
+    config_dir: /etc/sysconfig
+  when: ansible_distribution == 'CentOS'
+
+- name: set variables debian/ubuntu
+  set_fact:
+    systemd_dir: /lib/systemd/system
+    config_dir: /etc/default
+  when: ansible_distribution == 'Ubuntu'
+
+- name: add nelson user
+  user:
+    name: "{{ nelson_username }}"
+    shell: /sbin/nologin
+    createhome: no
+    home: "{{ nelson_datadir }}"
+  tags:
+    - nelson_user
+
+- name: get nelson user uid
+  shell: "echo -n $(id -u {{ nelson_username }})" 
+  changed_when: false
+  register: nelson_uid
+
+- name: create nelson data and config directory
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ nelson_username }}"
+    group: "{{ nelson_username }}"
+    mode: 0700
+  with_items:
+    - "{{ nelson_configdir }}"
+    - "{{ nelson_datadir }}"
+
+- name: copy nelson config
+  template:
+    src: "templates/config.ini.j2"
+    dest: "{{ nelson_configdir }}/config.ini"
+    owner: "{{ nelson_username }}"
+    group: "{{ nelson_username }}"
+    mode: 0600
+  notify:
+    - restart nelson
+
+- name: copy systemd service file
+  template:
+    src: files/nelson.service
+    dest: "{{ systemd_dir }}/nelson.service"
+  notify:
+    - reload systemd
+
+- name: Create nelson container
+  docker_container:
+    name: nelson
+    state: present
+    user: "{{ nelson_uid.stdout }}"
+    restart_policy: unless-stopped
+    network_mode: host
+    image: "{{ nelson_image }}:{{ nelson_tag }}"
+    ports:
+      - "{{ nelson_api_port }}:{{ nelson_api_port }}"
+      - "{{ nelson_tcp_port }}:{{ nelson_tcp_port }}"
+    volumes:
+      - "{{ nelson_datadir }}:/var/lib/nelson/data:Z"
+      - "{{ nelson_configdir }}:/etc/nelson:Z"
+    env:
+      NELSON_CONFIG: "{{ nelson_configdir }}/config.ini"
+  tags:
+    - nelson_create_container
+
+- name: flush handlers
+  meta: flush_handlers
+
+- name: ensure nelson started and enabled
+  systemd:
+    name: nelson.service
+    state: started
+    enabled: yes

@@ -1,0 +1,5 @@
+[fullnode]
+# Here the host on which to run the playbook on.
+# If using a remote host use either IP or a resolvable name.
+# Also, remove the ansible_connection=local if a remote host.
+localhost ansible_connection=local
