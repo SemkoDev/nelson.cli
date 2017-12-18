@@ -13,6 +13,11 @@ function createAPI (node) {
         res.end(JSON.stringify(node.list.all(), null, 4));
     });
 
+    dispatcher.onGet('/peer-stats', function(req, res) {
+        res.writeHead(200, {"Content-Type": "application/json"});
+        res.end(JSON.stringify(getSummary(node), null, 4));
+    });
+
     const server = http.createServer((request, response) => {
         try {
             dispatcher.dispatch(request, response);
@@ -76,6 +81,32 @@ function getNodeStats (node) {
             currentCycle,
             currentEpoch,
             startDate
+        }
+    }
+}
+
+function getSummary (node) {
+    const now = new Date();
+    const hour = 3600000;
+    const hourAgo = new Date(now - hour);
+    const fourAgo = new Date(now - (hour * 4));
+    const twelveAgo = new Date(now - (hour * 12));
+    const dayAgo = new Date(now - (hour * 24));
+    const weekAgo = new Date(now - (hour * 24 * 7));
+    return {
+        newNodes: {
+            hourAgo: node.list.all().filter(p => p.data.dateCreated >= hourAgo).length,
+            fourAgo: node.list.all().filter(p => p.data.dateCreated >= fourAgo).length,
+            twelveAgo: node.list.all().filter(p => p.data.dateCreated >= twelveAgo).length,
+            dayAgo: node.list.all().filter(p => p.data.dateCreated >= dayAgo).length,
+            weekAgo: node.list.all().filter(p => p.data.dateCreated >= weekAgo).length,
+        },
+        activeNodes: {
+            hourAgo: node.list.all().filter(p => p.data.dateLastConnected >= hourAgo).length,
+            fourAgo: node.list.all().filter(p => p.data.dateLastConnected >= fourAgo).length,
+            twelveAgo: node.list.all().filter(p => p.data.dateLastConnected >= twelveAgo).length,
+            dayAgo: node.list.all().filter(p => p.data.dateLastConnected >= dayAgo).length,
+            weekAgo: node.list.all().filter(p => p.data.dateLastConnected >= weekAgo).length,
         }
     }
 }

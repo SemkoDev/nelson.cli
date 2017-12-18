@@ -97,6 +97,9 @@ To use a configuration file, run Nelson with ```--config``` option:
 
 ```
 nelson --config ./config.ini
+
+# Alternatively, set an environment variable:
+NELSON_CONFIG= ./config.ini nelson
 ```
 
 You can provide one or more of the following options in your ini file. Example:
@@ -230,6 +233,30 @@ You can also get the full list of known peers:
 
 ```
 curl http://localhost:18600/peers
+```
+
+Or short stats about your known peers:
+
+```
+curl http://localhost:18600/peers
+
+#Output:
+{
+    "newNodes": {
+        "hourAgo": 43,
+        "fourAgo": 275,
+        "twelveAgo": 733,
+        "dayAgo": 1825,
+        "weekAgo": 2466
+    },
+    "activeNodes": {
+        "hourAgo": 133,
+        "fourAgo": 463,
+        "twelveAgo": 950,
+        "dayAgo": 2133,
+        "weekAgo": 2257
+    }
+}
 ```
 
 ## FAQ
