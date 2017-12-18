@@ -1,11 +1,26 @@
-"use strict";
+'use strict';
 
 var http = require('http');
+var HttpDispatcher = require('httpdispatcher');
 
 function createAPI(node) {
-    var server = http.createServer(function (req, res) {
+    var dispatcher = new HttpDispatcher();
+    dispatcher.onGet('/', function (req, res) {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify(getNodeStats(node), null, 4));
+    });
+
+    dispatcher.onGet('/peers', function (req, res) {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(node.list.all(), null, 4));
+    });
+
+    var server = http.createServer(function (request, response) {
+        try {
+            dispatcher.dispatch(request, response);
+        } catch (err) {
+            console.log(err);
+        }
     });
     server.listen(node.opts.apiPort, node.opts.apiHostname);
 }
@@ -32,6 +47,7 @@ function getNodeStats(node) {
         startDate = _node$heart.startDate;
 
     var totalPeers = node.list.all().length;
+    var isIRIHealthy = node.iri && node.iri.isHealthy;
     var connectedPeers = Array.from(node.sockets.keys()).filter(function (p) {
         return node.sockets.get(p).readyState === 1;
     }).map(function (p) {
@@ -40,6 +56,7 @@ function getNodeStats(node) {
 
     return {
         ready: node._ready,
+        isIRIHealthy: isIRIHealthy,
         totalPeers: totalPeers,
         connectedPeers: connectedPeers,
         config: {

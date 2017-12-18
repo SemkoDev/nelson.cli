@@ -89,6 +89,16 @@ function isSameMajorVersion(otherVersion) {
     return version.split('.')[0] === otherVersion.split('.')[0];
 }
 
+/**
+ * Returns whether the provided string is a valid Nelson neighbor representation
+ * @param str
+ * @returns {boolean}
+ */
+function validNeighbor(str) {
+    var tokens = str.split('/');
+    return tokens.length >= 2 && tokens.length <= 5 && Number.isInteger(parseInt(tokens[1])) && (!tokens[2] || Number.isInteger(parseInt(tokens[2]))) && (!tokens[3] || Number.isInteger(parseInt(tokens[3]))) && (!tokens[4] || !!parseFloat(tokens[4]));
+}
+
 module.exports = {
     getIP: getIP,
     createIdentifier: createIdentifier,
@@ -97,5 +107,6 @@ module.exports = {
     getSecondsPassed: getSecondsPassed,
     getVersion: getVersion,
     isSameMajorVersion: isSameMajorVersion,
-    shuffleArray: shuffleArray
+    shuffleArray: shuffleArray,
+    validNeighbor: validNeighbor
 };
