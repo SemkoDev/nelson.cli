@@ -59,7 +59,7 @@ module.exports = _extends({
                 }).filter(function (n) {
                     return n;
                 });
-                opts.neighbors = [].concat(_toConsumableArray(opts.neighbors), _toConsumableArray(neighbors));
+                opts.neighbors = [].concat(_toConsumableArray(opts.neighbors ? opts.neighbors : []), _toConsumableArray(neighbors));
                 init(opts);
             });
         } else {
