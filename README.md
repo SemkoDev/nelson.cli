@@ -16,6 +16,12 @@ and know how to start it. The local IRI instance must have api enabled and allow
 Nelson is running on Node.js You will have to install **node (at least version LTS 6.9.1)** and *npm* (node package manager) on your system.
 Alternatively to npm you can (and should) use yarn package manager.
 
+#### WARNING FOR UBUNTU
+
+Ubuntu 16.04 apt comes with an **outdated Node version (4.X)**. You need to install the latest version separately:
+
+https://nodejs.org/en/download/package-manager/
+
 ### Installing
 
 Globally install Nelson
