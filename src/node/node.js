@@ -634,19 +634,32 @@ class Node extends Base {
      * @private
      */
     _onTick () {
-        // Try connecting more peers. Master nodes do not actively connect (no outgoing connections).
         terminal.nodes({
             nodes: this.list.all(),
             connected: Array.from(this.sockets.keys())
                 .filter((p) => this.sockets.get(p).readyState === 1)
                 .map((p) => p.data)
         });
-        return !this.opts.isMaster && this._getOutgoingSlotsCount() < this.opts.outgoingMax
-            ? new Promise((resolve) => {
+
+        const maxSlots = this.opts.isMaster
+            ? this.opts.incomingMax + this.opts.outgoingMax
+            : this.opts.incomingMax;
+
+        // Try connecting more peers. Master nodes do not actively connect (no outgoing connections).
+        if (!this.opts.isMaster && this._getOutgoingSlotsCount() < this.opts.outgoingMax) {
+            return new Promise((resolve) => {
                 this.reconnectPeers();
                 resolve(false);
             })
-            : Promise.resolve(false);
+        }
+
+        // If for some reason the maximal nodes were overstepped, drop one.
+        else if (this._getIncomingSlotsCount() > maxSlots) {
+            return this._dropRandomNeighbors(1, true).then(() => false);
+        }
+        else {
+            return Promise.resolve(false);
+        }
     }
 
     /**

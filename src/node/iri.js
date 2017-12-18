@@ -37,8 +37,8 @@ class IRI extends Base {
      * @returns {Promise<IRI>}
      */
     start () {
-        return new Promise((resolve, reject) => {
-            this.api.getNodeInfo((error) => {
+        return new Promise((resolve) => {
+            const getNodeInfo = () => this.api.getNodeInfo((error) => {
                 if (!error) {
                     this._isStarted = true;
                     this.isHealthy = true;
@@ -46,9 +46,11 @@ class IRI extends Base {
                     this.ticker = setInterval(this._tick, 15000);
                     resolve(this);
                 } else {
-                    reject(error);
+                    this.log(`IRI not ready on ${this.opts.hostname}:${this.opts.port}, retrying...`.yellow);
+                    setTimeout(getNodeInfo, 5000);
                 }
             });
+            getNodeInfo();
         })
     }
 
