@@ -7,6 +7,12 @@
   with_items:
     - apt-transport-https
     - ca-certificates
+    - jq
+    - ufw
+    - wget
+    - lsof
+    - curl
+    - pv
 
 - name: Add Docker apt key
   apt_key:
