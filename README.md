@@ -270,6 +270,34 @@ This is Normal.
 
 Nelson adds up to 10/11 additional neighbors. If you have a lot of "manual" neighbors, this might be too much.
 
+### I am getting an error:
+
+```
+ usr/bin/env: »node“ Unknown command...
+```
+
+Make sure you have node v.6.9.1 or higher installed on your machine.
+
+### I am getting an error:
+
+```
+module.exports = (externalConfig = {}) => {
+                                ^
+
+SyntaxError: Unexpected token =
+   at exports.runInThisContext (vm.js:53:16)
+   at Module._compile (module.js:374:25)
+   at Object.Module._extensions..js (module.js:417:10)
+   at Module.load (module.js:344:32)
+   at Function.Module._load (module.js:301:12)
+   at Module.require (module.js:354:17)
+   at require (internal/module.js:12:17)
+   at Object.<anonymous> (/usr/local/lib/node_modules/nelson.cli/node_modules/external-ip/index.js:2:18)
+   at Module._compile (module.js:410:26)
+   at Object.Module._extensions..js (module.js:417:10)
+```
+Your node version is outdated. Make sure you have node v.6.9.1 or higher installed on your machine.
+
 ## Monitor
 There is a simple Nelson http server/monitor available at: https://github.com/SemkoDev/nelson.mon
 This is work in progress, so please bear with the simplicity.
