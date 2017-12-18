@@ -15,6 +15,11 @@ function createAPI(node) {
         res.end(JSON.stringify(node.list.all(), null, 4));
     });
 
+    dispatcher.onGet('/peer-stats', function (req, res) {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify(getSummary(node), null, 4));
+    });
+
     var server = http.createServer(function (request, response) {
         try {
             dispatcher.dispatch(request, response);
@@ -79,6 +84,52 @@ function getNodeStats(node) {
             currentCycle: currentCycle,
             currentEpoch: currentEpoch,
             startDate: startDate
+        }
+    };
+}
+
+function getSummary(node) {
+    var now = new Date();
+    var hour = 3600000;
+    var hourAgo = new Date(now - hour);
+    var fourAgo = new Date(now - hour * 4);
+    var twelveAgo = new Date(now - hour * 12);
+    var dayAgo = new Date(now - hour * 24);
+    var weekAgo = new Date(now - hour * 24 * 7);
+    return {
+        newNodes: {
+            hourAgo: node.list.all().filter(function (p) {
+                return p.data.dateCreated >= hourAgo;
+            }).length,
+            fourAgo: node.list.all().filter(function (p) {
+                return p.data.dateCreated >= fourAgo;
+            }).length,
+            twelveAgo: node.list.all().filter(function (p) {
+                return p.data.dateCreated >= twelveAgo;
+            }).length,
+            dayAgo: node.list.all().filter(function (p) {
+                return p.data.dateCreated >= dayAgo;
+            }).length,
+            weekAgo: node.list.all().filter(function (p) {
+                return p.data.dateCreated >= weekAgo;
+            }).length
+        },
+        activeNodes: {
+            hourAgo: node.list.all().filter(function (p) {
+                return p.data.dateLastConnected >= hourAgo;
+            }).length,
+            fourAgo: node.list.all().filter(function (p) {
+                return p.data.dateLastConnected >= fourAgo;
+            }).length,
+            twelveAgo: node.list.all().filter(function (p) {
+                return p.data.dateLastConnected >= twelveAgo;
+            }).length,
+            dayAgo: node.list.all().filter(function (p) {
+                return p.data.dateLastConnected >= dayAgo;
+            }).length,
+            weekAgo: node.list.all().filter(function (p) {
+                return p.data.dateLastConnected >= weekAgo;
+            }).length
         }
     };
 }

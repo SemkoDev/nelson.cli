@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.2] - 2017-12-18
+
 ### Adds
 - peer-stats to API
 - Checking of NELSON_CONFIG env var for configuration path.
