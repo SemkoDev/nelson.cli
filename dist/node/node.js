@@ -835,7 +835,6 @@ var Node = function (_Base) {
         value: function _onTick() {
             var _this16 = this;
 
-            // Try connecting more peers. Master nodes do not actively connect (no outgoing connections).
             terminal.nodes({
                 nodes: this.list.all(),
                 connected: Array.from(this.sockets.keys()).filter(function (p) {
@@ -844,10 +843,25 @@ var Node = function (_Base) {
                     return p.data;
                 })
             });
-            return !this.opts.isMaster && this._getOutgoingSlotsCount() < this.opts.outgoingMax ? new Promise(function (resolve) {
-                _this16.reconnectPeers();
-                resolve(false);
-            }) : Promise.resolve(false);
+
+            var maxSlots = this.opts.isMaster ? this.opts.incomingMax + this.opts.outgoingMax : this.opts.incomingMax;
+
+            // Try connecting more peers. Master nodes do not actively connect (no outgoing connections).
+            if (!this.opts.isMaster && this._getOutgoingSlotsCount() < this.opts.outgoingMax) {
+                return new Promise(function (resolve) {
+                    _this16.reconnectPeers();
+                    resolve(false);
+                });
+            }
+
+            // If for some reason the maximal nodes were overstepped, drop one.
+            else if (this._getIncomingSlotsCount() > maxSlots) {
+                    return this._dropRandomNeighbors(1, true).then(function () {
+                        return false;
+                    });
+                } else {
+                    return Promise.resolve(false);
+                }
         }
 
         /**

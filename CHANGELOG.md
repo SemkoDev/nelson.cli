@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.0] - 2017-12-18
+
 ### Added
 - Automatic entry nodes list downloading
 - IRI healthchecks on startup without throwing an error.
