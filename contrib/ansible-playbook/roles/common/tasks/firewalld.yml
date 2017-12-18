@@ -1,0 +1,58 @@
+- name: ensure firewalld started and enabled
+  systemd:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: allow iri tcp port in firewall
+  firewalld:
+    port: "{{ iri_tcp_port }}/tcp"
+    permanent: true
+    state: enabled
+    immediate: yes
+
+- name: allow iri udp port in firewall
+  firewalld:
+    port: "{{ iri_udp_port }}/udp"
+    permanent: true
+    state: enabled
+    immediate: yes
+
+- name: allow iri api port in firewall
+  firewalld:
+    port: "{{ iri_api_port }}/tcp"
+    permanent: true
+    state: enabled
+    immediate: yes
+  when: api_port_remote is defined and api_port_remote
+
+- name: ensure selinux enabled
+  selinux:
+    policy: targeted
+    state: enforcing
+  register: selinux_enabled
+
+- name: check selinux not disabled
+  shell: "getenforce"
+  changed_when: false
+  register: getenforce
+
+- name: exit and notify reboot required if selinux got enabled
+  block:
+    - name: exit and notify reboot required to get selinux enabled
+      debug:
+        msg: "** NOTE *** Selinux was disabled on this host. It has now been enabled. Please reboot this host `shutdown -r now` and re-run this playbook."
+    - meta: end_play
+  when: selinux_enabled is defined and selinux_enabled.changed
+
+- name: exit and notify selinux not enabled
+  block:
+    - name: exit and notify selinux not enabled
+      debug:
+        msg: >
+             ** NOTE ** The system might require a reboot to get selinux enabled.
+                        Check /etc/sysconfig/selinux if selinux is `enforcing`.
+                        If it is, the host needs to be rebooted `shutdown -r now`.
+                        Refusing to continue.
+    - meta: end_play
+  when: "getenforce is defined and 'stdout' in getenforce and 'Disabled' in getenforce.stdout"

@@ -1,0 +1,15 @@
+- name: allow nelson tcp port in firewall
+  firewalld:
+    port: "{{ nelson_tcp_port }}/tcp"
+    permanent: true
+    state: enabled
+    immediate: yes
+  when: ansible_distribution == 'CentOS'
+
+- name: allow nelson tcp port in firewall
+  ufw:
+    rule: allow
+    direction: in
+    proto: tcp
+    port: "{{ nelson_tcp_port }}"
+  when: ansible_distribution == 'Ubuntu'
