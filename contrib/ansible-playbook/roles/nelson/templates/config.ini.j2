@@ -1,0 +1,19 @@
+[nelson]
+cycleInterval = 60
+epochInterval = 300
+apiPort = {{ nelson_api_port }}
+apiHostname = {{ nelson_iri_host }}
+port = {{ nelson_tcp_port }}
+IRIHostname = {{ nelson_bind_address }}
+IRIPort = {{ iri_api_port }}
+TCPPort = {{ iri_tcp_port }}
+UDPPort = {{ iri_udp_port }}
+dataPath = {{ nelson_datadir }}/data/neighbors.db
+isMaster = false
+silent = false
+gui = false
+; add as many initial nelson neighbors, as you like
+neighbors[] = mainnet.deviota.com/16600
+neighbors[] = mainnet2.deviota.com/16600
+neighbors[] = mainnet3.deviota.com/16600
+neighbors[] = iotairi.tt-tec.net/16600

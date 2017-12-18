@@ -13,6 +13,7 @@
     - lsof
     - curl
     - pv
+    - python-pip
 
 - name: Add Docker apt key
   apt_key:

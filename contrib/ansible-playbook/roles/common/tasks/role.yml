@@ -11,3 +11,17 @@
 - import_tasks: install.yml
   tags:
     - common_install
+
+- import_tasks: setup_pip.yml
+  tags:
+    - common_setup_pip
+
+- import_tasks: firewalld.yml
+  tags:
+    - common_firewalld
+  when: ansible_distribution == 'CentOS'
+
+- import_tasks: ufw.yml
+  tags:
+    - common_ufw
+  when: ansible_distribution == 'Ubuntu'

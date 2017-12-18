@@ -13,6 +13,7 @@
     - lsof
     - jq
     - pv
+    - python-pip
 
 - name: Add Docker GPG key
   rpm_key:
