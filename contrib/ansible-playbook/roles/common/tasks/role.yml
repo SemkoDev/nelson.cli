@@ -1,0 +1,13 @@
+- import_tasks: setup_apt.yml
+  tags:
+    - common_setup_apt
+  when: ansible_distribution == 'Ubuntu'
+
+- import_tasks: setup_yum.yml
+  tags:
+    - common_setup_yum
+  when: ansible_distribution == 'CentOS'
+
+- import_tasks: install.yml
+  tags:
+    - common_install
