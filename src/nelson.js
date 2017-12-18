@@ -39,4 +39,6 @@ program
     .option('--config [value]', 'Config file path', null)
     .parse(process.argv);
 
-initNode(program.config ? ini.parse(fs.readFileSync(program.config, 'utf-8')).nelson : program);
+const configPath = process.env.NELSON_CONFIG || program.config;
+
+initNode(configPath ? ini.parse(fs.readFileSync(configPath, 'utf-8')).nelson : program);
