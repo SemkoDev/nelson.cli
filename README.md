@@ -238,7 +238,7 @@ curl http://localhost:18600/peers
 Or short stats about your known peers:
 
 ```
-curl http://localhost:18600/peers
+curl http://localhost:18600/peer-stats
 
 #Output:
 {
