@@ -16,6 +16,12 @@ and know how to start it. The local IRI instance must have api enabled and allow
 Nelson is running on Node.js You will have to install **node (at least version LTS 6.9.1)** and *npm* (node package manager) on your system.
 Alternatively to npm you can (and should) use yarn package manager.
 
+#### WARNING FOR UBUNTU
+
+Ubuntu 16.04 apt comes with an **outdated Node version (4.X)**. You need to install the latest version separately:
+
+https://nodejs.org/en/download/package-manager/
+
 ### Installing
 
 Globally install Nelson
@@ -49,7 +55,7 @@ docker run <docker opts> romansemko/nelson <nelson command line opts>
 Hence, running IRI with Nelson can be done with two simple commands:
 ```
 docker run -d --net host -p 14265:14265 --name iri iotaledger/iri
-docker run -d --net host -p 18600:18600 --name nelson romansemko/nelson -r localhost -i 14265 -u 14600 -t 15600 --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600 iotairi.tt-tec.net/16600"
+docker run -d --net host -p 18600:18600 --name nelson romansemko/nelson -r localhost -i 14265 -u 14777 -t 15777 --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600 iotairi.tt-tec.net/16600"
 ```
 
 The options passed to Nelson's docker (```-r localhost -i 14265 -u 14600 -t 15600 --neighbors ...```) set IRI's
@@ -126,6 +132,14 @@ neighbors[] = mainnet2.deviota.com/16600
 neighbors[] = mainnet3.deviota.com/16600
 neighbors[] = iotairi.tt-tec.net/16600
 ```
+
+#### WARNING ON NEIGHBORS:
+
+These are *NOT* IRI neighbor addresses, but the *Nelson* addresses. If you have used them erroneously
+as Nelson addresses in the past, chances are that Nelson will think these "static" neighbors are his and
+will keep removing them from IRI.
+
+To Fix this, just delete data/neighbors.db and start Nelson fresh with just ```--getNeighbors```
 
 ### Command line options
 
@@ -266,7 +280,7 @@ curl http://localhost:18600/peer-stats
 Depending on Nelson's age/epoch he might or might not like a certain neighbor. That's okay. Just wait for the neighbor
 to mature and he might accept you into his circle.
 
-This is more acute for new nodes without any neighbors at all. 
+This is more acute for new nodes without any neighbors at all.
 You might need to wait for quite some time to be accepted into the network.
 
 The same happens to your own Nelson instance. It might deny contact from new neighbors or those he doesn't know well.
@@ -342,7 +356,7 @@ This project is licensed under the ICS License - see the [LICENSE.md](LICENSE.md
 
 ### Donations
 
-**Donations always welcome**: 
+**Donations always welcome**:
 
 ```
 IQJGHISHRMV9LEAEMSUIXMFTLLZIJWXIQOAZLGNXCFY9BLPTFTBNBPGU9YQFQKC9GEBPNNFO9DMGKYUECCG9ZSHMRW
@@ -363,7 +377,7 @@ The first value tells Nelson to run in "master" mode. The second decreases the e
 the connected nodes are rotated faster, giving space to new nodes.
 
 You can contact the maintainer of this repo (http://www.twitter.com/RomanSemko) to get your node
-included here. An initiative for donations to entry nodes is under way. 
+included here. An initiative for donations to entry nodes is under way.
 
 ## TODO
 
