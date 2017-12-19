@@ -32,7 +32,7 @@ var Base = function () {
         value: function log() {
             if (!this.opts || !this.opts.silent || arguments[0] === '!!') {
                 var date = new Date();
-                var timeString = (date.toLocaleTimeString() + '.' + date.getMilliseconds()).dim;
+                var timeString = (date.toLocaleTimeString() + '.' + this.formatMilliseconds(date.getMilliseconds())).dim;
                 var space = this.opts.logIdent.length > this.opts.logIdentWidth ? '\n' + ' '.repeat(this.opts.logIdentWidth) : ' '.repeat(this.opts.logIdentWidth - this.opts.logIdent.length);
                 var logIdent = ('' + this.opts.logIdent + space).dim.bold;
 
@@ -43,6 +43,14 @@ var Base = function () {
         key: 'formatNode',
         value: function formatNode(hostname, port) {
             return (hostname + ':' + port).cyan;
+        }
+    }, {
+        key: 'formatMilliseconds',
+        value: function formatMilliseconds(milliseconds) {
+            var formatted = milliseconds / 1000;
+            formatted = formatted.toFixed(3);
+            formatted = formatted.toString();
+            return formatted.slice(2);
         }
     }, {
         key: 'start',
