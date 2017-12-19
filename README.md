@@ -55,7 +55,7 @@ docker run <docker opts> romansemko/nelson <nelson command line opts>
 Hence, running IRI with Nelson can be done with two simple commands:
 ```
 docker run -d --net host -p 14265:14265 --name iri iotaledger/iri
-docker run -d --net host -p 18600:18600 --name nelson romansemko/nelson -r localhost -i 14265 -u 14600 -t 15600 --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600 iotairi.tt-tec.net/16600"
+docker run -d --net host -p 18600:18600 --name nelson romansemko/nelson -r localhost -i 14265 -u 14777 -t 15777 --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600 iotairi.tt-tec.net/16600"
 ```
 
 The options passed to Nelson's docker (```-r localhost -i 14265 -u 14600 -t 15600 --neighbors ...```) set IRI's
@@ -132,6 +132,14 @@ neighbors[] = mainnet2.deviota.com/16600
 neighbors[] = mainnet3.deviota.com/16600
 neighbors[] = iotairi.tt-tec.net/16600
 ```
+
+#### WARNING ON NEIGHBORS:
+
+These are *NOT* IRI neighbor addresses, but the *Nelson* addresses. If you have used them erroneously
+as Nelson addresses in the past, chances are that Nelson will think these "static" neighbors are his and
+will keep removing them from IRI.
+
+To Fix this, just delete data/neighbors.db and start Nelson fresh with just ```--getNeighbors```
 
 ### Command line options
 
