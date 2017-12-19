@@ -58,6 +58,14 @@
     owner: "{{ iri_username }}"
     group: "{{ iri_username }}"
 
+- name: ensure iri config dir exists
+  file:
+    path: "{{ iri_configdir }}"
+    state: directory
+    mode: 0700
+    owner: "{{ iri_username }}"
+    group: "{{ iri_username }}"
+
 - name: copy utility scripts
   copy:
     src: "files/{{ item }}"
@@ -72,32 +80,40 @@
 
 - name: copy iri systemd file
   template:
-    src: templates/iri.service.j2
+    src: files/iri.service
     dest: "{{ systemd_dir }}/iri.service"
   notify:
     - reload systemd
 
 - name: copy iri config file
-  copy:
-    src: files/iri.ini
-    dest: "{{ iri_basedir }}/iri.ini"
+  template:
+    src: templates/iri.ini
+    dest: "{{ iri_configdir }}/iri.ini"
+    owner: "{{ iri_username }}"
+    group: "{{ iri_username }}"
+  notify:
+    - restart iri
 
 - name: Create iri container
   docker_container:
     name: iri
     state: present
-    user: "{{ iri_uid.stdout }}"
+    #user: "{{ iri_uid.stdout }}"
     restart_policy: unless-stopped
     network_mode: host
     image: "{{ iri_image }}:{{ iri_tag }}"
     ports:
       - "{{ iri_api_port }}:{{ iri_api_port }}"
       - "{{ iri_tcp_port }}:{{ iri_tcp_port }}"
+      - "{{ iri_udp_port }}:{{ iri_udp_port }}/udp"
     volumes:
-      - "{{ iri_datadir }}:/var/lib/iri/data:Z"
-      - "{{ iri_configdir }}:/etc/iri:Z"
+      # - "{{ iri_basedir }}:{{ iri_basedir }}:Z"
+      # - "{{ iri_configdir }}:{{ iri_configdir }}:Z"
+      - "{{ iri_basedir }}:/iri/data:Z"
+      - "{{ iri_configdir }}:/iri/conf:ro,Z"
     env:
-      IRI_CONFIG: "{{ iri_configdir }}/config.ini"
+      IRI_CONFIG: "{{ iri_configdir }}/iri.ini"
+      MEM_LIMIT: "{{ iri_java_mem }}"
   tags:
     - iri_create_container
 

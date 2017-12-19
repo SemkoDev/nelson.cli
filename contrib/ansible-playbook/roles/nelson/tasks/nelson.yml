@@ -65,12 +65,17 @@
       - "{{ nelson_tcp_port }}:{{ nelson_tcp_port }}"
     volumes:
       - "{{ nelson_datadir }}:/var/lib/nelson/data:Z"
-      - "{{ nelson_configdir }}:/etc/nelson:Z"
+      - "{{ nelson_configdir }}:/etc/nelson:ro,Z"
     env:
       NELSON_CONFIG: "{{ nelson_configdir }}/config.ini"
   tags:
     - nelson_create_container
 
+- name: Wait max 60 seconds for iri API port to become available
+  wait_for:
+    timeout: 60
+    port: "{{ iri_api_port }}"
+                    
 - name: flush handlers
   meta: flush_handlers
 

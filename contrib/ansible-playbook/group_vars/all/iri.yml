@@ -4,12 +4,14 @@ iri_username: iri
 # Base directory where iri is installed and runs from
 iri_basedir: /var/lib/iri
 
-# The iri version to install
-iri_version: 1.4.1.2
+# IRI configuration dir
+iri_configdir: /etc/iri
 
-# This is the sha256sum of the iri version noted above. Checksum has to change to match the
-# version of the file https://github.com/iotaledger/iri/releases/download/v{version}/iri-{version}.jar
-iri_jar_checksum: 'sha256:dda215a1869b23bbe48cbaac7749cefd399c4aeff6493f3b74e1524a4d988d9f'
+# IRI docker image
+iri_image: bluedigits/iota-node 
+
+# IRI Docker image tag
+iri_tag: latest
 
 # The TCP port on which IRI listens for API calls and allows for light wallets to connect to
 iri_api_port: 14265
