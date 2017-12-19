@@ -16,6 +16,9 @@ var tmp = require('tmp');
 var _require = require('./base'),
     Base = _require.Base;
 
+var _require2 = require('./tools/utils'),
+    getIP = _require2.getIP;
+
 tmp.setGracefulCleanup();
 
 var DEFAULT_OPTIONS = {
@@ -26,9 +29,6 @@ var DEFAULT_OPTIONS = {
     logIdent: 'IRI',
     onHealthCheck: function onHealthCheck(isHealthy, neighbors) {}
 };
-
-// TODO: Regular IRI health-checks needed. Prevent Nelson from connecting if IRI is down.
-// TODO: regular neighbors check. If IRI removed some, disconnect the related nelson nodes.
 
 /**
  * Class responsible to RUN and communicate with local IRI instance
@@ -50,6 +50,7 @@ var IRI = function (_Base) {
         _this._tick = _this._tick.bind(_this);
         _this.ticker = null;
         _this.isHealthy = false;
+        _this.staticNeighbors = [];
         return _this;
     }
 
@@ -66,13 +67,20 @@ var IRI = function (_Base) {
 
             return new Promise(function (resolve) {
                 var getNodeInfo = function getNodeInfo() {
-                    return _this2.api.getNodeInfo(function (error) {
+                    return _this2.api.getNeighbors(function (error, neighbors) {
                         if (!error) {
-                            _this2._isStarted = true;
-                            _this2.isHealthy = true;
-                            // TODO: make ticker wait for result, like in the heart.
-                            _this2.ticker = setInterval(_this2._tick, 15000);
-                            resolve(_this2);
+                            var addresses = neighbors.map(function (n) {
+                                return n.address.split(':')[0];
+                            });
+                            Promise.all(addresses.map(getIP)).then(function (ips) {
+                                _this2._isStarted = true;
+                                _this2.isHealthy = true;
+                                _this2.staticNeighbors = ips.concat(addresses);
+                                _this2.log('Static neighbors: ' + addresses);
+                                // TODO: make ticker wait for result, like in the heart.
+                                _this2.ticker = setInterval(_this2._tick, 15000);
+                                resolve(_this2);
+                            });
                         } else {
                             _this2.log(('IRI not ready on ' + _this2.opts.hostname + ':' + _this2.opts.port + ', retrying...').yellow);
                             setTimeout(getNodeInfo, 5000);
@@ -85,7 +93,11 @@ var IRI = function (_Base) {
     }, {
         key: 'end',
         value: function end() {
+            this.isHealthy = false;
+            this._isStarted = false;
+            this.staticNeighbors = [];
             this.ticker && clearTimeout(this.ticker);
+            this.ticker = null;
         }
 
         /**
@@ -107,11 +119,25 @@ var IRI = function (_Base) {
     }, {
         key: 'isAvailable',
         value: function isAvailable() {
-            return this.isStarted() && !this._isFinished;
+            return this.isStarted() && this.isHealthy;
         }
 
         /**
-         * Removes a list of neighbors from IRI
+         * Returns whether a peer's IP or hostname is added as static neighbor in IRI.
+         * @param {Peer} peer
+         * @returns {boolean}
+         */
+
+    }, {
+        key: 'isStaticNeighbor',
+        value: function isStaticNeighbor(peer) {
+            return !!this.staticNeighbors.filter(function (n) {
+                return n === peer.data.ip || n === peer.data.hostname;
+            }).length;
+        }
+
+        /**
+         * Removes a list of neighbors from IRI, except static neighbors. Returns list of removed peers.
          * @param {Peer[]} peers
          * @returns {Promise<Peer[]>}
          */
@@ -121,7 +147,23 @@ var IRI = function (_Base) {
         value: function removeNeighbors(peers) {
             var _this3 = this;
 
-            var uris = peers.map(function (p) {
+            if (!this.isAvailable()) {
+                return Promise.reject();
+            }
+
+            var myPeers = peers.filter(function (peer) {
+                if (_this3.isStaticNeighbor(peer)) {
+                    _this3.log(('WARNING: trying to remove a static neighbor. Skipping: ' + peer.getUDPURI()).yellow);
+                    return false;
+                }
+                return true;
+            });
+
+            if (!peers.length) {
+                return Promise.resolve([]);
+            }
+
+            var uris = myPeers.map(function (p) {
                 return p.getUDPURI();
             });
             return new Promise(function (resolve, reject) {
@@ -130,8 +172,8 @@ var IRI = function (_Base) {
                         reject(err);
                         return;
                     }
-                    _this3.log('Neighbors removed (if there were any):'.red, peers.map(function (p) {
-                        return p.getNelsonURI();
+                    _this3.log('Neighbors removed (if there were any):'.red, myPeers.map(function (p) {
+                        return p.getUDPURI();
                     }));
                     resolve(peers);
                 });
@@ -149,9 +191,14 @@ var IRI = function (_Base) {
         value: function addNeighbors(peers) {
             var _this4 = this;
 
+            if (!this.isAvailable()) {
+                return Promise.reject();
+            }
+
             var uris = peers.map(function (p) {
                 return p.getUDPURI();
             });
+
             return new Promise(function (resolve, reject) {
                 _this4.api.addNeighbors(uris, function (error, data) {
                     if (error) {
@@ -176,6 +223,10 @@ var IRI = function (_Base) {
         value: function updateNeighbors(peers) {
             var _this5 = this;
 
+            if (!this.isAvailable()) {
+                return Promise.reject();
+            }
+
             if (!peers || !peers.length) {
                 return Promise.resolve([]);
             }
@@ -198,7 +249,7 @@ var IRI = function (_Base) {
         }
 
         /**
-         * Removes all IRI neighbors.
+         * Removes all IRI neighbors, except static neighbors.
          * @returns {Promise}
          */
 
@@ -207,13 +258,20 @@ var IRI = function (_Base) {
         value: function removeAllNeighbors() {
             var _this6 = this;
 
+            if (!this.isAvailable()) {
+                return Promise.reject();
+            }
+
             return new Promise(function (resolve) {
                 _this6.api.getNeighbors(function (error, neighbors) {
                     if (error) {
                         return resolve();
                     }
                     if (Array.isArray(neighbors) && neighbors.length) {
-                        return _this6.api.removeNeighbors(neighbors.map(function (n) {
+                        var toRemove = neighbors.filter(function (n) {
+                            return !_this6.staticNeighbors.includes(n.address);
+                        });
+                        return _this6.api.removeNeighbors(toRemove.map(function (n) {
                             return n.connectionType + '://' + n.address;
                         }), resolve);
                     }

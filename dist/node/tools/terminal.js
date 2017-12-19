@@ -34,10 +34,10 @@ function init(version, onExit) {
     });
 
     mainBox = blessed.box({
-        top: '50%',
+        top: '51%',
         left: 'center',
         width: '100%',
-        height: '50%',
+        height: '49%',
         content: 'Nelson Console:',
         scrollable: true,
         alwaysScroll: true,
@@ -73,8 +73,8 @@ function init(version, onExit) {
 
     peersBox = blessed.box({
         top: '0%',
-        left: '50%',
-        width: '51%',
+        left: '51%',
+        width: '50%',
         height: '51%',
         content: 'Peers'.green.bold,
         tags: true,
