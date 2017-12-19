@@ -19,7 +19,7 @@ class Base {
     log () {
         if (!this.opts || !this.opts.silent || arguments[0] === '!!') {
             const date = new Date();
-            const timeString = `${date.toLocaleTimeString()}.${formatMilliseconds(date.getMilliseconds())}`.dim;
+            const timeString = `${date.toLocaleTimeString()}.${this.formatMilliseconds(date.getMilliseconds())}`.dim;
             const space = this.opts.logIdent.length > this.opts.logIdentWidth
                 ? `\n${' '.repeat(this.opts.logIdentWidth)}`
                 : ' '.repeat(this.opts.logIdentWidth - this.opts.logIdent.length);
