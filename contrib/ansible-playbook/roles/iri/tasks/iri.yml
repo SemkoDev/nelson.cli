@@ -95,12 +95,9 @@
     dest: "{{ iri_configdir }}/iri.ini"
     owner: "{{ iri_username }}"
     group: "{{ iri_username }}"
+    force: no
   notify:
     - restart iri
-
-- name: create network for iri
-  docker_network:
-    name: "{{ iri_docker_net }}"
 
 - name: Create iri container
   docker_container:
@@ -108,8 +105,7 @@
     state: present
     user: "{{ iri_uid.stdout }}"
     restart_policy: unless-stopped
-    networks:
-      - name: "{{ iri_docker_net }}"
+    network_mode: host
     hostname: iri
     image: "{{ iri_image }}:{{ iri_tag }}"
     ports:
@@ -127,6 +123,9 @@
     - iri_create_container
   notify:
     - restart iri
+
+- name: flush handlers
+  meta: flush_handlers
 
 - name: ensure iri started and enabled
   systemd:

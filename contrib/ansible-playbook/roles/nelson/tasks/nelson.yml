@@ -42,6 +42,7 @@
     owner: "{{ nelson_username }}"
     group: "{{ nelson_username }}"
     mode: 0600
+    force: no
   notify:
     - restart nelson
 
@@ -58,9 +59,8 @@
     state: present
     user: "{{ nelson_uid.stdout }}"
     restart_policy: unless-stopped
+    network_mode: host
     hostname: nelson
-    networks:
-      - name: "{{ iri_docker_net }}"
     image: "{{ nelson_image }}:{{ nelson_tag }}"
     ports:
       - "{{ nelson_api_port }}:{{ nelson_api_port }}"
