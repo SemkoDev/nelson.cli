@@ -22,6 +22,9 @@ iri_udp_port: 14600
 # The TCP neighbor peering port
 iri_tcp_port: 14600
 
+# The docker network name for iri
+iri_docker_net: iri_net
+
 # Limit IRI memory usage
 iri_java_mem: 4096m
 

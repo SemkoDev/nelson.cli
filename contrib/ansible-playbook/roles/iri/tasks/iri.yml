@@ -98,14 +98,19 @@
   notify:
     - restart iri
 
+- name: create network for iri
+  docker_network:
+    name: "{{ iri_docker_net }}"
+
 - name: Create iri container
   docker_container:
     name: iri
     state: present
     user: "{{ iri_uid.stdout }}"
     restart_policy: unless-stopped
-    # TODO: check for other options than host networking
-    network_mode: host
+    networks:
+      - name: "{{ iri_docker_net }}"
+    hostname: iri
     image: "{{ iri_image }}:{{ iri_tag }}"
     ports:
       - "{{ iri_api_port }}:{{ iri_api_port }}"

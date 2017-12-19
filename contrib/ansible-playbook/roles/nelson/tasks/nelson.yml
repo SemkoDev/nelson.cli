@@ -58,8 +58,9 @@
     state: present
     user: "{{ nelson_uid.stdout }}"
     restart_policy: unless-stopped
-    # TODO: check for other options than host networking
-    network_mode: host
+    hostname: nelson
+    networks:
+      - name: "{{ iri_docker_net }}"
     image: "{{ nelson_image }}:{{ nelson_tag }}"
     ports:
       - "{{ nelson_api_port }}:{{ nelson_api_port }}"
@@ -71,14 +72,8 @@
       NELSON_CONFIG: "{{ nelson_configdir }}/config.ini"
   tags:
     - nelson_create_container
-
-- name: Wait max 60 seconds for iri API port to become available
-  wait_for:
-    timeout: 60
-    port: "{{ iri_api_port }}"
-                    
-- name: flush handlers
-  meta: flush_handlers
+  notify:
+    - restart nelson
 
 - name: ensure nelson started and enabled
   systemd:
