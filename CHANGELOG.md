@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2.4] - 2017-12-19
+
+### Added
+- Readme info on pm2 manager and docker volume mounting.
+
+### Changes
+- Makes Nelson ignore static neighbors completely, even if they run Nelson as well.
+
+## [0.2.3] - 2017-12-19
+
+### Added
+- Ansible playbook for Nelson
+
+### Changed
+- README docker ports for IRI
+- Terminal: prevent box overlapping
+
 ## [0.2.2] - 2017-12-18
 
 ### Adds

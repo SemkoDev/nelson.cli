@@ -359,6 +359,11 @@ var Node = function (_Base) {
                         return reject();
                     }
 
+                    if (peers.length && _this8.iri.isStaticNeighbor(peers[0])) {
+                        _this8.log('Peer is already a static neighbor', address, port);
+                        return reject();
+                    }
+
                     // Deny too frequent connections from the same peer.
                     if (peers.length && _this8.isSaturationReached() && peers[0].data.dateLastConnected && getSecondsPassed(peers[0].data.dateLastConnected) < _this8.opts.epochInterval * 2) {
                         return reject();
@@ -742,17 +747,22 @@ var Node = function (_Base) {
 
             // TODO: remove old peers by inverse weight, maybe? Not urgent. Can be added at a later point.
             // this.log('reconnectPeers');
-            // If max was reached, do nothing.
+            // If max was reached, do nothing:
             var toTry = this.opts.outgoingMax - this._getOutgoingSlotsCount();
 
             if (!this.iri || !this.iri.isHealthy || toTry < 1 || this.isMaster || this._getOutgoingSlotsCount() >= this.opts.outgoingMax) {
                 return [];
             }
 
-            // Get allowed peers:
-            return this.list.getWeighted(192, this.list.all().filter(function (p) {
+            // Get connectable peers:
+            var list = this.list.all().filter(function (p) {
                 return !p.data.dateTried || getSecondsPassed(p.data.dateTried) > _this13.opts.beatInterval * Math.max(2, 2 * p.data.tried || 0);
-            })).filter(function (p) {
+            }).filter(function (p) {
+                return !_this13.iri.isStaticNeighbor(p);
+            });
+
+            // Get allowed peers:
+            return this.list.getWeighted(192, list).filter(function (p) {
                 return !_this13.sockets.get(p[0]);
             }).slice(0, toTry).map(function (p) {
                 return _this13.connectPeer(p[0]);
