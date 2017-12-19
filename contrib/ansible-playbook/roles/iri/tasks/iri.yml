@@ -1,7 +1,3 @@
-- name: set iri variables
-  set_fact:
-    iri_workdir: "{{ iri_basedir }}/target"
-
 - name: set variables centos/redhat
   set_fact:
     systemd_dir: /usr/lib/systemd/system
@@ -36,11 +32,19 @@
   changed_when: false
   register: iri_uid
 
-- name: remove workdir
-  file:
-    path: "{{ iri_workdir }}"
-    state: absent
-  when: remove_iri_workdir is defined and remove_iri_workdir
+- name: delete iri data basedir
+  block:
+    - name: stop iri
+      systemd:
+        name: iri.service
+        state: stopped
+      false_when: false
+
+    - name: remove basedir
+      file:
+        path: "{{ iri_basedir }}"
+        state: absent
+  when: remove_iri_basedir is defined and remove_iri_basedir
 
 - name: ensure iri basedir ownership and permissions
   file:
@@ -50,9 +54,9 @@
     owner: "{{ iri_username }}"
     group: "{{ iri_username }}"
 
-- name: ensure iri workdir ownership and permissions
+- name: ensure iri basedir ownership and permissions
   file:
-    path: "{{ iri_workdir }}"
+    path: "{{ iri_basedir }}"
     state: directory
     mode: 0700
     owner: "{{ iri_username }}"
@@ -98,8 +102,9 @@
   docker_container:
     name: iri
     state: present
-    #user: "{{ iri_uid.stdout }}"
+    user: "{{ iri_uid.stdout }}"
     restart_policy: unless-stopped
+    # TODO: check for other options than host networking
     network_mode: host
     image: "{{ iri_image }}:{{ iri_tag }}"
     ports:
@@ -107,21 +112,20 @@
       - "{{ iri_tcp_port }}:{{ iri_tcp_port }}"
       - "{{ iri_udp_port }}:{{ iri_udp_port }}/udp"
     volumes:
-      # - "{{ iri_basedir }}:{{ iri_basedir }}:Z"
-      # - "{{ iri_configdir }}:{{ iri_configdir }}:Z"
-      - "{{ iri_basedir }}:/iri/data:Z"
+      - "{{ iri_basedir }}:/iri/target:Z"
       - "{{ iri_configdir }}:/iri/conf:ro,Z"
     env:
-      IRI_CONFIG: "{{ iri_configdir }}/iri.ini"
-      MEM_LIMIT: "{{ iri_java_mem }}"
+      IRI_CONFIG: "/iri/conf/iri.ini"
+      INIT_MEMORY: "{{ iri_init_java_mem }}" 
+      MAX_MEMORY: "{{ iri_java_mem }}"
   tags:
     - iri_create_container
-
-- name: flush handlers
-  meta: flush_handlers
+  notify:
+    - restart iri
 
 - name: ensure iri started and enabled
   systemd:
+    daemon_reload: true
     name: iri.service
     state: started
     enabled: true

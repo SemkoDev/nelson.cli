@@ -58,6 +58,7 @@
     state: present
     user: "{{ nelson_uid.stdout }}"
     restart_policy: unless-stopped
+    # TODO: check for other options than host networking
     network_mode: host
     image: "{{ nelson_image }}:{{ nelson_tag }}"
     ports:
