@@ -19,7 +19,7 @@ class Base {
     log () {
         if (!this.opts || !this.opts.silent || arguments[0] === '!!') {
             const date = new Date();
-            const timeString = `${date.toLocaleTimeString()}.${date.getMilliseconds()}`.dim;
+            const timeString = `${date.toLocaleTimeString()}.${this.formatMilliseconds(date.getMilliseconds())}`.dim;
             const space = this.opts.logIdent.length > this.opts.logIdentWidth
                 ? `\n${' '.repeat(this.opts.logIdentWidth)}`
                 : ' '.repeat(this.opts.logIdentWidth - this.opts.logIdent.length);
@@ -31,6 +31,13 @@ class Base {
 
     formatNode (hostname, port) {
         return `${hostname}:${port}`.cyan
+    }
+
+    formatMilliseconds(milliseconds){
+      var formatted = milliseconds / 1000;
+      formatted = formatted.toFixed(3);
+      formatted = formatted.toString();
+      return formatted.slice(2);
     }
 
     start () {}
