@@ -280,7 +280,7 @@ curl http://localhost:18600/peer-stats
 Depending on Nelson's age/epoch he might or might not like a certain neighbor. That's okay. Just wait for the neighbor
 to mature and he might accept you into his circle.
 
-This is more acute for new nodes without any neighbors at all. 
+This is more acute for new nodes without any neighbors at all.
 You might need to wait for quite some time to be accepted into the network.
 
 The same happens to your own Nelson instance. It might deny contact from new neighbors or those he doesn't know well.
@@ -356,7 +356,7 @@ This project is licensed under the ICS License - see the [LICENSE.md](LICENSE.md
 
 ### Donations
 
-**Donations always welcome**: 
+**Donations always welcome**:
 
 ```
 IQJGHISHRMV9LEAEMSUIXMFTLLZIJWXIQOAZLGNXCFY9BLPTFTBNBPGU9YQFQKC9GEBPNNFO9DMGKYUECCG9ZSHMRW
@@ -377,7 +377,7 @@ The first value tells Nelson to run in "master" mode. The second decreases the e
 the connected nodes are rotated faster, giving space to new nodes.
 
 You can contact the maintainer of this repo (http://www.twitter.com/RomanSemko) to get your node
-included here. An initiative for donations to entry nodes is under way. 
+included here. An initiative for donations to entry nodes is under way.
 
 ## TODO
 
