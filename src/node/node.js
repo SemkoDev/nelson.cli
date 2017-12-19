@@ -247,8 +247,13 @@ class Node extends Base {
             }
             this.list.findByAddress(address, port).then((peers) => {
 
-                if(peers.length && this.sockets.get(peers[0])) {
+                if (peers.length && this.sockets.get(peers[0])) {
                     this.log('Peer already connected', address, port);
+                    return reject();
+                }
+
+                if (peers.length && this.iri.isStaticNeighbor(peers[0])) {
+                    this.log('Peer is already a static neighbor', address, port);
                     return reject();
                 }
 
@@ -562,15 +567,23 @@ class Node extends Base {
     reconnectPeers () {
         // TODO: remove old peers by inverse weight, maybe? Not urgent. Can be added at a later point.
         // this.log('reconnectPeers');
-        // If max was reached, do nothing.
+        // If max was reached, do nothing:
         const toTry = this.opts.outgoingMax - this._getOutgoingSlotsCount();
 
         if (!this.iri || !this.iri.isHealthy || toTry < 1 || this.isMaster || this._getOutgoingSlotsCount() >= this.opts.outgoingMax) {
             return [];
         }
 
+        // Get connectable peers:
+        const list = this.list.all()
+            .filter(
+                (p) => !p.data.dateTried ||
+                    getSecondsPassed(p.data.dateTried) > this.opts.beatInterval * Math.max(2, 2 * p.data.tried || 0)
+            )
+            .filter((p) => !this.iri.isStaticNeighbor(p));
+
         // Get allowed peers:
-        return this.list.getWeighted(192, this.list.all().filter((p) => !p.data.dateTried || getSecondsPassed(p.data.dateTried) > this.opts.beatInterval * Math.max(2, 2 * p.data.tried || 0)))
+        return this.list.getWeighted(192, list)
             .filter((p) => !this.sockets.get(p[0]))
             .slice(0, toTry)
             .map((p) => this.connectPeer(p[0]));

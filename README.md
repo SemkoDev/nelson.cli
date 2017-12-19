@@ -44,6 +44,29 @@ The  ```--gui``` option is used to provide a simple GUI interface in the console
 
 Below is the list of all possible options.
 
+### Running as a service
+
+You can use the [node process manager](http://pm2.keymetrics.io/) to run Nelson as a service.
+Just do the following:
+```
+# Install the process manager:
+npm install pm2 -g
+
+# Make pm2 start at startup:
+pm2 startup
+
+# Start the Nelson as service
+pm2 start nelson -- --config /path/to/nelson-config.ini
+
+# Save current processes runing with pm2 to startup on boot:
+pm2 save
+
+# Get Nelson logs:
+pm2 monit
+# or
+pm2 log
+```
+
 ## Docker
 
 Provided you have docker installed, Nelson can be started as follows:
@@ -62,11 +85,18 @@ The options passed to Nelson's docker (```-r localhost -i 14265 -u 14600 -t 1560
 hostname and ports (api, TCP, UDP) and the initial neighbors (You could also have used ```--getNeighbors```).
 Please refer below for more info on options.
 
+To keep Nelson's peer database outside of the container, so that you do not lose your collected neighbor's data,
+you can mount a volume bound to a host's folder:
+
+```
+docker run -d --net host -p 18600:18600 --name nelson -v /path/to/nelson/data/directory:/data romansemko/nelson 
+```
+
 ## Building Locally
 
 If you are a developer you may want to build the project locally and play around with the sources.
 Otherwise, ignore this section.
-Make sure you have yarn package manager installed.
+Make sure you have [yarn](https://yarnpkg.com) package manager installed.
 Checkout the project:
 
 ```
@@ -89,7 +119,7 @@ yarn make
 Try to run Nelson:
 
 ```
-node ./dist/nelson.js --gui --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600 iotairi.tt-tec.net/16600"
+node ./dist/nelson.js --gui --getNeighbors
 ```
 
 ## Configuration
@@ -135,7 +165,7 @@ neighbors[] = iotairi.tt-tec.net/16600
 
 #### WARNING ON NEIGHBORS:
 
-These are *NOT* IRI neighbor addresses, but the *Nelson* addresses. If you have used them erroneously
+These are **NOT IRI neighbor** addresses, but the **Nelson** addresses. If you have used them erroneously
 as Nelson addresses in the past, chances are that Nelson will think these "static" neighbors are his and
 will keep removing them from IRI.
 

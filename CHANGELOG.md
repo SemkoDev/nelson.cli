@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Readme info on pm2 manager and docker volume mounting.
+
+### Changes
+- Makes Nelson ignore static neighbors completely, even if they run Nelson as well.
+
 ## [0.2.3] - 2017-12-19
 
 ### Added
