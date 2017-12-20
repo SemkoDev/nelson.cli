@@ -17,6 +17,7 @@ This playbook has been tested on:
 * Docker CE
 
 For Ubuntu: https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/
+
 For CentOS: https://docs.docker.com/engine/installation/linux/docker-ce/centos/ 
 
 * Ansible >= 2.4
@@ -105,7 +106,7 @@ You can use `-f` to follow the tail of the log.
 
 ## File Locations
 
-* Nelson's configuration is at `/etc/nelson/config.ini`.
+* Nelson's configuration is at `/etc/nelson/config.ini`
 * IRI config is at `/etc/iri/iri.ini`
 * Nelson's data directory is at `/var/lib/nelson/`
 * IRI's database is at `/var/lib/iri/`
