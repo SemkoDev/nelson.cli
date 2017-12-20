@@ -19,6 +19,17 @@ function createAPI (node) {
     });
 
     const server = http.createServer((request, response) => {
+        // Set CORS headers
+        response.setHeader('Access-Control-Allow-Origin', '*');
+        response.setHeader('Access-Control-Request-Method', '*');
+        response.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET');
+        response.setHeader('Access-Control-Allow-Headers', '*');
+        if ( request.method === 'OPTIONS' ) {
+            response.writeHead(200);
+            response.end();
+            return;
+        }
+
         try {
             dispatcher.dispatch(request, response);
         } catch(err) {
