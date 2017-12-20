@@ -1774,9 +1774,9 @@ invert-kv@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/invert-kv/-/invert-kv-1.0.0.tgz#104a8e4aaca6d3d8cd157a8ef8bfab2d7a3ffdb6"
 
-iota.lib.js@^0.4.3:
-  version "0.4.3"
-  resolved "https://registry.yarnpkg.com/iota.lib.js/-/iota.lib.js-0.4.3.tgz#9e8417e98720cc24e99bd9f8f6b77212f78386ca"
+iota.lib.js@0.4.5:
+  version "0.4.5"
+  resolved "https://registry.yarnpkg.com/iota.lib.js/-/iota.lib.js-0.4.5.tgz#26cbc0c83ec64b7199a92436f55f22ae239b685a"
   dependencies:
     async "^2.5.0"
     bignumber.js "^4.1.0"
