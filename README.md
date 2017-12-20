@@ -196,6 +196,21 @@ Some have additional short versions.
 | --epochInterval| Interval between Nelson epochs|300|
 | --isMaster| Whether you are intending to run a master node||
 
+## Automated Scripts
+
+### Amazon CloudFormation
+
+Thanks to [iotFab](https://github.com/iotFab) for creating the [cloudformation script](https://github.com/iotFab/iota-aws-full-node) to easily launch IRI+Nelson!
+If You have an AWS account, you can launch a new full node in a matter of few clicks: 
+
+[![alt text](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=eu-west-1#/stacks/new?stackName=IotaAwsFullNode&templateURL=https://s3-eu-west-1.amazonaws.com/nelson-iri/cloudformation.yml)
+
+1. Make sure "Specify an Amazon S3 template URL" is checked and continue.
+2. Click continue. You can leave all config with default values.
+3. If you want to be able to access your instance, you will need to provide a keypair. This is not required, though.
+4. Wait about 10 for the instance to launch.
+5. Done!
+
 ## Running Nelson
 
 ### Initial nodes
