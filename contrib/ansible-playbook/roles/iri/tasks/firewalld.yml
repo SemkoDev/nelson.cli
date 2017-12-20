@@ -1,0 +1,21 @@
+- name: allow iri tcp port in firewall
+  firewalld:
+    port: "{{ iri_tcp_port }}/tcp"
+    permanent: true
+    state: enabled
+    immediate: yes
+
+- name: allow iri udp port in firewall
+  firewalld:
+    port: "{{ iri_udp_port }}/udp"
+    permanent: true
+    state: enabled
+    immediate: yes
+
+- name: allow iri api port in firewall
+  firewalld:
+    port: "{{ iri_api_port }}/tcp"
+    permanent: true
+    state: enabled
+    immediate: yes
+  when: api_port_remote is defined and api_port_remote
