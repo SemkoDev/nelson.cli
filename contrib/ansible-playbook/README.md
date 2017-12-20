@@ -1,5 +1,7 @@
 # IOTA Nelson (IRI) Fullnode Ansible Playbook
 
+This playbook will install IRI and Nelson As Docker containers.
+
 
 ## Requirements
 
@@ -12,6 +14,11 @@ This playbook has been tested on:
 
 ### Software Dependencies
 
+* Docker CE
+
+For Ubuntu: https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/
+For CentOS: https://docs.docker.com/engine/installation/linux/docker-ce/centos/ 
+
 * Ansible >= 2.4
 
 To install Ansible:
@@ -22,7 +29,8 @@ To install Ansible:
 apt-get upgrade -y && apt-get clean && apt-get update -y && apt-get install software-properties-common -y && apt-add-repository ppa:ansible/ansible -y && apt-get update -y && apt-get install ansible -y
 ```
 
-** CentOS **:
+**CentOS**:
+
 ```sh
 yum install ansible -y
 ```
