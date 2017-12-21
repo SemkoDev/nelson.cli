@@ -364,7 +364,6 @@ class Node extends Base {
                 .then(() => this.opts.onPeerConnected(peer));
         };
 
-        let promise = null;
         ws.isAlive = true;
         ws.incoming = asServer;
         this.sockets.set(peer, ws);
@@ -381,9 +380,7 @@ class Node extends Base {
                     return removeNeighbor();
                 }
                 const { port, nelsonID, TCPPort, UDPPort } = head;
-                this.list.update(peer, { port, nelsonID, TCPPort, UDPPort }).then((peer) => {
-                    promise = Promise.resolve(peer);
-                })
+                this.list.update(peer, { port, nelsonID, TCPPort, UDPPort })
             });
             ws.on('open', onConnected);
         }
