@@ -1,0 +1,13 @@
+- import_tasks: ufw.yml
+  tags:
+    - iri_ufw
+  when: ansible_distribution == 'Ubuntu'
+
+- import_tasks: firewalld.yml
+  tags:
+    - iri_firewalld
+  when: ansible_distribution == 'CentOS'
+
+- import_tasks: iri.yml
+  tags:
+    - iri_install

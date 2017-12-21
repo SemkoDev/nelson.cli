@@ -42,6 +42,7 @@
     owner: "{{ nelson_username }}"
     group: "{{ nelson_username }}"
     mode: 0600
+    force: no
   notify:
     - restart nelson
 
@@ -59,20 +60,20 @@
     user: "{{ nelson_uid.stdout }}"
     restart_policy: unless-stopped
     network_mode: host
+    hostname: nelson
     image: "{{ nelson_image }}:{{ nelson_tag }}"
     ports:
       - "{{ nelson_api_port }}:{{ nelson_api_port }}"
       - "{{ nelson_tcp_port }}:{{ nelson_tcp_port }}"
     volumes:
       - "{{ nelson_datadir }}:/var/lib/nelson/data:Z"
-      - "{{ nelson_configdir }}:/etc/nelson:Z"
+      - "{{ nelson_configdir }}:/etc/nelson:ro,Z"
     env:
       NELSON_CONFIG: "{{ nelson_configdir }}/config.ini"
   tags:
     - nelson_create_container
-
-- name: flush handlers
-  meta: flush_handlers
+  notify:
+    - restart nelson
 
 - name: ensure nelson started and enabled
   systemd:
