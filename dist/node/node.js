@@ -21,21 +21,24 @@ var _require = require('./base'),
 var _require2 = require('./heart'),
     Heart = _require2.Heart;
 
-var _require3 = require('./iri'),
-    IRI = _require3.IRI,
-    DEFAULT_IRI_OPTIONS = _require3.DEFAULT_OPTIONS;
+var _require3 = require('./guard'),
+    Guard = _require3.Guard;
 
-var _require4 = require('./peer-list'),
-    PeerList = _require4.PeerList,
-    DEFAULT_LIST_OPTIONS = _require4.DEFAULT_OPTIONS;
+var _require4 = require('./iri'),
+    IRI = _require4.IRI,
+    DEFAULT_IRI_OPTIONS = _require4.DEFAULT_OPTIONS;
 
-var _require5 = require('./tools/utils'),
-    getPeerIdentifier = _require5.getPeerIdentifier,
-    getRandomInt = _require5.getRandomInt,
-    getSecondsPassed = _require5.getSecondsPassed,
-    getVersion = _require5.getVersion,
-    isSameMajorVersion = _require5.isSameMajorVersion,
-    getIP = _require5.getIP;
+var _require5 = require('./peer-list'),
+    PeerList = _require5.PeerList,
+    DEFAULT_LIST_OPTIONS = _require5.DEFAULT_OPTIONS;
+
+var _require6 = require('./tools/utils'),
+    getPeerIdentifier = _require6.getPeerIdentifier,
+    getRandomInt = _require6.getRandomInt,
+    getSecondsPassed = _require6.getSecondsPassed,
+    getVersion = _require6.getVersion,
+    isSameMajorVersion = _require6.isSameMajorVersion,
+    getIP = _require6.getIP;
 
 var DEFAULT_OPTIONS = {
     cycleInterval: 60,
@@ -51,9 +54,9 @@ var DEFAULT_OPTIONS = {
     TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
     UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
     weightDeflation: 0.75,
-    incomingMax: 6,
-    outgoingMax: 5,
-    maxShareableNodes: 16,
+    incomingMax: 5,
+    outgoingMax: 4,
+    maxShareableNodes: 6,
     localNodes: false,
     isMaster: false,
     temporary: false,
@@ -106,18 +109,34 @@ var Node = function (_Base) {
         value: function start() {
             var _this2 = this;
 
+            var _opts = this.opts,
+                cycleInterval = _opts.cycleInterval,
+                epochInterval = _opts.epochInterval,
+                beatInterval = _opts.beatInterval,
+                silent = _opts.silent,
+                localNodes = _opts.localNodes;
+
+            this.guard = new Guard({ beatInterval: beatInterval, silent: silent, localNodes: localNodes });
+
             return this._setPublicIP().then(function () {
                 return _this2._getIRI().then(function (iri) {
                     if (!iri) {
                         throw new Error('IRI could not be started');
                     }
-                    return _this2._getList().then(function () {
-                        var _opts = _this2.opts,
-                            cycleInterval = _opts.cycleInterval,
-                            epochInterval = _opts.epochInterval,
-                            beatInterval = _opts.beatInterval,
-                            silent = _opts.silent;
 
+                    if (!iri.staticNeighbors.length && _this2.opts.outgoingMax < DEFAULT_OPTIONS.outgoingMax) {
+                        _this2.log('WARNING: you have no static neighbors and outboundMax (' + _this2.opts.outgoingMax + ') is set below the advised limit (' + DEFAULT_OPTIONS.outgoingMax + ')!');
+                    }
+
+                    if (_this2.opts.incomingMax < DEFAULT_OPTIONS.incomingMax) {
+                        _this2.log('WARNING: incomingMax (' + _this2.opts.incomingMax + ') is set below the advised limit (' + DEFAULT_OPTIONS.incomingMax + ')!');
+                    }
+
+                    if (_this2.opts.incomingMax <= DEFAULT_OPTIONS.outgoingMax) {
+                        _this2.log('WARNING: incomingMax (' + _this2.opts.incomingMax + ') is set below outgoingMax (' + DEFAULT_OPTIONS.outgoingMax + ')!');
+                    }
+
+                    return _this2._getList().then(function () {
 
                         _this2._createServer();
 
@@ -341,6 +360,10 @@ var Node = function (_Base) {
             var wrongRequest = !headers;
 
             return new Promise(function (resolve, reject) {
+                if (!_this8.guard || !_this8.guard.isAllowed(address, port)) {
+                    return reject();
+                }
+
                 if (wrongRequest || !isSameMajorVersion(version)) {
                     _this8.log('Wrong request or other Nelson version', address, port, version, nelsonID, req.headers);
                     return reject();
@@ -369,7 +392,6 @@ var Node = function (_Base) {
                         return reject();
                     }
 
-                    var maxSlots = _this8.opts.isMaster ? _this8.opts.incomingMax + _this8.opts.outgoingMax : _this8.opts.incomingMax;
                     var topCount = parseInt(Math.sqrt(_this8.list.all().length) / 2);
                     var topPeers = _this8.list.getWeighted(300).sort(function (a, b) {
                         return a[1] - b[1];
@@ -386,7 +408,7 @@ var Node = function (_Base) {
 
                     // The usual way, accept based on personality.
                     var normalPath = function normalPath() {
-                        if (_this8._getIncomingSlotsCount() >= maxSlots) {
+                        if (_this8._getIncomingSlotsCount() >= _this8.opts.incomingMax) {
                             reject();
                         }
 
@@ -401,7 +423,7 @@ var Node = function (_Base) {
                     if (isTop && _this8.list.all().filter(function (p) {
                         return p.data.connected;
                     }).length > topCount) {
-                        if (_this8._getIncomingSlotsCount() >= maxSlots) {
+                        if (_this8._getIncomingSlotsCount() >= _this8.opts.incomingMax) {
                             _this8._dropRandomNeighbors(1, true).then(resolve);
                         } else {
                             resolve();
@@ -409,7 +431,7 @@ var Node = function (_Base) {
                     }
                     // Accept new nodes more easily.
                     else if (!peers.length || getSecondsPassed(peers[0].data.dateCreated) < _this8.list.getAverageAge() / 2) {
-                            if (_this8._getIncomingSlotsCount() >= maxSlots) {
+                            if (_this8._getIncomingSlotsCount() >= _this8.opts.incomingMax) {
                                 var candidates = Array.from(_this8.sockets.keys()).filter(function (p) {
                                     return getSecondsPassed(p.data.dateCreated) < _this8.list.getAverageAge();
                                 });
@@ -854,8 +876,6 @@ var Node = function (_Base) {
                 })
             });
 
-            var maxSlots = this.opts.isMaster ? this.opts.incomingMax + this.opts.outgoingMax : this.opts.incomingMax;
-
             // Try connecting more peers. Master nodes do not actively connect (no outgoing connections).
             if (!this.opts.isMaster && this._getOutgoingSlotsCount() < this.opts.outgoingMax) {
                 return new Promise(function (resolve) {
@@ -865,8 +885,8 @@ var Node = function (_Base) {
             }
 
             // If for some reason the maximal nodes were overstepped, drop one.
-            else if (this._getIncomingSlotsCount() > maxSlots) {
-                    return this._dropRandomNeighbors(1, true).then(function () {
+            else if (this._getIncomingSlotsCount() > this.opts.incomingMax) {
+                    return this._dropRandomNeighbors(this._getIncomingSlotsCount() - this.opts.incomingMax, true).then(function () {
                         return false;
                     });
                 } else {

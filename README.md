@@ -152,6 +152,10 @@ IRIPort = 14265
 TCPPort = 15600
 UDPPort = 14600
 dataPath = data/neighbors.db
+; maximal incoming connections. Please do not set below this limit:
+incomingMax = 5
+; maximal outgoing connections. Only set below this limit, if you have trusted, manual neighbors:
+outgoingMax = 4
 isMaster = false
 silent = false
 gui = false
@@ -195,6 +199,8 @@ Some have additional short versions.
 | --cycleInterval| Interval between Nelson cycles|60|
 | --epochInterval| Interval between Nelson epochs|300|
 | --isMaster| Whether you are intending to run a master node||
+| --incomingMax| How many incoming connections to accept. Please do not set below the default value!|5|
+| --outgoingMax| How many active/outgoing connections to establish. Please do not set below the default value, if you do not have any static/manual neighbors!|4|
 
 ## Automated Scripts
 
@@ -416,10 +422,11 @@ The entry nodes only share info about the nodes that have contacted them sometim
 You can run a master node by adding these options to Nelson:
 
 ```
---isMaster --epochInterval 180
+--isMaster --epochInterval 180 --incomingMax 9
 ```
 The first value tells Nelson to run in "master" mode. The second decreases the epoch time so that
-the connected nodes are rotated faster, giving space to new nodes.
+the connected nodes are rotated faster, giving space to new nodes. The third increases the amount
+of accepted connections (since master nodes do not have active connections, the outgoingMax for masters does not do anything).
 
 You can contact the maintainer of this repo (http://www.twitter.com/RomanSemko) to get your node
 included here. An initiative for donations to entry nodes is under way.
@@ -430,7 +437,6 @@ There are some open TODO's in the source code. Most urging are:
 
 - node tests: tested using simulation tools (will be published separately), but some Jest tests would be nice.
 - structural/organizational work: linting, editor config, contributions specs
-- Throttling of incoming requests.
 - Load balancing: running a Nelson swarm behind a balancer. How?
 - Use static IDs to identify nodes instead of static IPs. Need something similar to public/private keys sharing.
 - etc.?
