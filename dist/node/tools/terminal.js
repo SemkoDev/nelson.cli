@@ -73,7 +73,7 @@ function init(version, onExit) {
 
     peersBox = blessed.box({
         top: '0%',
-        left: '51%',
+        left: '50%',
         width: '50%',
         height: '51%',
         content: 'Peers'.green.bold,
@@ -92,7 +92,7 @@ function init(version, onExit) {
     progress = contrib.donut({
         top: '0%',
         left: '30%',
-        width: '21%',
+        width: '20%',
         height: '51%',
         radius: 8,
         arcWidth: 3,
