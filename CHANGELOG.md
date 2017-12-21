@@ -6,9 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Request throttling guard.
+- Made incoming/outgoing limits public.
+- Warnings when setting too low incoming/outgoing limits.
+
 ### Changed
 - Updated iota.lib.js
-
+- Fixes hard limits for nodes.
+- Lowers the amount of minimum nodes to 9
+- Limited the amount of recommended/shared nodes.
+- Allowed cross-origin requests to API.
 
 ## [0.2.4] - 2017-12-19
 

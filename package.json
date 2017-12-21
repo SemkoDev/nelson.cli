@@ -1,6 +1,6 @@
 {
   "name": "nelson.cli",
-  "version": "0.2.4",
+  "version": "0.2.5-beta",
   "repository": {
     "type": "git",
     "url": "https://github.com/SemkoDev/nelson.cli.git"

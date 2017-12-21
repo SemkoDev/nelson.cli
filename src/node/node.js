@@ -4,6 +4,7 @@ const pip = require('external-ip')();
 const terminal = require('./tools/terminal');
 const { Base } = require('./base');
 const { Heart } = require('./heart');
+const { Guard } = require('./guard');
 const { IRI, DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
 const { PeerList, DEFAULT_OPTIONS: DEFAULT_LIST_OPTIONS } = require('./peer-list');
 const {
@@ -24,9 +25,9 @@ const DEFAULT_OPTIONS = {
     TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
     UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
     weightDeflation: 0.75,
-    incomingMax: 6,
-    outgoingMax: 5,
-    maxShareableNodes: 16,
+    incomingMax: 5,
+    outgoingMax: 4,
+    maxShareableNodes: 6,
     localNodes: false,
     isMaster: false,
     temporary: false,
@@ -66,13 +67,28 @@ class Node extends Base {
      * Starts the node server, getting public IP, IRI interface, Peer List and Heart.
      */
     start () {
+        const { cycleInterval, epochInterval, beatInterval, silent, localNodes } = this.opts;
+        this.guard = new Guard({ beatInterval, silent, localNodes });
+
         return this._setPublicIP().then(() => {
             return this._getIRI().then((iri) => {
                 if (!iri) {
                     throw new Error('IRI could not be started');
                 }
+
+                if (!iri.staticNeighbors.length && this.opts.outgoingMax < DEFAULT_OPTIONS.outgoingMax) {
+                    this.log(`WARNING: you have no static neighbors and outboundMax (${this.opts.outgoingMax}) is set below the advised limit (${DEFAULT_OPTIONS.outgoingMax})!`);
+                }
+
+                if (this.opts.incomingMax < DEFAULT_OPTIONS.incomingMax) {
+                    this.log(`WARNING: incomingMax (${this.opts.incomingMax}) is set below the advised limit (${DEFAULT_OPTIONS.incomingMax})!`);
+                }
+
+                if (this.opts.incomingMax <= DEFAULT_OPTIONS.outgoingMax) {
+                    this.log(`WARNING: incomingMax (${this.opts.incomingMax}) is set below outgoingMax (${DEFAULT_OPTIONS.outgoingMax})!`);
+                }
+
                 return this._getList().then(() =>{
-                    const { cycleInterval, epochInterval, beatInterval, silent } = this.opts;
 
                     this._createServer();
 
@@ -234,6 +250,10 @@ class Node extends Base {
         const wrongRequest = !headers;
 
         return new Promise((resolve, reject) => {
+            if (!this.guard || !this.guard.isAllowed(address, port)) {
+                return reject();
+            }
+
             if (wrongRequest || !isSameMajorVersion(version)) {
                 this.log('Wrong request or other Nelson version', address, port, version, nelsonID, req.headers);
                 return reject();
@@ -262,9 +282,6 @@ class Node extends Base {
                     return reject();
                 }
 
-                const maxSlots = this.opts.isMaster
-                    ? this.opts.incomingMax + this.opts.outgoingMax
-                    : this.opts.incomingMax;
                 const topCount = parseInt(Math.sqrt(this.list.all().length) / 2);
                 const topPeers = this.list.getWeighted(300).sort((a, b) => a[1] - b[1]).map(p => p[0])
                     .slice(0, topCount);
@@ -278,7 +295,7 @@ class Node extends Base {
 
                 // The usual way, accept based on personality.
                 const normalPath = () => {
-                    if (this._getIncomingSlotsCount() >= maxSlots) {
+                    if (this._getIncomingSlotsCount() >= this.opts.incomingMax) {
                         reject();
                     }
 
@@ -289,7 +306,7 @@ class Node extends Base {
 
                 // Accept old, established nodes.
                 if (isTop && this.list.all().filter(p => p.data.connected).length > topCount) {
-                    if (this._getIncomingSlotsCount() >= maxSlots) {
+                    if (this._getIncomingSlotsCount() >= this.opts.incomingMax) {
                         this._dropRandomNeighbors(1, true).then(resolve);
                     }
                     else {
@@ -298,7 +315,7 @@ class Node extends Base {
                 }
                 // Accept new nodes more easily.
                 else if (!peers.length || getSecondsPassed(peers[0].data.dateCreated) < this.list.getAverageAge() / 2) {
-                    if (this._getIncomingSlotsCount() >= maxSlots) {
+                    if (this._getIncomingSlotsCount() >= this.opts.incomingMax) {
                         const candidates = Array.from(this.sockets.keys())
                             .filter(p => getSecondsPassed(p.data.dateCreated) < this.list.getAverageAge());
                         if (candidates.length) {
@@ -654,10 +671,6 @@ class Node extends Base {
                 .map((p) => p.data)
         });
 
-        const maxSlots = this.opts.isMaster
-            ? this.opts.incomingMax + this.opts.outgoingMax
-            : this.opts.incomingMax;
-
         // Try connecting more peers. Master nodes do not actively connect (no outgoing connections).
         if (!this.opts.isMaster && this._getOutgoingSlotsCount() < this.opts.outgoingMax) {
             return new Promise((resolve) => {
@@ -667,8 +680,9 @@ class Node extends Base {
         }
 
         // If for some reason the maximal nodes were overstepped, drop one.
-        else if (this._getIncomingSlotsCount() > maxSlots) {
-            return this._dropRandomNeighbors(1, true).then(() => false);
+        else if (this._getIncomingSlotsCount() > this.opts.incomingMax) {
+            return this._dropRandomNeighbors(this._getIncomingSlotsCount() - this.opts.incomingMax, true)
+                .then(() => false);
         }
         else {
             return Promise.resolve(false);
