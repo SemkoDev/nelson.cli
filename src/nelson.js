@@ -27,6 +27,8 @@ program
     .option('-e, --epochInterval [value]', 'Epoch interval in seconds', parseNumber, DEFAULT_OPTIONS.epochInterval)
     .option('--incomingMax [value]', 'Maximal incoming connection slots', parseNumber, DEFAULT_OPTIONS.incomingMax)
     .option('--outgoingMax [value]', 'Maximal outgoing connection slots', parseNumber, DEFAULT_OPTIONS.outgoingMax)
+    .option('--lazyLimit [value]', 'Seconds after which neighbor is dropped for not having provided any new TXs', parseNumber, DEFAULT_OPTIONS.lazyLimit)
+    .option('--lazyTimesLimit [value]', 'How many consecutive times a lazy neighbor can connect before getting penalized', parseNumber, DEFAULT_OPTIONS.lazyTimesLimit)
     .option('-a, --apiPort [value]', 'Nelson API port', parseNumber, DEFAULT_OPTIONS.apiPort)
     .option('-o, --apiHostname [value]', 'Nelson API hostname', DEFAULT_OPTIONS.apiHostname)
     .option('-w, --webhooks [value]', 'Nelson API webhook URLs', parseURLs, [])

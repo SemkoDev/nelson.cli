@@ -35,6 +35,8 @@ const DEFAULT_OPTIONS = {
     autoStart: false,
     logIdent: 'NODE',
     neighbors: [],
+    lazyLimit: 300, // Time, after which a peer is considered lazy, if no new TXs received
+    lazyTimesLimit: 3, // starts to penalize peer's quality if connected so many times without new TXs
     onReady: (node) => {},
     onPeerConnected: (peer) => {},
     onPeerRemoved: (peer) => {},
@@ -149,13 +151,15 @@ class Node extends Base {
      * @private
      */
     _getList () {
-        const { localNodes, temporary, silent, neighbors, dataPath, isMaster } = this.opts;
+        const { localNodes, temporary, silent, neighbors, dataPath, isMaster, lazyLimit, lazyTimesLimit } = this.opts;
         this.list = new PeerList({
             multiPort: localNodes,
             temporary,
             silent,
             dataPath,
             isMaster,
+            lazyLimit,
+            lazyTimesLimit,
             logIdent: `${this.opts.port}::LIST`
         });
 
@@ -535,16 +539,18 @@ class Node extends Base {
         // this.log('removing neighbors');
 
         const doRemove = () => {
-            peers.forEach((peer) => {
+            return Promise.all(peers.map((peer) => new Promise((resolve) => {
                 const ws = this.sockets.get(peer);
                 if (ws) {
                     ws.close();
                     ws.terminate();
                 }
                 this.sockets.delete(peer);
-                this.opts.onPeerRemoved(peer);
-            });
-            return peers;
+                peer.markDisconnected().then(() => {
+                    this.opts.onPeerRemoved(peer);
+                    resolve(peer)
+                });
+            })));
         };
 
         if (!this.iri || !this.iri.isHealthy) {
@@ -662,6 +668,10 @@ class Node extends Base {
             if (ws.readyState > 1 || !ws.isAlive) {
                 promises.push(this._removeNeighbor(peer));
             }
+            else if (peer.isLazy()) {
+                this.log(`Peer ${peer.data.hostname} (${peer.data.name}) is lazy for more than ${this.opts.lazyLimit} seconds. Removing...!`.yellow);
+                promises.push(this._removeNeighbor(peer));
+            }
             else {
                 ws.isAlive = false;
                 ws.ping('', false, true);
@@ -705,15 +715,15 @@ class Node extends Base {
      * Callback for IRI to check for health and neighbors.
      * If unhealthy, disconnect all. Otherwise, disconnect peers that are not in IRI list any more for any reason.
      * @param {boolean} healthy
-     * @param {string[]} neighbors
+     * @param {object[]} neighbors
      * @private
      */
-    _onIRIHealth (healthy, neighbors) {
+    _onIRIHealth (healthy, data) {
         if (!healthy) {
             this.log('IRI gone... closing all Nelson connections'.red);
             return this._removeNeighbors(Array.from(this.sockets.keys()));
         }
-        return Promise.all(neighbors.map(getIP)).then((neighbors) => {
+        return Promise.all(data.map(n => n.address).map(getIP)).then((neighbors) => {
             const toRemove = [];
             Array.from(this.sockets.keys())
             // It might be that the neighbour was just added and not yet included in IRI...
@@ -721,6 +731,9 @@ class Node extends Base {
                 .forEach((peer) => {
                     if (!neighbors.includes(peer.data.hostname) && peer.data.ip && !neighbors.includes(peer.data.ip)) {
                         toRemove.push(peer);
+                    } else {
+                        const index = Math.max(neighbors.indexOf(peer.data.hostname), neighbors.indexOf(peer.data.ip));
+                        index >= 0 && peer.updateConnection(data[index]);
                     }
                 });
             if (toRemove.length) {

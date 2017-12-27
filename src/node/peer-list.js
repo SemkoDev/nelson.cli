@@ -15,7 +15,9 @@ const DEFAULT_OPTIONS = {
     isMaster: false,
     multiPort: false,
     temporary: false,
-    logIdent: 'LIST'
+    logIdent: 'LIST',
+    lazyLimit: 300, // Time, after which a peer is considered lazy, if no new TXs received
+    lazyTimesLimit: 3 // starts to penalize peer's quality if connected so many times without new TXs
 };
 
 /**
@@ -43,7 +45,7 @@ class PeerList extends Base {
     load (defaultPeerURLs) {
         return new Promise ((resolve) => {
             this.db.find({}, (err, docs) => {
-                this.peers = docs.map((data) => new Peer(data, { onDataUpdate: this.onPeerUpdate }));
+                this.peers = docs.map((data) => new Peer(data, this._getPeerOptions()));
                 this.loadDefaults(defaultPeerURLs).then(() => {
                     this.log('DB and default peers loaded');
                     this.loaded = true;
@@ -78,7 +80,7 @@ class PeerList extends Base {
      * @returns {Promise.<Peer>}
      */
     onPeerUpdate (peer) {
-        const data = peer.data;
+        const data = { ...peer.data };
         delete data._id;
         return this.update(peer, data, false);
     }
@@ -92,13 +94,12 @@ class PeerList extends Base {
      */
     update (peer, data, refreshPeer=true) {
         const newData = { ...peer.data, ...data };
-        const updater = () => new Promise((resolve) => {
+        return new Promise((resolve) => {
             this.db.update({ _id: peer.data._id }, newData, { returnUpdatedDocs: true }, () => {
-                // this.log(`updated peer ${peer.data.hostname}:${peer.data.port}`, data);
-                resolve(peer);
+                // this.log(`updated peer ${peer.data.hostname}:${peer.data.port}`, JSON.stringify(data));
+                refreshPeer ? peer.update(newData, false).then(() => resolve(peer)) : resolve(peer);
             })
         });
-        return refreshPeer ? peer.update(newData, false).then(updater) : updater();
     }
 
     /**
@@ -203,7 +204,7 @@ class PeerList extends Base {
             const weightedAge = ((peer.data.dateLastConnected || peer.data.dateCreated) - peer.data.dateCreated) / 1000;
             return Math.max(weightedAge, 1);
         }
-        const weightedAge = getSecondsPassed(peer.data.dateCreated) * peer.data.weight;
+        const weightedAge = getSecondsPassed(peer.data.dateCreated) * peer.data.weight * peer.getPeerQuality();
         return Math.max(weightedAge, 1);
     }
 
@@ -276,6 +277,7 @@ class PeerList extends Base {
                     key: existing.data.key || createIdentifier(),
                     remoteKey: remoteKey || existing.data.remoteKey,
                     name: name || existing.data.name,
+                    hostname: addr,
                     port, TCPPort, UDPPort
                 });
             } else {
@@ -294,7 +296,7 @@ class PeerList extends Base {
                         remoteKey,
                         key: createIdentifier(),
                         dateCreated: new Date()
-                    }, { onDataUpdate: this.onPeerUpdate }
+                    }, this._getPeerOptions()
                 );
                 this.peers.push(peer);
                 return new Promise((resolve, reject) => {
@@ -308,6 +310,11 @@ class PeerList extends Base {
                 })
             }
         })
+    }
+
+    _getPeerOptions () {
+        const { lazyLimit, lazyTimesLimit } = this.opts;
+        return { lazyLimit, lazyTimesLimit, onDataUpdate: this.onPeerUpdate };
     }
 
     /**

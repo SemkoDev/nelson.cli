@@ -11,9 +11,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Webhooks.
 - Dynamic IP support.
 - Node naming.
+- Penalizing lazy neighbors.
 
 ### Changed
 - Access to the whole peer list only from local requests.
+- Fixes trust updating issues.
 
 ## [0.2.5] - 2017-12-21
 

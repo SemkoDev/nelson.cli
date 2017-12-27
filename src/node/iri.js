@@ -241,7 +241,12 @@ class IRI extends Base {
                 }
                 this.isHealthy = true;
                 // TODO: if the address is IPV6, could that pose a problem?
-                onHealthCheck(true, neighbors.map((n) => n.address.split(':')[0]));
+                onHealthCheck(true, neighbors.map((n) => ({
+                    address: n.address.split(':')[0],
+                    numberOfAllTransactions: n.numberOfAllTransactions,
+                    numberOfNewTransactions: n.numberOfNewTransactions,
+                    numberOfInvalidTransactions: n.numberOfInvalidTransactions
+                })));
             });
         }).catch(onError);
     }

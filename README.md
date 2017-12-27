@@ -205,6 +205,8 @@ Some have additional short versions.
 | --isMaster| Whether you are intending to run a master node||
 | --incomingMax| How many incoming connections to accept. Please do not set below the default value!|5|
 | --outgoingMax| How many active/outgoing connections to establish. Please do not set below the default value, if you do not have any static/manual neighbors!|4|
+| --lazyLimit| After how many seconds a new Neighbors without new transactions should be dropped |300|
+| --lazyTimesLimit| After how many consecutive connections from a consistently lazy neighbor, should it be penalized |3|
 
 ## Automated Scripts
 
