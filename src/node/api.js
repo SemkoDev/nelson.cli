@@ -1,14 +1,29 @@
 const http = require('http');
+const request = require('request');
 const HttpDispatcher = require('httpdispatcher');
+const version = require('../../package.json').version;
 
-function createAPI (node) {
+/**
+ * Creates an API interface for the Node. Accepts incoming connections.
+ * Also, is able to make webhook calls.
+ * @param {object} node
+ * @param {string[]} webhooks
+ * @param {number} interval
+ */
+function createAPI (node, webhooks, interval=30) {
     const dispatcher = new HttpDispatcher();
     dispatcher.onGet('/', function(req, res) {
         res.writeHead(200, {"Content-Type": "application/json"});
+        // TODO: if the request is not local, filter out IPs?
         res.end(JSON.stringify(getNodeStats(node), null, 4));
     });
 
     dispatcher.onGet('/peers', function(req, res) {
+        if (!server.isLocalRequest(req)) {
+            res.writeHead(404);
+            res.end();
+            return;
+        }
         res.writeHead(200, {"Content-Type": "application/json"});
         res.end(JSON.stringify(node.list.all(), null, 4));
     });
@@ -36,7 +51,25 @@ function createAPI (node) {
             console.log(err);
         }
     });
+
+    server.isLocalRequest = function(req) {
+        const clientAddress = req.connection.remoteAddress || req.socket.remoteAddress;
+        const serverAddress = server.address().address;
+
+        return clientAddress === serverAddress;
+    };
+
     server.listen(node.opts.apiPort, node.opts.apiHostname);
+
+    if (webhooks && webhooks.length) {
+        setInterval(() => {
+            webhooks.forEach((uri) => request({ uri, method: 'POST', json: getNodeStats(node) }, (err) => {
+                if (err) {
+                    node.log(`Webhook returned error: ${uri}`.yellow);
+                }
+            }));
+        }, interval * 1000);
+    }
 }
 
 function getNodeStats (node) {
@@ -63,13 +96,18 @@ function getNodeStats (node) {
     } = node.heart;
     const totalPeers = node.list.all().length;
     const isIRIHealthy = node.iri && node.iri.isHealthy;
+    const iriStats = node.iri && node.iri.iriStats;
     const connectedPeers = Array.from(node.sockets.keys())
         .filter((p) => node.sockets.get(p).readyState === 1)
         .map((p) => p.data);
 
     return {
+        name: node.name,
+        version,
         ready: node._ready,
         isIRIHealthy,
+        iriStats,
+        peerStats: getSummary(node),
         totalPeers,
         connectedPeers,
         config: {

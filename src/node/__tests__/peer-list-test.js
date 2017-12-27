@@ -21,7 +21,12 @@ describe('PeerTest', () => {
         ]).then(() => {
             expect(list.peers).toHaveLength(2);
             expect(list.peers.map((p) => p.data.hostname).sort()).toEqual(['somehost.com', '122.232.223.0'].sort());
-            list.add('some-other-peer.org', 334, 335, 336).then(() => {
+            list.add({
+                hostname: 'some-other-peer.org',
+                port: 334,
+                TCPPort: 335,
+                UDPPort: 336
+            }).then(() => {
                 expect(list.peers.map((p) => p.data.hostname).sort()).toEqual([
                     'somehost.com',
                     '122.232.223.0',
@@ -38,10 +43,42 @@ describe('PeerTest', () => {
         list.load([
             'somehost.com/1234/345/567', '122.232.223.0/14265/11111/22222'
         ]).then(() => {
-            list.add('somehost.com', 1234, 666, 777).then(() => {
+            list.add({
+                hostname: 'somehost.com',
+                port: 1234,
+                TCPPort: 666,
+                UDPPort: 777
+            }).then(() => {
                 expect(list.peers).toHaveLength(2);
                 expect(list.all().sort()[1].data.TCPPort).toEqual(666);
                 done();
+            });
+        });
+    });
+
+    it('should update the list correctly by key', (done) => {
+        const list = new PeerList({ temporary: true });
+        list.load([
+            'somehost.com/1234/345/567', '122.232.223.0/14265/11111/22222'
+        ]).then(() => {
+            list.add({
+                hostname: 'somehost.com',
+                port: 1234,
+                TCPPort: 666,
+                UDPPort: 777,
+                remoteKey: '213213'
+            }).then(() => {
+                list.add({
+                    hostname: 'someanotherhost.com',
+                    port: 1234,
+                    TCPPort: 668,
+                    UDPPort: 777,
+                    remoteKey: '213213'
+                }).then(() => {
+                    expect(list.peers).toHaveLength(2);
+                    expect(list.all().sort()[1].data.TCPPort).toEqual(668);
+                    done();
+                });
             });
         });
     });
@@ -51,7 +88,12 @@ describe('PeerTest', () => {
         list.load([
             'somehost.com/1234/345/567', '122.232.223.0/14265/11111/22222'
         ]).then(() => {
-            list.add('somehost.com', 12345, 333, 444).then(() => {
+            list.add({
+                hostname: 'somehost.com',
+                port: 12345,
+                TCPPort: 333,
+                UDPPort: 444
+            }).then(() => {
                 expect(list.peers).toHaveLength(3);
                 expect(list.all()[0].data.port).toEqual(1234);
                 expect(list.all()[2].data.port).toEqual(12345);

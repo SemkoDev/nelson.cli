@@ -28,6 +28,7 @@ class IRI extends Base {
         this._tick = this._tick.bind(this);
         this.ticker = null;
         this.isHealthy = false;
+        this.iriStats = {};
         this.staticNeighbors = [];
     }
 
@@ -47,7 +48,7 @@ class IRI extends Base {
                         this.log(`Static neighbors: ${addresses}`);
                         // TODO: make ticker wait for result, like in the heart.
                         this.ticker = setInterval(this._tick, 15000);
-                        resolve(this);
+                        this.getStats().then(() => resolve(this));
                     });
                 } else {
                     this.log(`IRI not ready on ${this.opts.hostname}:${this.opts.port}, retrying...`.yellow);
@@ -206,21 +207,48 @@ class IRI extends Base {
     }
 
     /**
+     * Returns IRI node info
+     * @returns {Promise<object>}
+     */
+    getStats () {
+        return new Promise((resolve, reject) => {
+            this.api.getNodeInfo((error, data) => {
+                if(error) {
+                    return reject();
+                }
+                this.iriStats = data;
+                resolve(data);
+            });
+        });
+    }
+
+    /**
      * Checks if the IRI instance is healthy, and its list of neighbors. Calls back the result to onHealthCheck.
      * @private
      */
     _tick () {
         const { onHealthCheck } = this.opts;
-        this.api.getNeighbors((error, neighbors) => {
-            if(error) {
-                this.isHealthy = false;
-                onHealthCheck(false);
-                return;
-            }
-            this.isHealthy = true;
-            // TODO: if the address is IPV6, could that pose a problem?
-            onHealthCheck(true, neighbors.map((n) => n.address.split(':')[0]));
-        });
+        const onError = () => {
+            this.isHealthy = false;
+            onHealthCheck(false);
+        };
+        this.getStats().then(() => {
+            this.api.getNeighbors((error, neighbors) => {
+                if(error) {
+                    this.isHealthy = false;
+                    onHealthCheck(false);
+                    return;
+                }
+                this.isHealthy = true;
+                // TODO: if the address is IPV6, could that pose a problem?
+                onHealthCheck(true, neighbors.map((n) => ({
+                    address: n.address.split(':')[0],
+                    numberOfAllTransactions: n.numberOfAllTransactions,
+                    numberOfNewTransactions: n.numberOfNewTransactions,
+                    numberOfInvalidTransactions: n.numberOfInvalidTransactions
+                })));
+            });
+        }).catch(onError);
     }
 
 }

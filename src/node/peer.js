@@ -2,15 +2,18 @@ const ip = require('ip');
 const dns = require('dns');
 const { Base } = require('./base');
 const { DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
-const { getSecondsPassed } = require('./tools/utils');
+const { getSecondsPassed, createIdentifier } = require('./tools/utils');
 
 const DEFAULT_OPTIONS = {
     onDataUpdate: (data) => Promise.resolve(),
     ipRefreshTimeout: 1200,
     silent: true,
-    logIdent: 'PEER'
+    logIdent: 'PEER',
+    lazyLimit: 300, // Time, after which a peer is considered lazy, if no new TXs received
+    lazyTimesLimit: 3 // starts to penalize peer's quality if connected so many times without new TXs
 };
 const DEFAULT_PEER_DATA = {
+    name: null,
     hostname: null,
     ip: null,
     port: 31337,
@@ -23,7 +26,10 @@ const DEFAULT_PEER_DATA = {
     dateTried: null,
     dateLastConnected: null,
     dateCreated: null,
-    isTrusted: false
+    isTrusted: false,
+    key: null,
+    remoteKey: null,
+    lastConnections: []
 };
 
 /**
@@ -33,8 +39,9 @@ const DEFAULT_PEER_DATA = {
  */
 class Peer extends Base {
     constructor (data = {}, options) {
-        super({ ...DEFAULT_OPTIONS, ...options });
+        super({ ...DEFAULT_OPTIONS, ...options, logIdent: `${data.hostname}:${data.port}`});
         this.data = null;
+        this.lastConnection = null;
 
         this.update({ ...DEFAULT_PEER_DATA, ...data });
     }
@@ -89,6 +96,91 @@ class Peer extends Base {
                 resolve(this.data.ip)
             }
         })
+    }
+
+    /**
+     * Marks this node as connected.
+     * @returns {Promise.<Peer>}
+     */
+    markConnected () {
+        if (this.lastConnection) {
+            return Promise.resolve(this);
+        }
+        this.lastConnection = {
+            start: new Date(),
+            duration: 0,
+            numberOfAllTransactions: 0,
+            numberOfNewTransactions: 0,
+            numberOfInvalidTransactions: 0
+        };
+
+        return this.update({
+            key: this.data.key || createIdentifier(),
+            tried: 0,
+            connected: this.data.connected + 1,
+            dateLastConnected: new Date()
+        }).then(() => this);
+    }
+
+    /**
+     * Marks the node as disconnected. Saves connection stats in DB.
+     * @returns {Promise.<Peer>}
+     */
+    markDisconnected () {
+        if (!this.lastConnection) {
+            return Promise.resolve(this);
+        }
+
+        const lastConnections = [ ...this.data.lastConnections, {
+            ...this.lastConnection,
+            end: new Date(),
+            duration: getSecondsPassed(this.lastConnection.start)
+        }].slice(-10);
+
+        this.lastConnection = null;
+        return this.update({ lastConnections }).then(() => this);
+    }
+
+    /**
+     * Updates the stats of the currently connected peer
+     * @param data
+     */
+    updateConnection (data) {
+        if (!this.lastConnection) {
+            return;
+        }
+
+        const { numberOfAllTransactions, numberOfNewTransactions, numberOfInvalidTransactions } = data;
+        this.lastConnection = {
+            ...this.lastConnection,
+            numberOfAllTransactions, numberOfNewTransactions, numberOfInvalidTransactions
+        }
+    }
+
+    /**
+     * Returns peer's quality based on last connection stats.
+     * @returns {number}
+     */
+    getPeerQuality () {
+        const history = this.data.lastConnections;
+        const newTrans = history.reduce((s, h) => s + h.numberOfNewTransactions, 0);
+        const badTrans = history.reduce((s, h) => s + h.numberOfInvalidTransactions, 0);
+
+        if (!this.isTrusted() && !newTrans && history.length >= this.opts.lazyTimesLimit) {
+            return 1.0 / history.length
+        }
+
+        return 1.0 - badTrans / (newTrans || 1);
+    }
+
+    /**
+     * Returns whether a connected peer has not sent any new transactions for a prolonged period of time.
+     * @returns {boolean}
+     */
+    isLazy () {
+        return this.lastConnection &&
+            getSecondsPassed(this.lastConnection.start) > this.opts.lazyLimit &&
+            this.lastConnection.numberOfNewTransactions === 0
     }
 
     getTCPURI () {

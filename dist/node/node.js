@@ -38,9 +38,11 @@ var _require6 = require('./tools/utils'),
     getSecondsPassed = _require6.getSecondsPassed,
     getVersion = _require6.getVersion,
     isSameMajorVersion = _require6.isSameMajorVersion,
-    getIP = _require6.getIP;
+    getIP = _require6.getIP,
+    createIdentifier = _require6.createIdentifier;
 
 var DEFAULT_OPTIONS = {
+    name: 'CarrIOTA Nelson',
     cycleInterval: 60,
     epochInterval: 900,
     beatInterval: 10,
@@ -63,6 +65,8 @@ var DEFAULT_OPTIONS = {
     autoStart: false,
     logIdent: 'NODE',
     neighbors: [],
+    lazyLimit: 300, // Time, after which a peer is considered lazy, if no new TXs received
+    lazyTimesLimit: 3, // starts to penalize peer's quality if connected so many times without new TXs
     onReady: function onReady(node) {},
     onPeerConnected: function onPeerConnected(peer) {},
     onPeerRemoved: function onPeerRemoved(peer) {}
@@ -214,7 +218,9 @@ var Node = function (_Base) {
                 silent = _opts2.silent,
                 neighbors = _opts2.neighbors,
                 dataPath = _opts2.dataPath,
-                isMaster = _opts2.isMaster;
+                isMaster = _opts2.isMaster,
+                lazyLimit = _opts2.lazyLimit,
+                lazyTimesLimit = _opts2.lazyTimesLimit;
 
             this.list = new PeerList({
                 multiPort: localNodes,
@@ -222,6 +228,8 @@ var Node = function (_Base) {
                 silent: silent,
                 dataPath: dataPath,
                 isMaster: isMaster,
+                lazyLimit: lazyLimit,
+                lazyTimesLimit: lazyTimesLimit,
                 logIdent: this.opts.port + '::LIST'
             });
 
@@ -313,9 +321,18 @@ var Node = function (_Base) {
                 var _getHeaderIdentifiers2 = _this7._getHeaderIdentifiers(req.headers),
                     port = _getHeaderIdentifiers2.port,
                     TCPPort = _getHeaderIdentifiers2.TCPPort,
-                    UDPPort = _getHeaderIdentifiers2.UDPPort;
+                    UDPPort = _getHeaderIdentifiers2.UDPPort,
+                    remoteKey = _getHeaderIdentifiers2.remoteKey,
+                    name = _getHeaderIdentifiers2.name;
 
-                _this7.list.add(address, port, TCPPort, UDPPort).then(function (peer) {
+                _this7.list.add({
+                    hostname: address,
+                    port: port,
+                    TCPPort: TCPPort,
+                    UDPPort: UDPPort,
+                    remoteKey: remoteKey,
+                    name: name
+                }).then(function (peer) {
                     _this7._bindWebSocket(ws, peer, true);
                 }).catch(function (e) {
                     _this7.log('Error binding/adding'.red, address, port, e);
@@ -355,7 +372,8 @@ var Node = function (_Base) {
             var _ref = headers || {},
                 port = _ref.port,
                 nelsonID = _ref.nelsonID,
-                version = _ref.version;
+                version = _ref.version,
+                remoteKey = _ref.remoteKey;
 
             var wrongRequest = !headers;
 
@@ -375,7 +393,7 @@ var Node = function (_Base) {
                 if (_this8.isMyself(address, port, nelsonID)) {
                     return reject();
                 }
-                _this8.list.findByAddress(address, port).then(function (peers) {
+                _this8.list.findByRemoteKeyOrAddress(remoteKey, address, port).then(function (peers) {
 
                     if (peers.length && _this8.sockets.get(peers[0])) {
                         _this8.log('Peer already connected', address, port);
@@ -414,7 +432,7 @@ var Node = function (_Base) {
 
                         // TODO: additional protection measure: make the client solve a computational riddle!
 
-                        _this8.isAllowed(address, port).then(function (allowed) {
+                        _this8.isAllowed(remoteKey, address, port).then(function (allowed) {
                             return allowed ? resolve() : reject();
                         });
                     };
@@ -478,15 +496,13 @@ var Node = function (_Base) {
             var onConnected = function onConnected() {
                 _this9.log('connection established'.green, _this9.formatNode(peer.data.hostname, peer.data.port));
                 _this9._sendNeighbors(ws);
-                var addWeight = !asServer && getSecondsPassed(peer.data.dateLastConnected) > _this9.opts.epochInterval * _this9.opts.epochsBetweenWeight;
-                _this9.list.markConnected(peer, addWeight).then(function () {
+                peer.markConnected().then(function () {
                     return _this9.iri.addNeighbors([peer]);
                 }).then(function () {
                     return _this9.opts.onPeerConnected(peer);
                 });
             };
 
-            var promise = null;
             ws.isAlive = true;
             ws.incoming = asServer;
             this.sockets.set(peer, ws);
@@ -504,11 +520,11 @@ var Node = function (_Base) {
                     var port = head.port,
                         nelsonID = head.nelsonID,
                         TCPPort = head.TCPPort,
-                        UDPPort = head.UDPPort;
+                        UDPPort = head.UDPPort,
+                        remoteKey = head.remoteKey,
+                        name = head.name;
 
-                    _this9.list.update(peer, { port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort }).then(function (peer) {
-                        promise = Promise.resolve(peer);
-                    });
+                    _this9.list.update(peer, { port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort, remoteKey: remoteKey, name: name });
                 });
                 ws.on('open', onConnected);
             }
@@ -542,10 +558,12 @@ var Node = function (_Base) {
             var nelsonID = headers['nelson-id'];
             var TCPPort = headers['nelson-tcp'];
             var UDPPort = headers['nelson-udp'];
+            var remoteKey = headers['nelson-key'];
+            var name = headers['nelson-name'];
             if (!version || !port || !nelsonID || !TCPPort || !UDPPort) {
                 return null;
             }
-            return { version: version, port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort };
+            return { version: version, port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort, remoteKey: remoteKey, name: name };
         }
 
         /**
@@ -578,7 +596,13 @@ var Node = function (_Base) {
             if (!isFinite(tokens[1]) || !isFinite(tokens[2]) || !isFinite(tokens[3])) {
                 return Promise.resolve(null);
             }
-            return this.isMyself(tokens[0], tokens[1]) ? Promise.resolve(null) : this.list.add(tokens[0], tokens[1], tokens[2], tokens[3], false, weight * parseFloat(tokens[4] || 0) * this.opts.weightDeflation);
+            return this.isMyself(tokens[0], tokens[1]) ? Promise.resolve(null) : this.list.add({
+                hostname: tokens[0],
+                port: tokens[1],
+                TCPPort: tokens[2],
+                UDPPort: tokens[3],
+                weight: weight * parseFloat(tokens[4] || 0) * this.opts.weightDeflation
+            });
         }
 
         /**
@@ -608,6 +632,7 @@ var Node = function (_Base) {
 
         /**
          * Returns Nelson headers for request/response purposes
+         * @param {string} key of the peer
          * @returns {Object}
          * @private
          */
@@ -615,13 +640,17 @@ var Node = function (_Base) {
     }, {
         key: '_getHeaders',
         value: function _getHeaders() {
+            var key = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
+
             return {
                 'Content-Type': 'application/json',
                 'Nelson-Version': getVersion(),
                 'Nelson-Port': '' + this.opts.port,
                 'Nelson-ID': this.heart.personality.publicId,
                 'Nelson-TCP': this.opts.TCPPort,
-                'Nelson-UDP': this.opts.UDPPort
+                'Nelson-UDP': this.opts.UDPPort,
+                'Nelson-Key': key,
+                'Nelson-Name': this.opts.name
             };
         }
 
@@ -691,16 +720,20 @@ var Node = function (_Base) {
             // this.log('removing neighbors');
 
             var doRemove = function doRemove() {
-                peers.forEach(function (peer) {
-                    var ws = _this11.sockets.get(peer);
-                    if (ws) {
-                        ws.close();
-                        ws.terminate();
-                    }
-                    _this11.sockets.delete(peer);
-                    _this11.opts.onPeerRemoved(peer);
-                });
-                return peers;
+                return Promise.all(peers.map(function (peer) {
+                    return new Promise(function (resolve) {
+                        var ws = _this11.sockets.get(peer);
+                        if (ws) {
+                            ws.close();
+                            ws.terminate();
+                        }
+                        _this11.sockets.delete(peer);
+                        peer.markDisconnected().then(function () {
+                            _this11.opts.onPeerRemoved(peer);
+                            resolve(peer);
+                        });
+                    });
+                }));
             };
 
             if (!this.iri || !this.iri.isHealthy) {
@@ -748,9 +781,10 @@ var Node = function (_Base) {
         key: 'connectPeer',
         value: function connectPeer(peer) {
             this.log('connecting peer'.yellow, this.formatNode(peer.data.hostname, peer.data.port));
-            this.list.update(peer, { dateTried: new Date(), tried: (peer.data.tried || 0) + 1 });
+            var key = peer.data.key || createIdentifier();
+            this.list.update(peer, { dateTried: new Date(), tried: (peer.data.tried || 0) + 1, key: key });
             this._bindWebSocket(new WebSocket('ws://' + peer.data.hostname + ':' + peer.data.port, {
-                headers: this._getHeaders(),
+                headers: this._getHeaders(key),
                 handshakeTimeout: 5000
             }), peer);
             return peer;
@@ -846,6 +880,9 @@ var Node = function (_Base) {
             this.sockets.forEach(function (ws, peer) {
                 if (ws.readyState > 1 || !ws.isAlive) {
                     promises.push(_this15._removeNeighbor(peer));
+                } else if (peer.isLazy()) {
+                    _this15.log(('Peer ' + peer.data.hostname + ' (' + peer.data.name + ') is lazy for more than ' + _this15.opts.lazyLimit + ' seconds. Removing...!').yellow);
+                    promises.push(_this15._removeNeighbor(peer));
                 } else {
                     ws.isAlive = false;
                     ws.ping('', false, true);
@@ -898,20 +935,22 @@ var Node = function (_Base) {
          * Callback for IRI to check for health and neighbors.
          * If unhealthy, disconnect all. Otherwise, disconnect peers that are not in IRI list any more for any reason.
          * @param {boolean} healthy
-         * @param {string[]} neighbors
+         * @param {object[]} neighbors
          * @private
          */
 
     }, {
         key: '_onIRIHealth',
-        value: function _onIRIHealth(healthy, neighbors) {
+        value: function _onIRIHealth(healthy, data) {
             var _this17 = this;
 
             if (!healthy) {
                 this.log('IRI gone... closing all Nelson connections'.red);
                 return this._removeNeighbors(Array.from(this.sockets.keys()));
             }
-            return Promise.all(neighbors.map(getIP)).then(function (neighbors) {
+            return Promise.all(data.map(function (n) {
+                return n.address;
+            }).map(getIP)).then(function (neighbors) {
                 var toRemove = [];
                 Array.from(_this17.sockets.keys())
                 // It might be that the neighbour was just added and not yet included in IRI...
@@ -920,6 +959,9 @@ var Node = function (_Base) {
                 }).forEach(function (peer) {
                     if (!neighbors.includes(peer.data.hostname) && peer.data.ip && !neighbors.includes(peer.data.ip)) {
                         toRemove.push(peer);
+                    } else {
+                        var index = Math.max(neighbors.indexOf(peer.data.hostname), neighbors.indexOf(peer.data.ip));
+                        index >= 0 && peer.updateConnection(data[index]);
                     }
                 });
                 if (toRemove.length) {
@@ -954,6 +996,7 @@ var Node = function (_Base) {
 
         /**
          * Returns whether certain address can contact this instance.
+         * @param {string} remoteKey
          * @param {string} address
          * @param {number} port
          * @param {boolean} checkTrust - whether to check for trusted peer
@@ -963,17 +1006,17 @@ var Node = function (_Base) {
 
     }, {
         key: 'isAllowed',
-        value: function isAllowed(address, port) {
+        value: function isAllowed(remoteKey, address, port) {
             var _this18 = this;
 
-            var checkTrust = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
-            var easiness = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 24;
+            var checkTrust = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
+            var easiness = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : 24;
 
             var allowed = function allowed() {
                 return getPeerIdentifier(_this18.heart.personality.id + ':' + (_this18.opts.localNodes ? port : address)).slice(0, _this18._getMinEasiness(easiness)).indexOf(_this18.heart.personality.feature) >= 0;
             };
 
-            return checkTrust ? this.list.findByAddress(address, port).then(function (ps) {
+            return checkTrust ? this.list.findByRemoteKeyOrAddress(remoteKey, address, port).then(function (ps) {
                 return ps.filter(function (p) {
                     return p.isTrusted();
                 }).length || allowed();

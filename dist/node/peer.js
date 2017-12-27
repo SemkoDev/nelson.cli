@@ -4,6 +4,8 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
@@ -20,7 +22,8 @@ var _require2 = require('./iri'),
     DEFAULT_IRI_OPTIONS = _require2.DEFAULT_OPTIONS;
 
 var _require3 = require('./tools/utils'),
-    getSecondsPassed = _require3.getSecondsPassed;
+    getSecondsPassed = _require3.getSecondsPassed,
+    createIdentifier = _require3.createIdentifier;
 
 var DEFAULT_OPTIONS = {
     onDataUpdate: function onDataUpdate(data) {
@@ -28,9 +31,12 @@ var DEFAULT_OPTIONS = {
     },
     ipRefreshTimeout: 1200,
     silent: true,
-    logIdent: 'PEER'
+    logIdent: 'PEER',
+    lazyLimit: 300, // Time, after which a peer is considered lazy, if no new TXs received
+    lazyTimesLimit: 3 // starts to penalize peer's quality if connected so many times without new TXs
 };
 var DEFAULT_PEER_DATA = {
+    name: null,
     hostname: null,
     ip: null,
     port: 31337,
@@ -43,7 +49,10 @@ var DEFAULT_PEER_DATA = {
     dateTried: null,
     dateLastConnected: null,
     dateCreated: null,
-    isTrusted: false
+    isTrusted: false,
+    key: null,
+    remoteKey: null,
+    lastConnections: []
 };
 
 /**
@@ -61,9 +70,10 @@ var Peer = function (_Base) {
 
         _classCallCheck(this, Peer);
 
-        var _this = _possibleConstructorReturn(this, (Peer.__proto__ || Object.getPrototypeOf(Peer)).call(this, _extends({}, DEFAULT_OPTIONS, options)));
+        var _this = _possibleConstructorReturn(this, (Peer.__proto__ || Object.getPrototypeOf(Peer)).call(this, _extends({}, DEFAULT_OPTIONS, options, { logIdent: data.hostname + ':' + data.port })));
 
         _this.data = null;
+        _this.lastConnection = null;
 
         _this.update(_extends({}, DEFAULT_PEER_DATA, data));
         return _this;
@@ -133,6 +143,117 @@ var Peer = function (_Base) {
                     resolve(_this3.data.ip);
                 }
             });
+        }
+
+        /**
+         * Marks this node as connected.
+         * @returns {Promise.<Peer>}
+         */
+
+    }, {
+        key: 'markConnected',
+        value: function markConnected() {
+            var _this4 = this;
+
+            if (this.lastConnection) {
+                return Promise.resolve(this);
+            }
+            this.lastConnection = {
+                start: new Date(),
+                duration: 0,
+                numberOfAllTransactions: 0,
+                numberOfNewTransactions: 0,
+                numberOfInvalidTransactions: 0
+            };
+
+            return this.update({
+                key: this.data.key || createIdentifier(),
+                tried: 0,
+                connected: this.data.connected + 1,
+                dateLastConnected: new Date()
+            }).then(function () {
+                return _this4;
+            });
+        }
+
+        /**
+         * Marks the node as disconnected. Saves connection stats in DB.
+         * @returns {Promise.<Peer>}
+         */
+
+    }, {
+        key: 'markDisconnected',
+        value: function markDisconnected() {
+            var _this5 = this;
+
+            if (!this.lastConnection) {
+                return Promise.resolve(this);
+            }
+
+            var lastConnections = [].concat(_toConsumableArray(this.data.lastConnections), [_extends({}, this.lastConnection, {
+                end: new Date(),
+                duration: getSecondsPassed(this.lastConnection.start)
+            })]).slice(-10);
+
+            this.lastConnection = null;
+            return this.update({ lastConnections: lastConnections }).then(function () {
+                return _this5;
+            });
+        }
+
+        /**
+         * Updates the stats of the currently connected peer
+         * @param data
+         */
+
+    }, {
+        key: 'updateConnection',
+        value: function updateConnection(data) {
+            if (!this.lastConnection) {
+                return;
+            }
+
+            var numberOfAllTransactions = data.numberOfAllTransactions,
+                numberOfNewTransactions = data.numberOfNewTransactions,
+                numberOfInvalidTransactions = data.numberOfInvalidTransactions;
+
+            this.lastConnection = _extends({}, this.lastConnection, {
+                numberOfAllTransactions: numberOfAllTransactions, numberOfNewTransactions: numberOfNewTransactions, numberOfInvalidTransactions: numberOfInvalidTransactions
+            });
+        }
+
+        /**
+         * Returns peer's quality based on last connection stats.
+         * @returns {number}
+         */
+
+    }, {
+        key: 'getPeerQuality',
+        value: function getPeerQuality() {
+            var history = this.data.lastConnections;
+            var newTrans = history.reduce(function (s, h) {
+                return s + h.numberOfNewTransactions;
+            }, 0);
+            var badTrans = history.reduce(function (s, h) {
+                return s + h.numberOfInvalidTransactions;
+            }, 0);
+
+            if (!this.isTrusted() && !newTrans && history.length >= this.opts.lazyTimesLimit) {
+                return 1.0 / history.length;
+            }
+
+            return 1.0 - badTrans / (newTrans || 1);
+        }
+
+        /**
+         * Returns whether a connected peer has not sent any new transactions for a prolonged period of time.
+         * @returns {boolean}
+         */
+
+    }, {
+        key: 'isLazy',
+        value: function isLazy() {
+            return this.lastConnection && getSecondsPassed(this.lastConnection.start) > this.opts.lazyLimit && this.lastConnection.numberOfNewTransactions === 0;
         }
     }, {
         key: 'getTCPURI',

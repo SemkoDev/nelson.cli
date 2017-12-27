@@ -8,18 +8,16 @@ const Datastore = require('nedb');
 const { Base } = require('./base');
 const { Peer } = require('./peer');
 const { DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
-const { getSecondsPassed } = require('./tools/utils');
-
-// There is no weight increase by connection/age for now.
-const CONNECTION_WEIGHT_MULTIPLIER = 1;
-const MAX_WEIGHT = 4000000.0;
+const { getSecondsPassed, createIdentifier } = require('./tools/utils');
 
 const DEFAULT_OPTIONS = {
     dataPath: path.join(process.cwd(), 'data/neighbors.db'),
     isMaster: false,
     multiPort: false,
     temporary: false,
-    logIdent: 'LIST'
+    logIdent: 'LIST',
+    lazyLimit: 300, // Time, after which a peer is considered lazy, if no new TXs received
+    lazyTimesLimit: 3 // starts to penalize peer's quality if connected so many times without new TXs
 };
 
 /**
@@ -47,7 +45,7 @@ class PeerList extends Base {
     load (defaultPeerURLs) {
         return new Promise ((resolve) => {
             this.db.find({}, (err, docs) => {
-                this.peers = docs.map((data) => new Peer(data, { onDataUpdate: this.onPeerUpdate }));
+                this.peers = docs.map((data) => new Peer(data, this._getPeerOptions()));
                 this.loadDefaults(defaultPeerURLs).then(() => {
                     this.log('DB and default peers loaded');
                     this.loaded = true;
@@ -65,7 +63,14 @@ class PeerList extends Base {
     loadDefaults (defaultPeerURLs = []) {
         return Promise.all(defaultPeerURLs.map((uri) => {
             const tokens = uri.split('/');
-            return this.add(tokens[0], tokens[1], tokens[2], tokens[3], true, 1.0);
+            return this.add({
+                hostname: tokens[0],
+                port: tokens[1],
+                TCPPort: tokens[2],
+                UDPPort: tokens[3],
+                isTrusted: true,
+                weight: 1.0
+            });
         }))
     }
 
@@ -75,7 +80,7 @@ class PeerList extends Base {
      * @returns {Promise.<Peer>}
      */
     onPeerUpdate (peer) {
-        const data = peer.data;
+        const data = { ...peer.data };
         delete data._id;
         return this.update(peer, data, false);
     }
@@ -89,21 +94,11 @@ class PeerList extends Base {
      */
     update (peer, data, refreshPeer=true) {
         const newData = { ...peer.data, ...data };
-        const updater = () => new Promise((resolve) => {
+        return new Promise((resolve) => {
             this.db.update({ _id: peer.data._id }, newData, { returnUpdatedDocs: true }, () => {
-                // this.log(`updated peer ${peer.data.hostname}:${peer.data.port}`, data);
-                resolve(peer);
+                // this.log(`updated peer ${peer.data.hostname}:${peer.data.port}`, JSON.stringify(data));
+                refreshPeer ? peer.update(newData, false).then(() => resolve(peer)) : resolve(peer);
             })
-        });
-        return refreshPeer ? peer.update(newData, false).then(updater) : updater();
-    }
-
-    markConnected (peer, increaseWeight=false) {
-        return this.update(peer, {
-            tried: 0,
-            connected: peer.data.connected + 1,
-            weight: Math.min(peer.data.weight * (increaseWeight ? CONNECTION_WEIGHT_MULTIPLIER : 1), MAX_WEIGHT),
-            dateLastConnected: new Date()
         });
     }
 
@@ -133,9 +128,30 @@ class PeerList extends Base {
     }
 
     /**
-     * Returns peer, which hostname or IP equals the address.
+     * Returns peers, whose remoteKey, hostname or IP equals the address.
+     * Port is only considered if multiPort option is true.
+     * If the address/port matches, the remoteKey is not considered.
+     * @param {string} remoteKey
+     * @param {string} address
+     * @param {number} port
+     * @returns {Promise<Peer[]|null>}
+     */
+    findByRemoteKeyOrAddress(remoteKey, address, port) {
+        return new Promise((resolve) => {
+            this.findByAddress(address, port).then((peers) => {
+                if (peers.length) {
+                    return resolve(peers);
+                }
+                resolve(this.peers.filter((p) => p.data.remoteKey && p.data.remoteKey === remoteKey))
+            });
+        });
+    }
+
+    /**
+     * Returns peers, whose hostname or IP equals the address.
      * Port is only considered if mutiPort option is true.
-     * @param address
+     * @param {string} address
+     * @param {number} port
      * @returns {Promise<Peer[]|null>}
      */
     findByAddress (address, port) {
@@ -188,7 +204,7 @@ class PeerList extends Base {
             const weightedAge = ((peer.data.dateLastConnected || peer.data.dateCreated) - peer.data.dateCreated) / 1000;
             return Math.max(weightedAge, 1);
         }
-        const weightedAge = getSecondsPassed(peer.data.dateCreated) * peer.data.weight;
+        const weightedAge = getSecondsPassed(peer.data.dateCreated) * peer.data.weight * peer.getPeerQuality();
         return Math.max(weightedAge, 1);
     }
 
@@ -222,44 +238,50 @@ class PeerList extends Base {
                 break;
             }
         }
-        const results = choices.filter(c => c && c[0]).map((c) => [c[0], c[0].isTrusted() ? 1 : c[1]]);
-        return results;
+        return choices.filter(c => c && c[0]).map((c) => [c[0], c[0].isTrusted() ? 1 : c[1]]);
     }
 
     /**
-     *
      * Adds a new peer to the list using an URI
-     * @param {string} hostname
-     * @param {string|number} port
-     * @param {string|number} TCPPort
-     * @param {string|number} UDPPort
-     * @param {boolean} isTrusted - whether this is a trusted peer
-     * @param {number} weight
+     * @param {object} data
      * @returns {*}
      */
-    add (hostname, port, TCPPort=DEFAULT_IRI_OPTIONS.TCPPort, UDPPort=DEFAULT_IRI_OPTIONS.UDPPort, isTrusted=false, weight=0) {
-        port = parseInt(port);
-        TCPPort = parseInt(TCPPort || DEFAULT_IRI_OPTIONS.TCPPort);
-        UDPPort = parseInt(UDPPort || DEFAULT_IRI_OPTIONS.UDPPort);
-        return this.findByAddress(hostname, port).then((peers) => {
+    add (data) {
+        const {
+            hostname,
+            port: rawPort,
+            TCPPort: rawTCPPort,
+            UDPPort: rawUDPPort,
+            isTrusted,
+            weight,
+            remoteKey,
+            name
+        } = Object.assign({
+            TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
+            UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
+            isTrusted: false,
+            weight: 0,
+            remoteKey: null
+        }, data);
+        const port = parseInt(rawPort);
+        const TCPPort = parseInt(rawTCPPort || DEFAULT_IRI_OPTIONS.TCPPort);
+        const UDPPort = parseInt(rawUDPPort || DEFAULT_IRI_OPTIONS.UDPPort);
+
+        return this.findByRemoteKeyOrAddress(remoteKey, hostname, port).then((peers) => {
             const addr = PeerList.cleanAddress(hostname);
             const existing = peers.length && peers[0];
 
-            // If the hostname already exists and no multiple ports from same hostname are allowed,
-            // update existing with port. Otherwise just return the existing peer.
             if (existing) {
-                if (!this.opts.multiPort && (port !== existing.data.port ||
-                        (TCPPort && TCPPort !== existing.data.TCPPort) ||
-                        (UDPPort && UDPPort !== existing.data.UDPPort)
-                    )) {
-                    return this.update(existing, { port, TCPPort, UDPPort })
-                } else if (existing.data.weight < weight) {
-                    return this.update(existing, { weight })
-                } else {
-                    return existing;
-                }
+                return this.update(existing, {
+                    weight: existing.data.weight < weight ? weight : existing.data.weight,
+                    key: existing.data.key || createIdentifier(),
+                    remoteKey: remoteKey || existing.data.remoteKey,
+                    name: name || existing.data.name,
+                    hostname: addr,
+                    port, TCPPort, UDPPort
+                });
             } else {
-                this.log(`Adding to the list of known Nelson peers: ${hostname}:${port}`);
+                this.log(`Adding to the list of known Nelson peers: ${hostname}:${port}`, data);
                 const peerIP = ip.isV4Format(addr) || ip.isV6Format(addr) ? addr : null;
                 const peer = new Peer(
                     {
@@ -269,9 +291,12 @@ class PeerList extends Base {
                         TCPPort: TCPPort || DEFAULT_IRI_OPTIONS.TCPPort,
                         UDPPort: UDPPort || DEFAULT_IRI_OPTIONS.UDPPort,
                         isTrusted,
+                        name,
                         weight,
+                        remoteKey,
+                        key: createIdentifier(),
                         dateCreated: new Date()
-                    }, { onDataUpdate: this.onPeerUpdate }
+                    }, this._getPeerOptions()
                 );
                 this.peers.push(peer);
                 return new Promise((resolve, reject) => {
@@ -285,6 +310,11 @@ class PeerList extends Base {
                 })
             }
         })
+    }
+
+    _getPeerOptions () {
+        const { lazyLimit, lazyTimesLimit } = this.opts;
+        return { lazyLimit, lazyTimesLimit, onDataUpdate: this.onPeerUpdate };
     }
 
     /**
