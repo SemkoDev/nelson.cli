@@ -142,6 +142,7 @@ You can provide one or more of the following options in your ini file. Example:
 
 ```
 [nelson]
+name = My Nelson Node
 cycleInterval = 60
 epochInterval = 300
 apiPort = 18600
@@ -184,6 +185,7 @@ Some have additional short versions.
 
 | Option                 |      Description                        | Default |
 |------------------------|-----------------------------------------|---------|
+| --name |  Name your node. This identifier will appear in API/webhooks and for your neighbors ||
 | --neighbors, -n |  space-separated list of entry Nelson neighbors ||
 | --getNeighbors |  Downloads a list of entry Nelson neighbors. If no URL is provided, will use a default URL (https://raw.githubusercontent.com/SemkoDev/nelson.cli/master/ENTRYNODES). If this option is not set, no neighbors will be downloaded. This option can be used together with ````--neighbors`` |false|
 | --apiPort, -a | Nelson API port to request current node status data|18600|
@@ -451,7 +453,6 @@ There are some open TODO's in the source code. Most urging are:
 - node tests: tested using simulation tools (will be published separately), but some Jest tests would be nice.
 - structural/organizational work: linting, editor config, contributions specs
 - Load balancing: running a Nelson swarm behind a balancer. How?
-- Use static IDs to identify nodes instead of static IPs. Need something similar to public/private keys sharing.
 - etc.?
 
 Any help welcome!

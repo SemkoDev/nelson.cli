@@ -1,6 +1,7 @@
 const http = require('http');
 const request = require('request');
 const HttpDispatcher = require('httpdispatcher');
+const version = require('../../package.json').version;
 
 /**
  * Creates an API interface for the Node. Accepts incoming connections.
@@ -13,6 +14,7 @@ function createAPI (node, webhooks, interval=30) {
     const dispatcher = new HttpDispatcher();
     dispatcher.onGet('/', function(req, res) {
         res.writeHead(200, {"Content-Type": "application/json"});
+        // TODO: if the request is not local, filter out IPs?
         res.end(JSON.stringify(getNodeStats(node), null, 4));
     });
 
@@ -100,6 +102,8 @@ function getNodeStats (node) {
         .map((p) => p.data);
 
     return {
+        name: node.name,
+        version,
         ready: node._ready,
         isIRIHealthy,
         iriStats,

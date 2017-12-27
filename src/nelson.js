@@ -20,6 +20,7 @@ process.on('unhandledRejection', (reason, p) => {
 
 program
     .version(version)
+    .option('--name [value]', 'Name of your node instance', DEFAULT_OPTIONS.name)
     .option('-n, --neighbors [value]', 'Trusted neighbors', parseNeighbors, [])
     .option('--getNeighbors [url]', 'Download default set of neighbors', false)
     .option('-c, --cycleInterval [value]', 'Cycle interval in seconds', parseNumber, DEFAULT_OPTIONS.cycleInterval)

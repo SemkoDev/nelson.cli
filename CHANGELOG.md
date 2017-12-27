@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - IRI info to the API.
 - Webhooks.
+- Dynamic IP support.
+- Node naming.
 
 ### Changed
 - Access to the whole peer list only from local requests.

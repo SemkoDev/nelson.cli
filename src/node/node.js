@@ -8,10 +8,11 @@ const { Guard } = require('./guard');
 const { IRI, DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
 const { PeerList, DEFAULT_OPTIONS: DEFAULT_LIST_OPTIONS } = require('./peer-list');
 const {
-    getPeerIdentifier, getRandomInt, getSecondsPassed, getVersion, isSameMajorVersion, getIP
+    getPeerIdentifier, getRandomInt, getSecondsPassed, getVersion, isSameMajorVersion, getIP, createIdentifier
 } = require('./tools/utils');
 
 const DEFAULT_OPTIONS = {
+    name: 'CarrIOTA Nelson',
     cycleInterval: 60,
     epochInterval: 900,
     beatInterval: 10,
@@ -218,9 +219,16 @@ class Node extends Base {
         this.server.on('connection', (ws, req) => {
             this.log('incoming connection established'.green, req.connection.remoteAddress);
             const { remoteAddress: address } = req.connection;
-            const { port, TCPPort, UDPPort } = this._getHeaderIdentifiers(req.headers);
+            const { port, TCPPort, UDPPort, remoteKey, name } = this._getHeaderIdentifiers(req.headers);
 
-            this.list.add(address, port, TCPPort, UDPPort).then((peer) => {
+            this.list.add({
+                hostname: address,
+                port,
+                TCPPort,
+                UDPPort,
+                remoteKey,
+                name
+            }).then((peer) => {
                 this._bindWebSocket(ws, peer, true);
             }).catch((e) => {
                 this.log('Error binding/adding'.red, address, port, e);
@@ -246,7 +254,7 @@ class Node extends Base {
     _canConnect (req) {
         const { remoteAddress: address } = req.connection;
         const headers = this._getHeaderIdentifiers(req.headers);
-        const { port, nelsonID, version } = headers || {};
+        const { port, nelsonID, version, remoteKey } = headers || {};
         const wrongRequest = !headers;
 
         return new Promise((resolve, reject) => {
@@ -265,7 +273,7 @@ class Node extends Base {
             if (this.isMyself(address, port, nelsonID)) {
                 return reject();
             }
-            this.list.findByAddress(address, port).then((peers) => {
+            this.list.findByRemoteKeyOrAddress(remoteKey, address, port).then((peers) => {
 
                 if (peers.length && this.sockets.get(peers[0])) {
                     this.log('Peer already connected', address, port);
@@ -301,7 +309,7 @@ class Node extends Base {
 
                     // TODO: additional protection measure: make the client solve a computational riddle!
 
-                    this.isAllowed(address, port).then((allowed) => allowed ? resolve() : reject());
+                    this.isAllowed(remoteKey, address, port).then((allowed) => allowed ? resolve() : reject());
                 };
 
                 // Accept old, established nodes.
@@ -357,9 +365,7 @@ class Node extends Base {
         const onConnected = () => {
             this.log('connection established'.green, this.formatNode(peer.data.hostname, peer.data.port));
             this._sendNeighbors(ws);
-            const addWeight = !asServer &&
-                getSecondsPassed(peer.data.dateLastConnected) > this.opts.epochInterval * this.opts.epochsBetweenWeight;
-            this.list.markConnected(peer, addWeight)
+            peer.markConnected()
                 .then(() => this.iri.addNeighbors([ peer ]))
                 .then(() => this.opts.onPeerConnected(peer));
         };
@@ -379,8 +385,8 @@ class Node extends Base {
                     this.log('!!', 'wrong headers received', head);
                     return removeNeighbor();
                 }
-                const { port, nelsonID, TCPPort, UDPPort } = head;
-                this.list.update(peer, { port, nelsonID, TCPPort, UDPPort })
+                const { port, nelsonID, TCPPort, UDPPort, remoteKey, name } = head;
+                this.list.update(peer, { port, nelsonID, TCPPort, UDPPort, remoteKey, name })
             });
             ws.on('open', onConnected);
         }
@@ -405,10 +411,12 @@ class Node extends Base {
         const nelsonID = headers['nelson-id'];
         const TCPPort = headers['nelson-tcp'];
         const UDPPort = headers['nelson-udp'];
+        const remoteKey = headers['nelson-key'];
+        const name = headers['nelson-name'];
         if (!version || !port || ! nelsonID || !TCPPort || !UDPPort) {
             return null;
         }
-        return { version, port, nelsonID, TCPPort, UDPPort };
+        return { version, port, nelsonID, TCPPort, UDPPort, remoteKey, name };
     }
 
     /**
@@ -435,10 +443,13 @@ class Node extends Base {
         }
         return this.isMyself(tokens[0], tokens[1])
             ? Promise.resolve(null)
-            : this.list.add(
-                tokens[0], tokens[1], tokens[2], tokens[3], false,
-                weight * parseFloat(tokens[4] || 0) * this.opts.weightDeflation
-            );
+            : this.list.add({
+                hostname: tokens[0],
+                port: tokens[1],
+                TCPPort: tokens[2],
+                UDPPort: tokens[3],
+                weight:  weight * parseFloat(tokens[4] || 0) * this.opts.weightDeflation
+            });
     }
 
     /**
@@ -463,17 +474,20 @@ class Node extends Base {
 
     /**
      * Returns Nelson headers for request/response purposes
+     * @param {string} key of the peer
      * @returns {Object}
      * @private
      */
-    _getHeaders () {
+    _getHeaders (key='') {
         return {
             'Content-Type': 'application/json',
             'Nelson-Version': getVersion(),
             'Nelson-Port': `${this.opts.port}`,
             'Nelson-ID': this.heart.personality.publicId,
             'Nelson-TCP': this.opts.TCPPort,
-            'Nelson-UDP': this.opts.UDPPort
+            'Nelson-UDP': this.opts.UDPPort,
+            'Nelson-Key': key,
+            'Nelson-Name': this.opts.name,
         }
     }
 
@@ -565,9 +579,10 @@ class Node extends Base {
      */
     connectPeer (peer) {
         this.log('connecting peer'.yellow, this.formatNode(peer.data.hostname, peer.data.port));
-        this.list.update(peer, { dateTried: new Date(), tried: (peer.data.tried || 0) + 1 });
+        const key = peer.data.key || createIdentifier();
+        this.list.update(peer, { dateTried: new Date(), tried: (peer.data.tried || 0) + 1, key });
         this._bindWebSocket(new WebSocket(`ws://${peer.data.hostname}:${peer.data.port}`, {
-            headers: this._getHeaders(),
+            headers: this._getHeaders(key),
             handshakeTimeout: 5000
         }), peer);
         return peer;
@@ -733,19 +748,21 @@ class Node extends Base {
 
     /**
      * Returns whether certain address can contact this instance.
+     * @param {string} remoteKey
      * @param {string} address
      * @param {number} port
      * @param {boolean} checkTrust - whether to check for trusted peer
      * @param {number} easiness - how "easy" it is to get in
      * @returns {Promise<boolean>}
      */
-    isAllowed (address, port, checkTrust=true, easiness=24) {
+    isAllowed (remoteKey, address, port, checkTrust=true, easiness=24) {
         const allowed = () => getPeerIdentifier(`${this.heart.personality.id}:${this.opts.localNodes ? port : address}`)
             .slice(0, this._getMinEasiness(easiness))
             .indexOf(this.heart.personality.feature) >= 0;
 
         return checkTrust
-            ? this.list.findByAddress(address, port).then((ps) => ps.filter((p) => p.isTrusted()).length || allowed())
+            ? this.list.findByRemoteKeyOrAddress(remoteKey, address, port)
+                .then((ps) => ps.filter((p) => p.isTrusted()).length || allowed())
             : Promise.resolve(allowed());
 
     }

@@ -21,7 +21,7 @@ module.exports = {
 
             process.on('SIGINT', terminate);
             process.on('SIGTERM', terminate);
-            opts.gui && terminal.init(utils.getVersion(), terminate);
+            opts.gui && terminal.init(opts.name, utils.getVersion(), terminate);
 
             _node.start().then((n) => {
                 api.createAPI(n, opts.webhooks, opts.webhookInterval);

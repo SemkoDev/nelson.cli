@@ -2,7 +2,7 @@ const ip = require('ip');
 const dns = require('dns');
 const { Base } = require('./base');
 const { DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
-const { getSecondsPassed } = require('./tools/utils');
+const { getSecondsPassed, createIdentifier } = require('./tools/utils');
 
 const DEFAULT_OPTIONS = {
     onDataUpdate: (data) => Promise.resolve(),
@@ -11,6 +11,7 @@ const DEFAULT_OPTIONS = {
     logIdent: 'PEER'
 };
 const DEFAULT_PEER_DATA = {
+    name: null,
     hostname: null,
     ip: null,
     port: 31337,
@@ -23,7 +24,9 @@ const DEFAULT_PEER_DATA = {
     dateTried: null,
     dateLastConnected: null,
     dateCreated: null,
-    isTrusted: false
+    isTrusted: false,
+    key: null,
+    remoteKey: null,
 };
 
 /**
@@ -89,6 +92,19 @@ class Peer extends Base {
                 resolve(this.data.ip)
             }
         })
+    }
+
+    /**
+     * Marks this node as connected.
+     * @returns {Promise.<Peer>}
+     */
+    markConnected () {
+        return this.update({
+            key: this.data.key || createIdentifier(),
+            tried: 0,
+            connected: this.data.connected + 1,
+            dateLastConnected: new Date()
+        }).then(() => this);
     }
 
     getTCPURI () {
