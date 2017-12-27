@@ -3,6 +3,7 @@ require('colors');
 
 const ini = require('ini');
 const fs = require('fs');
+const { URL } = require('url');
 const program = require('commander');
 const { initNode } = require('./index');
 const { DEFAULT_OPTIONS } = require('./node/node');
@@ -10,6 +11,7 @@ const { DEFAULT_OPTIONS: DEFAULT_LIST_OPTIONS } = require('./node/peer-list');
 const version = require('../package.json').version;
 
 const parseNeighbors = (val) => val.split(' ');
+const parseURLs = (val) => val.split(' ').map((v) => new URL(v)).map((u) => u.href);
 const parseNumber = (v) => parseInt(v);
 
 process.on('unhandledRejection', (reason, p) => {
@@ -26,6 +28,8 @@ program
     .option('--outgoingMax [value]', 'Maximal outgoing connection slots', parseNumber, DEFAULT_OPTIONS.outgoingMax)
     .option('-a, --apiPort [value]', 'Nelson API port', parseNumber, DEFAULT_OPTIONS.apiPort)
     .option('-o, --apiHostname [value]', 'Nelson API hostname', DEFAULT_OPTIONS.apiHostname)
+    .option('-w, --webhooks [value]', 'Nelson API webhook URLs', parseURLs, [])
+    .option('--webhookInterval [value]', 'Webhooks callback interval in seconds', parseNumber, 30)
     .option('-p, --port [value]', 'Nelson port', parseNumber, DEFAULT_OPTIONS.port)
     .option('-r, --IRIHostname [value]', 'IRI API hostname', DEFAULT_OPTIONS.IRIHostname)
     .option('-i, --IRIPort [value]', 'IRI API port', parseNumber, DEFAULT_OPTIONS.IRIPort)

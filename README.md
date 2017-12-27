@@ -189,6 +189,8 @@ Some have additional short versions.
 | --apiPort, -a | Nelson API port to request current node status data|18600|
 | --apiHostname, -o | Nelson API hostname to request current node status data. Default value will only listen to local connections|127.0.0.1|
 | --port, -p | TCP port, on which to start your Nelson instance|16600|
+| --webhooks, -w | List of URLS to regularly call back with the current node status data||
+| --webhookInterval | Interval in seconds between each webhook call|30|
 | --IRIHostname, -r| IRI API hostname of the running IRI node instance|localhost|
 | --IRIPort, -i| IRI API port of the running IRI node instance|14265|
 | --TCPPort, -t| IRI TCP Port|15600|
@@ -300,7 +302,7 @@ You can also get the full list of known peers:
 curl http://localhost:18600/peers
 ```
 
-Or short stats about your known peers:
+Or just the short stats about your known peers:
 
 ```
 curl http://localhost:18600/peer-stats
@@ -322,6 +324,17 @@ curl http://localhost:18600/peer-stats
         "weekAgo": 2257
     }
 }
+```
+
+#### Webhooks
+
+You can provide Nelson a list of webhook URLs that have to be regularly called back with all the node stats data.
+It basically provides the same data as calling ```curl http://localhost:18600/``` API.
+
+All webhook requests are POST requests. To add a webhook to nelson, start it with ```--webhooks``` option:
+
+```
+nelson --webhooks "http://webhook.one/ http://webhook.two/"
 ```
 
 ## FAQ

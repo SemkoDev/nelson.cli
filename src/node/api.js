@@ -1,7 +1,15 @@
 const http = require('http');
+const request = require('request');
 const HttpDispatcher = require('httpdispatcher');
 
-function createAPI (node) {
+/**
+ * Creates an API interface for the Node. Accepts incoming connections.
+ * Also, is able to make webhook calls.
+ * @param {object} node
+ * @param {string[]} webhooks
+ * @param {number} interval
+ */
+function createAPI (node, webhooks, interval=30) {
     const dispatcher = new HttpDispatcher();
     dispatcher.onGet('/', function(req, res) {
         res.writeHead(200, {"Content-Type": "application/json"});
@@ -50,6 +58,16 @@ function createAPI (node) {
     };
 
     server.listen(node.opts.apiPort, node.opts.apiHostname);
+
+    if (webhooks && webhooks.length) {
+        setInterval(() => {
+            webhooks.forEach((uri) => request({ uri, method: 'POST', json: getNodeStats(node) }, (err) => {
+                if (err) {
+                    node.log(`Webhook returned error: ${uri}`.yellow);
+                }
+            }));
+        }, interval * 1000);
+    }
 }
 
 function getNodeStats (node) {
@@ -85,6 +103,7 @@ function getNodeStats (node) {
         ready: node._ready,
         isIRIHealthy,
         iriStats,
+        peerStats: getSummary(node),
         totalPeers,
         connectedPeers,
         config: {

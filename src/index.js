@@ -24,7 +24,7 @@ module.exports = {
             opts.gui && terminal.init(utils.getVersion(), terminate);
 
             _node.start().then((n) => {
-                api.createAPI(n);
+                api.createAPI(n, opts.webhooks, opts.webhookInterval);
                 terminal.ports(n.opts);
                 n.log(`Nelson v.${utils.getVersion()} initialized`.green.bold);
             });
