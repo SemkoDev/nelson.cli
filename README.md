@@ -408,8 +408,11 @@ SyntaxError: Unexpected token =
 Your node version is outdated. Make sure you have node v.6.9.1 or higher installed on your machine.
 
 ## Monitor
-There is a simple Nelson http server/monitor available at: https://github.com/SemkoDev/nelson.mon
+There is a simple [Nelson server/monitor](https://github.com/SemkoDev/nelson.gui) available at: https://github.com/SemkoDev/nelson.gui
 This is work in progress, so please bear with the simplicity.
+
+You might need to run your nelson.cli with ```--apiHostname 0.0.0.0``` so that the monitor web-app has 
+access to the Nelson API server.
 
 ## Authors
 
