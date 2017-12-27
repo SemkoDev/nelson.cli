@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.3.0] - 2017-12-27
+
 ### Added
 - IRI info to the API.
 - Webhooks.

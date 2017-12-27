@@ -27,10 +27,10 @@ module.exports = _extends({
 
             process.on('SIGINT', terminate);
             process.on('SIGTERM', terminate);
-            opts.gui && terminal.init(utils.getVersion(), terminate);
+            opts.gui && terminal.init(opts.name, utils.getVersion(), terminate);
 
             _node.start().then(function (n) {
-                api.createAPI(n);
+                api.createAPI(n, opts.webhooks, opts.webhookInterval);
                 terminal.ports(n.opts);
                 n.log(('Nelson v.' + utils.getVersion() + ' initialized').green.bold);
             });

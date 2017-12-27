@@ -50,6 +50,7 @@ var IRI = function (_Base) {
         _this._tick = _this._tick.bind(_this);
         _this.ticker = null;
         _this.isHealthy = false;
+        _this.iriStats = {};
         _this.staticNeighbors = [];
         return _this;
     }
@@ -79,7 +80,9 @@ var IRI = function (_Base) {
                                 _this2.log('Static neighbors: ' + addresses);
                                 // TODO: make ticker wait for result, like in the heart.
                                 _this2.ticker = setInterval(_this2._tick, 15000);
-                                resolve(_this2);
+                                _this2.getStats().then(function () {
+                                    return resolve(_this2);
+                                });
                             });
                         } else {
                             _this2.log(('IRI not ready on ' + _this2.opts.hostname + ':' + _this2.opts.port + ', retrying...').yellow);
@@ -281,6 +284,27 @@ var IRI = function (_Base) {
         }
 
         /**
+         * Returns IRI node info
+         * @returns {Promise<object>}
+         */
+
+    }, {
+        key: 'getStats',
+        value: function getStats() {
+            var _this7 = this;
+
+            return new Promise(function (resolve, reject) {
+                _this7.api.getNodeInfo(function (error, data) {
+                    if (error) {
+                        return reject();
+                    }
+                    _this7.iriStats = data;
+                    resolve(data);
+                });
+            });
+        }
+
+        /**
          * Checks if the IRI instance is healthy, and its list of neighbors. Calls back the result to onHealthCheck.
          * @private
          */
@@ -288,22 +312,33 @@ var IRI = function (_Base) {
     }, {
         key: '_tick',
         value: function _tick() {
-            var _this7 = this;
+            var _this8 = this;
 
             var onHealthCheck = this.opts.onHealthCheck;
 
-            this.api.getNeighbors(function (error, neighbors) {
-                if (error) {
-                    _this7.isHealthy = false;
-                    onHealthCheck(false);
-                    return;
-                }
-                _this7.isHealthy = true;
-                // TODO: if the address is IPV6, could that pose a problem?
-                onHealthCheck(true, neighbors.map(function (n) {
-                    return n.address.split(':')[0];
-                }));
-            });
+            var onError = function onError() {
+                _this8.isHealthy = false;
+                onHealthCheck(false);
+            };
+            this.getStats().then(function () {
+                _this8.api.getNeighbors(function (error, neighbors) {
+                    if (error) {
+                        _this8.isHealthy = false;
+                        onHealthCheck(false);
+                        return;
+                    }
+                    _this8.isHealthy = true;
+                    // TODO: if the address is IPV6, could that pose a problem?
+                    onHealthCheck(true, neighbors.map(function (n) {
+                        return {
+                            address: n.address.split(':')[0],
+                            numberOfAllTransactions: n.numberOfAllTransactions,
+                            numberOfNewTransactions: n.numberOfNewTransactions,
+                            numberOfInvalidTransactions: n.numberOfInvalidTransactions
+                        };
+                    }));
+                });
+            }).catch(onError);
         }
     }]);
 

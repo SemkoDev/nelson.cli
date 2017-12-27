@@ -24,7 +24,7 @@ module.exports = {
     nodes: ensureScreen(nodes)
 };
 
-function init(version, onExit) {
+function init(name, version, onExit) {
     screen = blessed.screen({
         smartCSR: true
     });
@@ -58,7 +58,7 @@ function init(version, onExit) {
         left: '0%',
         width: '30%',
         height: '51%',
-        content: ('Nelson v.' + version + ' - Status').green.bold,
+        content: (name + ' v.' + version + ' - Status').green.bold,
         tags: true,
         border: {
             type: 'line'
@@ -185,6 +185,7 @@ function nodes(_ref4) {
     } else {
         connected.forEach(function (connection, i) {
             var id = ((connection.hostname || connection.ip) + ':' + connection.port).bold.cyan;
+            id = connection.name ? (id + ' (' + connection.name + ')').bold.cyan : id;
             var weight = ('[weight: ' + connection.weight + ']').green;
             peersBox.setLine(5 + i, id + ' ' + weight);
         });
