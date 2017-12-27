@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- IRI info to the API.
+
 ### Changed
 - Access to the whole peer list only from local requests.
 
