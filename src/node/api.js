@@ -9,6 +9,11 @@ function createAPI (node) {
     });
 
     dispatcher.onGet('/peers', function(req, res) {
+        if (!server.isLocalRequest(req)) {
+            res.writeHead(404);
+            res.end();
+            return;
+        }
         res.writeHead(200, {"Content-Type": "application/json"});
         res.end(JSON.stringify(node.list.all(), null, 4));
     });
@@ -36,6 +41,14 @@ function createAPI (node) {
             console.log(err);
         }
     });
+
+    server.isLocalRequest = function(req) {
+        const clientAddress = req.connection.remoteAddress || req.socket.remoteAddress;
+        const serverAddress = server.address().address;
+
+        return clientAddress === serverAddress;
+    };
+
     server.listen(node.opts.apiPort, node.opts.apiHostname);
 }
 
@@ -63,6 +76,7 @@ function getNodeStats (node) {
     } = node.heart;
     const totalPeers = node.list.all().length;
     const isIRIHealthy = node.iri && node.iri.isHealthy;
+    const iriStats = node.iri && node.iri.iriStats;
     const connectedPeers = Array.from(node.sockets.keys())
         .filter((p) => node.sockets.get(p).readyState === 1)
         .map((p) => p.data);
@@ -70,6 +84,7 @@ function getNodeStats (node) {
     return {
         ready: node._ready,
         isIRIHealthy,
+        iriStats,
         totalPeers,
         connectedPeers,
         config: {
