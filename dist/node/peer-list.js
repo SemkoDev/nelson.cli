@@ -33,20 +33,17 @@ var _require4 = require('./iri'),
     DEFAULT_IRI_OPTIONS = _require4.DEFAULT_OPTIONS;
 
 var _require5 = require('./tools/utils'),
-    getSecondsPassed = _require5.getSecondsPassed;
-
-// There is no weight increase by connection/age for now.
-
-
-var CONNECTION_WEIGHT_MULTIPLIER = 1;
-var MAX_WEIGHT = 4000000.0;
+    getSecondsPassed = _require5.getSecondsPassed,
+    createIdentifier = _require5.createIdentifier;
 
 var DEFAULT_OPTIONS = {
     dataPath: path.join(process.cwd(), 'data/neighbors.db'),
     isMaster: false,
     multiPort: false,
     temporary: false,
-    logIdent: 'LIST'
+    logIdent: 'LIST',
+    lazyLimit: 300, // Time, after which a peer is considered lazy, if no new TXs received
+    lazyTimesLimit: 3 // starts to penalize peer's quality if connected so many times without new TXs
 };
 
 /**
@@ -88,7 +85,7 @@ var PeerList = function (_Base) {
             return new Promise(function (resolve) {
                 _this2.db.find({}, function (err, docs) {
                     _this2.peers = docs.map(function (data) {
-                        return new Peer(data, { onDataUpdate: _this2.onPeerUpdate });
+                        return new Peer(data, _this2._getPeerOptions());
                     });
                     _this2.loadDefaults(defaultPeerURLs).then(function () {
                         _this2.log('DB and default peers loaded');
@@ -114,7 +111,14 @@ var PeerList = function (_Base) {
 
             return Promise.all(defaultPeerURLs.map(function (uri) {
                 var tokens = uri.split('/');
-                return _this3.add(tokens[0], tokens[1], tokens[2], tokens[3], true, 1.0);
+                return _this3.add({
+                    hostname: tokens[0],
+                    port: tokens[1],
+                    TCPPort: tokens[2],
+                    UDPPort: tokens[3],
+                    isTrusted: true,
+                    weight: 1.0
+                });
             }));
         }
 
@@ -127,7 +131,7 @@ var PeerList = function (_Base) {
     }, {
         key: 'onPeerUpdate',
         value: function onPeerUpdate(peer) {
-            var data = peer.data;
+            var data = _extends({}, peer.data);
             delete data._id;
             return this.update(peer, data, false);
         }
@@ -148,26 +152,13 @@ var PeerList = function (_Base) {
             var refreshPeer = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
 
             var newData = _extends({}, peer.data, data);
-            var updater = function updater() {
-                return new Promise(function (resolve) {
-                    _this4.db.update({ _id: peer.data._id }, newData, { returnUpdatedDocs: true }, function () {
-                        // this.log(`updated peer ${peer.data.hostname}:${peer.data.port}`, data);
-                        resolve(peer);
-                    });
+            return new Promise(function (resolve) {
+                _this4.db.update({ _id: peer.data._id }, newData, { returnUpdatedDocs: true }, function () {
+                    // this.log(`updated peer ${peer.data.hostname}:${peer.data.port}`, JSON.stringify(data));
+                    refreshPeer ? peer.update(newData, false).then(function () {
+                        return resolve(peer);
+                    }) : resolve(peer);
                 });
-            };
-            return refreshPeer ? peer.update(newData, false).then(updater) : updater();
-        }
-    }, {
-        key: 'markConnected',
-        value: function markConnected(peer) {
-            var increaseWeight = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
-
-            return this.update(peer, {
-                tried: 0,
-                connected: peer.data.connected + 1,
-                weight: Math.min(peer.data.weight * (increaseWeight ? CONNECTION_WEIGHT_MULTIPLIER : 1), MAX_WEIGHT),
-                dateLastConnected: new Date()
             });
         }
 
@@ -214,29 +205,57 @@ var PeerList = function (_Base) {
         }
 
         /**
-         * Returns peer, which hostname or IP equals the address.
+         * Returns peers, whose remoteKey, hostname or IP equals the address.
+         * Port is only considered if multiPort option is true.
+         * If the address/port matches, the remoteKey is not considered.
+         * @param {string} remoteKey
+         * @param {string} address
+         * @param {number} port
+         * @returns {Promise<Peer[]|null>}
+         */
+
+    }, {
+        key: 'findByRemoteKeyOrAddress',
+        value: function findByRemoteKeyOrAddress(remoteKey, address, port) {
+            var _this6 = this;
+
+            return new Promise(function (resolve) {
+                _this6.findByAddress(address, port).then(function (peers) {
+                    if (peers.length) {
+                        return resolve(peers);
+                    }
+                    resolve(_this6.peers.filter(function (p) {
+                        return p.data.remoteKey && p.data.remoteKey === remoteKey;
+                    }));
+                });
+            });
+        }
+
+        /**
+         * Returns peers, whose hostname or IP equals the address.
          * Port is only considered if mutiPort option is true.
-         * @param address
+         * @param {string} address
+         * @param {number} port
          * @returns {Promise<Peer[]|null>}
          */
 
     }, {
         key: 'findByAddress',
         value: function findByAddress(address, port) {
-            var _this6 = this;
+            var _this7 = this;
 
             var addr = PeerList.cleanAddress(address);
             return new Promise(function (resolve) {
                 var findWithIP = function findWithIP(ip) {
-                    var peers = _this6.peers.filter(function (p) {
+                    var peers = _this7.peers.filter(function (p) {
                         return p.data.hostname === addr || p.data.hostname === address || ip && (p.data.hostname === ip || p.data.ip === ip);
                     });
-                    resolve(_this6.opts.multiPort ? peers.filter(function (p) {
+                    resolve(_this7.opts.multiPort ? peers.filter(function (p) {
                         return p.data.port == port;
                     }) : peers);
                 };
 
-                if (ip.isV6Format(addr) || ip.isV4Format(addr) || _this6.opts.multiPort) {
+                if (ip.isV6Format(addr) || ip.isV4Format(addr) || _this7.opts.multiPort) {
                     findWithIP(addr);
                 } else {
                     dns.resolve(addr, 'A', function (error, results) {
@@ -282,7 +301,7 @@ var PeerList = function (_Base) {
                 var _weightedAge = ((peer.data.dateLastConnected || peer.data.dateCreated) - peer.data.dateCreated) / 1000;
                 return Math.max(_weightedAge, 1);
             }
-            var weightedAge = getSecondsPassed(peer.data.dateCreated) * peer.data.weight;
+            var weightedAge = getSecondsPassed(peer.data.dateCreated) * peer.data.weight * peer.getPeerQuality();
             return Math.max(weightedAge, 1);
         }
 
@@ -297,7 +316,7 @@ var PeerList = function (_Base) {
     }, {
         key: 'getWeighted',
         value: function getWeighted() {
-            var _this7 = this;
+            var _this8 = this;
 
             var amount = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
             var sourcePeers = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
@@ -308,14 +327,14 @@ var PeerList = function (_Base) {
                 return [];
             }
             var allWeights = peers.map(function (p) {
-                return _this7.getPeerWeight(p);
+                return _this8.getPeerWeight(p);
             });
             var weightsMax = Math.max.apply(Math, _toConsumableArray(allWeights));
 
             var choices = [];
             var getChoice = function getChoice() {
                 var peer = weighted(peers, peers.map(function (p) {
-                    return _this7.getPeerWeight(p);
+                    return _this8.getPeerWeight(p);
                 }));
                 peers.splice(peers.indexOf(peer), 1);
                 var weightsArray = allWeights.splice(peers.indexOf(peer), 1);
@@ -328,56 +347,59 @@ var PeerList = function (_Base) {
                     break;
                 }
             }
-            var results = choices.filter(function (c) {
+            return choices.filter(function (c) {
                 return c && c[0];
             }).map(function (c) {
                 return [c[0], c[0].isTrusted() ? 1 : c[1]];
             });
-            return results;
         }
 
         /**
-         *
          * Adds a new peer to the list using an URI
-         * @param {string} hostname
-         * @param {string|number} port
-         * @param {string|number} TCPPort
-         * @param {string|number} UDPPort
-         * @param {boolean} isTrusted - whether this is a trusted peer
-         * @param {number} weight
+         * @param {object} data
          * @returns {*}
          */
 
     }, {
         key: 'add',
-        value: function add(hostname, port) {
-            var TCPPort = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : DEFAULT_IRI_OPTIONS.TCPPort;
-            var UDPPort = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : DEFAULT_IRI_OPTIONS.UDPPort;
+        value: function add(data) {
+            var _this9 = this;
 
-            var _this8 = this;
+            var _Object$assign = Object.assign({
+                TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
+                UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
+                isTrusted: false,
+                weight: 0,
+                remoteKey: null
+            }, data),
+                hostname = _Object$assign.hostname,
+                rawPort = _Object$assign.port,
+                rawTCPPort = _Object$assign.TCPPort,
+                rawUDPPort = _Object$assign.UDPPort,
+                isTrusted = _Object$assign.isTrusted,
+                weight = _Object$assign.weight,
+                remoteKey = _Object$assign.remoteKey,
+                name = _Object$assign.name;
 
-            var isTrusted = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : false;
-            var weight = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : 0;
+            var port = parseInt(rawPort);
+            var TCPPort = parseInt(rawTCPPort || DEFAULT_IRI_OPTIONS.TCPPort);
+            var UDPPort = parseInt(rawUDPPort || DEFAULT_IRI_OPTIONS.UDPPort);
 
-            port = parseInt(port);
-            TCPPort = parseInt(TCPPort || DEFAULT_IRI_OPTIONS.TCPPort);
-            UDPPort = parseInt(UDPPort || DEFAULT_IRI_OPTIONS.UDPPort);
-            return this.findByAddress(hostname, port).then(function (peers) {
+            return this.findByRemoteKeyOrAddress(remoteKey, hostname, port).then(function (peers) {
                 var addr = PeerList.cleanAddress(hostname);
                 var existing = peers.length && peers[0];
 
-                // If the hostname already exists and no multiple ports from same hostname are allowed,
-                // update existing with port. Otherwise just return the existing peer.
                 if (existing) {
-                    if (!_this8.opts.multiPort && (port !== existing.data.port || TCPPort && TCPPort !== existing.data.TCPPort || UDPPort && UDPPort !== existing.data.UDPPort)) {
-                        return _this8.update(existing, { port: port, TCPPort: TCPPort, UDPPort: UDPPort });
-                    } else if (existing.data.weight < weight) {
-                        return _this8.update(existing, { weight: weight });
-                    } else {
-                        return existing;
-                    }
+                    return _this9.update(existing, {
+                        weight: existing.data.weight < weight ? weight : existing.data.weight,
+                        key: existing.data.key || createIdentifier(),
+                        remoteKey: remoteKey || existing.data.remoteKey,
+                        name: name || existing.data.name,
+                        hostname: addr,
+                        port: port, TCPPort: TCPPort, UDPPort: UDPPort
+                    });
                 } else {
-                    _this8.log('Adding to the list of known Nelson peers: ' + hostname + ':' + port);
+                    _this9.log('Adding to the list of known Nelson peers: ' + hostname + ':' + port, data);
                     var peerIP = ip.isV4Format(addr) || ip.isV6Format(addr) ? addr : null;
                     var peer = new Peer({
                         port: port,
@@ -386,12 +408,15 @@ var PeerList = function (_Base) {
                         TCPPort: TCPPort || DEFAULT_IRI_OPTIONS.TCPPort,
                         UDPPort: UDPPort || DEFAULT_IRI_OPTIONS.UDPPort,
                         isTrusted: isTrusted,
+                        name: name,
                         weight: weight,
+                        remoteKey: remoteKey,
+                        key: createIdentifier(),
                         dateCreated: new Date()
-                    }, { onDataUpdate: _this8.onPeerUpdate });
-                    _this8.peers.push(peer);
+                    }, _this9._getPeerOptions());
+                    _this9.peers.push(peer);
                     return new Promise(function (resolve, reject) {
-                        _this8.db.insert(peer.data, function (err, doc) {
+                        _this9.db.insert(peer.data, function (err, doc) {
                             if (err) {
                                 reject(err);
                             }
@@ -401,6 +426,15 @@ var PeerList = function (_Base) {
                     });
                 }
             });
+        }
+    }, {
+        key: '_getPeerOptions',
+        value: function _getPeerOptions() {
+            var _opts = this.opts,
+                lazyLimit = _opts.lazyLimit,
+                lazyTimesLimit = _opts.lazyTimesLimit;
+
+            return { lazyLimit: lazyLimit, lazyTimesLimit: lazyTimesLimit, onDataUpdate: this.onPeerUpdate };
         }
 
         /**

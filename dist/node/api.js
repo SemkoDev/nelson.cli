@@ -1,16 +1,33 @@
 'use strict';
 
 var http = require('http');
+var request = require('request');
 var HttpDispatcher = require('httpdispatcher');
+var version = require('../../package.json').version;
 
-function createAPI(node) {
+/**
+ * Creates an API interface for the Node. Accepts incoming connections.
+ * Also, is able to make webhook calls.
+ * @param {object} node
+ * @param {string[]} webhooks
+ * @param {number} interval
+ */
+function createAPI(node, webhooks) {
+    var interval = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 30;
+
     var dispatcher = new HttpDispatcher();
     dispatcher.onGet('/', function (req, res) {
         res.writeHead(200, { "Content-Type": "application/json" });
+        // TODO: if the request is not local, filter out IPs?
         res.end(JSON.stringify(getNodeStats(node), null, 4));
     });
 
     dispatcher.onGet('/peers', function (req, res) {
+        if (!server.isLocalRequest(req)) {
+            res.writeHead(404);
+            res.end();
+            return;
+        }
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify(node.list.all(), null, 4));
     });
@@ -38,7 +55,27 @@ function createAPI(node) {
             console.log(err);
         }
     });
+
+    server.isLocalRequest = function (req) {
+        var clientAddress = req.connection.remoteAddress || req.socket.remoteAddress;
+        var serverAddress = server.address().address;
+
+        return clientAddress === serverAddress;
+    };
+
     server.listen(node.opts.apiPort, node.opts.apiHostname);
+
+    if (webhooks && webhooks.length) {
+        setInterval(function () {
+            webhooks.forEach(function (uri) {
+                return request({ uri: uri, method: 'POST', json: getNodeStats(node) }, function (err) {
+                    if (err) {
+                        node.log(('Webhook returned error: ' + uri).yellow);
+                    }
+                });
+            });
+        }, interval * 1000);
+    }
 }
 
 function getNodeStats(node) {
@@ -64,6 +101,7 @@ function getNodeStats(node) {
 
     var totalPeers = node.list.all().length;
     var isIRIHealthy = node.iri && node.iri.isHealthy;
+    var iriStats = node.iri && node.iri.iriStats;
     var connectedPeers = Array.from(node.sockets.keys()).filter(function (p) {
         return node.sockets.get(p).readyState === 1;
     }).map(function (p) {
@@ -71,8 +109,12 @@ function getNodeStats(node) {
     });
 
     return {
+        name: node.name,
+        version: version,
         ready: node._ready,
         isIRIHealthy: isIRIHealthy,
+        iriStats: iriStats,
+        peerStats: getSummary(node),
         totalPeers: totalPeers,
         connectedPeers: connectedPeers,
         config: {
