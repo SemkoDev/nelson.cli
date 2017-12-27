@@ -128,8 +128,8 @@ class PeerList extends Base {
 
     /**
      * Returns peers, whose remoteKey, hostname or IP equals the address.
-     * Port is only considered if mutiPort option is true.
-     * If remoteKey matches, the address is not considered.
+     * Port is only considered if multiPort option is true.
+     * If the address/port matches, the remoteKey is not considered.
      * @param {string} remoteKey
      * @param {string} address
      * @param {number} port
@@ -137,15 +137,12 @@ class PeerList extends Base {
      */
     findByRemoteKeyOrAddress(remoteKey, address, port) {
         return new Promise((resolve) => {
-            let byKey = [];
-            if (remoteKey) {
-                byKey = this.peers.filter((p) => p.data.remoteKey && p.data.remoteKey === remoteKey);
-            }
-            if (byKey.length) {
-                resolve(byKey);
-            } else {
-                this.findByAddress(address, port).then(resolve);
-            }
+            this.findByAddress(address, port).then((peers) => {
+                if (peers.length) {
+                    return resolve(peers);
+                }
+                resolve(this.peers.filter((p) => p.data.remoteKey && p.data.remoteKey === remoteKey))
+            });
         });
     }
 
