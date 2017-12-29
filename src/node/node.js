@@ -1,6 +1,7 @@
 const WebSocket = require('ws');
 const ip = require('ip');
 const pip = require('external-ip')();
+const weighted = require('weighted');
 const terminal = require('./tools/terminal');
 const { Base } = require('./base');
 const { Heart } = require('./heart');
@@ -14,9 +15,8 @@ const {
 const DEFAULT_OPTIONS = {
     name: 'CarrIOTA Nelson',
     cycleInterval: 60,
-    epochInterval: 900,
+    epochInterval: 1200,
     beatInterval: 10,
-    epochsBetweenWeight: 10,
     dataPath: DEFAULT_LIST_OPTIONS.dataPath,
     port: 16600,
     apiPort: 18600,
@@ -35,7 +35,7 @@ const DEFAULT_OPTIONS = {
     autoStart: false,
     logIdent: 'NODE',
     neighbors: [],
-    lazyLimit: 300, // Time, after which a peer is considered lazy, if no new TXs received
+    lazyLimit: 90, // Time, after which a peer is considered lazy, if no new TXs received
     lazyTimesLimit: 3, // starts to penalize peer's quality if connected so many times without new TXs
     onReady: (node) => {},
     onPeerConnected: (peer) => {},
@@ -562,6 +562,7 @@ class Node extends Base {
 
     /**
      * Randomly removes a given amount of peers from current connections.
+     * Low-quality peers are favored to be removed.
      * @param {number} amount
      * @returns {Promise.<Peer[]>} removed peers
      * @private
@@ -570,10 +571,16 @@ class Node extends Base {
         const peers = incomingOnly
             ? Array.from(this.sockets.keys()).filter(p => this.sockets.get(p).incoming)
             : Array.from(this.sockets.keys());
-        const selectRandomPeer = () => peers.splice(getRandomInt(0, peers.length), 1)[0];
+        const selectRandomPeer = () => {
+            const quality = peers.map(p => p.getPeerQuality()**2);
+            const weights = quality.map(d => 1.0 - d);
+            return weighted(peers, weights);
+        };
         const toRemove = [];
         for (let x = 0; x < amount; x++) {
-            toRemove.push(selectRandomPeer());
+            const peer = selectRandomPeer();
+            peers.splice(peers.indexOf(peer), 1);
+            toRemove.push(peer);
         }
         return this._removeNeighbors(toRemove);
     }

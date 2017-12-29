@@ -202,7 +202,7 @@ class PeerList extends Base {
     getPeerWeight (peer) {
         if (this.opts.isMaster) {
             const weightedAge = ((peer.data.dateLastConnected || peer.data.dateCreated) - peer.data.dateCreated) / 1000;
-            return Math.max(weightedAge, 1);
+            return Math.max(weightedAge * peer.getPeerQuality(), 1);
         }
         const weightedAge = getSecondsPassed(peer.data.dateCreated) * peer.data.weight * peer.getPeerQuality();
         return Math.max(weightedAge, 1);
