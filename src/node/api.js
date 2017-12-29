@@ -99,7 +99,42 @@ function getNodeStats (node) {
     const iriStats = node.iri && node.iri.iriStats;
     const connectedPeers = Array.from(node.sockets.keys())
         .filter((p) => node.sockets.get(p).readyState === 1)
-        .map((p) => p.data);
+        .map((p) => {
+            const {
+                name,
+                hostname,
+                ip,
+                port,
+                TCPPort,
+                UDPPort,
+                seen,
+                connected,
+                tried,
+                weight,
+                dateTried,
+                dateLastConnected,
+                dateCreated,
+                isTrusted,
+                lastConnections
+            } = p.data;
+            return {
+                name,
+                hostname,
+                ip,
+                port,
+                TCPPort,
+                UDPPort,
+                seen,
+                connected,
+                tried,
+                weight,
+                dateTried,
+                dateLastConnected,
+                dateCreated,
+                isTrusted,
+                lastConnections
+            }
+        });
 
     return {
         name: node.name,
