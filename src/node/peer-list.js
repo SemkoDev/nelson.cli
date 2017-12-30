@@ -179,33 +179,18 @@ class PeerList extends Base {
     }
 
     /**
-     * Returns whether the provided uri is from a trusted node
-     * @param {URL|string} uri
-     * @returns {Promise<boolean>}
-     */
-    isTrusted (uri) {
-        let u = null;
-        try {
-            u = typeof uri === 'string' ? new URL(uri) : uri;
-        } catch (error) {
-            return false;
-        }
-
-        return this.findByAddress(u.hostname, u.port).then((peers) => peers.filter((p) => p.isTrusted()).length > 0);
-    }
-
-    /**
      * Calculates the weight of a peer
      * @param {Peer} peer
      * @returns {number}
      */
     getPeerWeight (peer) {
+        const age = parseFloat(getSecondsPassed(peer.data.dateCreated)) / 1000;
         if (this.opts.isMaster) {
-            const weightedAge = ((peer.data.dateLastConnected || peer.data.dateCreated) - peer.data.dateCreated) / 1000;
-            return Math.max(weightedAge * peer.getPeerQuality(), 1);
+            const weightedAge = ((peer.data.connected || peer.isTrusted()) ? age : 0) ** 1.5 * peer.getPeerQuality();
+            return Math.max(weightedAge, 0.0001);
         }
-        const weightedAge = getSecondsPassed(peer.data.dateCreated) * peer.data.weight * peer.getPeerQuality();
-        return Math.max(weightedAge, 1);
+        const weightedAge = age ** 1.5 * (1.0 + peer.data.weight * 10) ** 2 * peer.getPeerQuality();
+        return Math.max(weightedAge, 0.0001);
     }
 
     /**
@@ -213,32 +198,35 @@ class PeerList extends Base {
      * The weight depends on relationship age (connections) and trust (weight).
      * @param {number} amount
      * @param {Peer[]} sourcePeers list of peers to use. Optional for filtering purposes.
+     * @param {number} power by which increase the weights
      * @returns {Array<Peer, number>}
      */
-    getWeighted (amount = 0, sourcePeers=null) {
+    getWeighted (amount = 0, sourcePeers=null, power=1.0) {
         amount = amount || this.peers.length;
         const peers = sourcePeers || Array.from(this.peers);
         if (!peers.length) {
             return [];
         }
-        const allWeights = peers.map(p => this.getPeerWeight(p));
+        const allWeights = peers.map(p => this.getPeerWeight(p)**power);
         const weightsMax = Math.max(...allWeights);
 
         const choices = [];
         const getChoice = () => {
-            const peer = weighted(peers, peers.map(p => this.getPeerWeight(p)));
-            peers.splice(peers.indexOf(peer), 1);
-            const weightsArray = allWeights.splice(peers.indexOf(peer), 1);
-            choices.push([peer, weightsArray[0] / weightsMax]);
+            const peer = weighted(peers, allWeights);
+            const index = peers.indexOf(peer);
+            const weight = allWeights[index];
+            peers.splice(index, 1);
+            allWeights.splice(index, 1);
+            choices.push([peer, weight / weightsMax]);
         };
 
         for (let x = 0; x < amount; x++) {
-            getChoice();
             if (peers.length < 1) {
                 break;
             }
+            getChoice();
         }
-        return choices.filter(c => c && c[0]).map((c) => [c[0], c[0].isTrusted() ? 1 : c[1]]);
+        return choices.filter(c => c && c[0]).map((c) => [c[0], c[0].isTrusted() ? 1.0 : c[1]]);
     }
 
     /**
@@ -253,6 +241,7 @@ class PeerList extends Base {
             TCPPort: rawTCPPort,
             UDPPort: rawUDPPort,
             isTrusted,
+            peerWeight,
             weight,
             remoteKey,
             name
@@ -260,6 +249,7 @@ class PeerList extends Base {
             TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
             UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
             isTrusted: false,
+            peerWeight: 0.5,
             weight: 0,
             remoteKey: null
         }, data);
@@ -273,7 +263,11 @@ class PeerList extends Base {
 
             if (existing) {
                 return this.update(existing, {
-                    weight: existing.data.weight < weight ? weight : existing.data.weight,
+                    weight: weight
+                        ? existing.data.weight
+                            ? (weight * peerWeight) + (existing.data.weight * (1.0 - peerWeight))
+                            : weight
+                        : existing.data.weight,
                     key: existing.data.key || createIdentifier(),
                     remoteKey: remoteKey || existing.data.remoteKey,
                     name: name || existing.data.name,

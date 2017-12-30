@@ -185,12 +185,12 @@ class Peer extends Base {
         const newTrans = history.reduce((s, h) => s + h.numberOfNewTransactions, 0);
         const badTrans = history.reduce((s, h) => s + h.numberOfInvalidTransactions, 0);
         const rndTrans = history.reduce((s, h) => s + (h.numberOfRandomTransactionRequests || 0), 0);
-
-        if (!this.isTrusted() && !newTrans && history.length >= this.opts.lazyTimesLimit) {
-            return 1.0 / history.length
-        }
-
-        return Math.max(0.0001, 1.0 - ((badTrans + rndTrans) / (newTrans || 1)));
+        const badRatio = parseFloat(badTrans * 3 + rndTrans) / (newTrans || 1);
+        const serialPenalization = !this.isTrusted() && !newTrans && history.length >= this.opts.lazyTimesLimit
+            ? 1.0 / history.length
+            : 1.0;
+        const score = Math.max(0.0, 1.0 / (badRatio || 1)) * serialPenalization;
+        return Math.max(0.01, score);
     }
 
     /**
