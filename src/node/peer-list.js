@@ -179,17 +179,17 @@ class PeerList extends Base {
     }
 
     /**
-     * Calculates the weight of a peer
+     * Calculates the trust score of a peer
      * @param {Peer} peer
      * @returns {number}
      */
-    getPeerWeight (peer) {
-        const age = parseFloat(getSecondsPassed(peer.data.dateCreated)) / 1000;
+    getPeerTrust (peer) {
+        const age = parseFloat(getSecondsPassed(peer.data.dateCreated)) / 3600;
         if (this.opts.isMaster) {
-            const weightedAge = ((peer.data.connected || peer.isTrusted()) ? age : 0) ** 1.5 * peer.getPeerQuality();
+            const weightedAge = ((peer.data.connected || peer.isTrusted()) ? age : 0) ** 2 * peer.getPeerQuality() ** 2;
             return Math.max(weightedAge, 0.0001);
         }
-        const weightedAge = age ** 1.5 * (1.0 + peer.data.weight * 10) ** 2 * peer.getPeerQuality();
+        const weightedAge = age ** 2 * peer.getPeerQuality() ** 2 * (1.0 + peer.data.weight * 10) ** 2;
         return Math.max(weightedAge, 0.0001);
     }
 
@@ -207,7 +207,7 @@ class PeerList extends Base {
         if (!peers.length) {
             return [];
         }
-        const allWeights = peers.map(p => this.getPeerWeight(p)**power);
+        const allWeights = peers.map(p => this.getPeerTrust(p)**power);
         const weightsMax = Math.max(...allWeights);
 
         const choices = [];

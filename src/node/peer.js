@@ -22,7 +22,7 @@ const DEFAULT_PEER_DATA = {
     seen: 1,
     connected: 0,
     tried: 0,
-    weight: 1.0,
+    weight: 0,
     dateTried: null,
     dateLastConnected: null,
     dateCreated: null,
