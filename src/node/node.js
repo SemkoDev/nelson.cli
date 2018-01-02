@@ -35,7 +35,7 @@ const DEFAULT_OPTIONS = {
     autoStart: false,
     logIdent: 'NODE',
     neighbors: [],
-    lazyLimit: 90, // Time, after which a peer is considered lazy, if no new TXs received
+    lazyLimit: 300, // Time, after which a peer is considered lazy, if no new TXs received
     lazyTimesLimit: 3, // starts to penalize peer's quality if connected so many times without new TXs
     onReady: (node) => {},
     onPeerConnected: (peer) => {},
