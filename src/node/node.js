@@ -1,6 +1,7 @@
 const WebSocket = require('ws');
 const ip = require('ip');
 const pip = require('external-ip')();
+const weighted = require('weighted');
 const terminal = require('./tools/terminal');
 const { Base } = require('./base');
 const { Heart } = require('./heart');
@@ -14,20 +15,20 @@ const {
 const DEFAULT_OPTIONS = {
     name: 'CarrIOTA Nelson',
     cycleInterval: 60,
-    epochInterval: 900,
+    epochInterval: 1200,
     beatInterval: 10,
-    epochsBetweenWeight: 10,
     dataPath: DEFAULT_LIST_OPTIONS.dataPath,
     port: 16600,
     apiPort: 18600,
     apiHostname: '127.0.0.1',
     IRIHostname: DEFAULT_IRI_OPTIONS.hostname,
     IRIPort: DEFAULT_IRI_OPTIONS.port,
+    IRIProtocol: DEFAULT_IRI_OPTIONS.protocol,
     TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
     UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
-    weightDeflation: 0.75,
-    incomingMax: 5,
-    outgoingMax: 4,
+    weightDeflation: 0.95,
+    incomingMax: 6,
+    outgoingMax: 5,
     maxShareableNodes: 6,
     localNodes: false,
     isMaster: false,
@@ -130,7 +131,7 @@ class Node extends Base {
                 if (this.server) {
                     this.server.close();
                 }
-                return this._removeNeighbors(Array.from(this.sockets.keys())).then(() => {
+                return this.iri.removeAllNeighbors().then(() => {
                     this.sockets = new Map();
                     resolve(true);
                 });
@@ -175,12 +176,13 @@ class Node extends Base {
      * @private
      */
     _getIRI () {
-        const { IRIHostname, IRIPort, silent } = this.opts;
+        const { IRIHostname, IRIPort, IRIProtocol, silent } = this.opts;
 
         return (new IRI({
             logIdent: `${this.opts.port}::IRI`,
             hostname: IRIHostname,
             port: IRIPort,
+            protocol: IRIProtocol,
             onHealthCheck: this._onIRIHealth,
             silent
         })).start().then((iri) => {
@@ -294,8 +296,8 @@ class Node extends Base {
                     return reject();
                 }
 
-                const topCount = parseInt(Math.sqrt(this.list.all().length) / 2);
-                const topPeers = this.list.getWeighted(300).sort((a, b) => a[1] - b[1]).map(p => p[0])
+                const topCount = parseInt(Math.sqrt(this.list.all().length) * 2);
+                const topPeers = this.list.getWeighted(300).sort((a, b) => b[1] - a[1]).map(p => p[0])
                     .slice(0, topCount);
                 let isTop = false;
 
@@ -317,7 +319,7 @@ class Node extends Base {
                 };
 
                 // Accept old, established nodes.
-                if (isTop && this.list.all().filter(p => p.data.connected).length > topCount) {
+                if (isTop) {
                     if (this._getIncomingSlotsCount() >= this.opts.incomingMax) {
                         this._dropRandomNeighbors(1, true).then(resolve);
                     }
@@ -326,12 +328,12 @@ class Node extends Base {
                     }
                 }
                 // Accept new nodes more easily.
-                else if (!peers.length || getSecondsPassed(peers[0].data.dateCreated) < this.list.getAverageAge() / 2) {
+                else if (!peers.length || getSecondsPassed(peers[0].data.dateCreated) <= this.opts.epochInterval * 10) {
                     if (this._getIncomingSlotsCount() >= this.opts.incomingMax) {
                         const candidates = Array.from(this.sockets.keys())
-                            .filter(p => getSecondsPassed(p.data.dateCreated) < this.list.getAverageAge());
+                            .filter(p => getSecondsPassed(p.data.dateCreated) <= this.opts.epochInterval * 20);
                         if (candidates.length) {
-                            this._removeNeighbor(candidates.splice(getRandomInt(0, peers.length), 1)[0]).then(resolve);
+                            this._dropRandomNeighbors(1, true, candidates).then(resolve);
                         }
                         else {
                             normalPath();
@@ -452,6 +454,7 @@ class Node extends Base {
                 port: tokens[1],
                 TCPPort: tokens[2],
                 UDPPort: tokens[3],
+                peerWeight: weight,
                 weight:  weight * parseFloat(tokens[4] || 0) * this.opts.weightDeflation
             });
     }
@@ -562,19 +565,33 @@ class Node extends Base {
 
     /**
      * Randomly removes a given amount of peers from current connections.
+     * Low-quality peers are favored to be removed.
      * @param {number} amount
+     * @param {boolean} incomingOnly - only drop incoming connections
+     * @param {Peer[]} array - array of connected peers to use for dropping
      * @returns {Promise.<Peer[]>} removed peers
      * @private
      */
-    _dropRandomNeighbors (amount=1, incomingOnly=false) {
-        const peers = incomingOnly
+    _dropRandomNeighbors (amount=1, incomingOnly=false, array=null) {
+        const peers = array ? array : incomingOnly
             ? Array.from(this.sockets.keys()).filter(p => this.sockets.get(p).incoming)
-            : Array.from(this.sockets.keys());
-        const selectRandomPeer = () => peers.splice(getRandomInt(0, peers.length), 1)[0];
+            : array ? array : Array.from(this.sockets.keys());
+        const selectRandomPeer = () => {
+            const weights = peers.map(p => Math.max(p.getPeerQuality(), 0.0001));
+            return weighted(peers, weights);
+        };
         const toRemove = [];
-        for (let x = 0; x < amount; x++) {
-            toRemove.push(selectRandomPeer());
+
+        if (!peers.length) {
+            return Promise.resolve([]);
         }
+
+        for (let x = 0; x < amount; x++) {
+            const peer = selectRandomPeer();
+            peers.splice(peers.indexOf(peer), 1);
+            toRemove.push(peer);
+        }
+
         return this._removeNeighbors(toRemove);
     }
 
@@ -629,7 +646,9 @@ class Node extends Base {
      * @returns {Array[]}
      */
     getPeers () {
-        return this.list.getWeighted(this.opts.maxShareableNodes);
+        // The node tries to recommend best of the best, even better nodes than it tries to connect, usually.
+        // One tries to be helpful to the others, remember? Only suggesting top-notch peers.
+        return this.list.getWeighted(this.opts.maxShareableNodes, null, 2);
     }
 
     /**
@@ -737,7 +756,7 @@ class Node extends Base {
                     }
                 });
             if (toRemove.length) {
-                this.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map((p) => p.getUDPURI()));
+                this.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map((p) => p.data.hostname));
                 return this._removeNeighbors(toRemove);
             }
             return([]);
@@ -785,7 +804,7 @@ class Node extends Base {
      * @returns {boolean}
      */
     isSaturationReached () {
-        const ratioConnected = ( this._getOutgoingSlotsCount() + this._getIncomingSlotsCount()) /
+        const ratioConnected = (this._getOutgoingSlotsCount() + this._getIncomingSlotsCount()) /
             (this.opts.outgoingMax + this.opts.incomingMax);
         return ratioConnected >= 0.75
     }

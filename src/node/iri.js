@@ -7,6 +7,7 @@ tmp.setGracefulCleanup();
 
 const DEFAULT_OPTIONS = {
     hostname: 'localhost',
+    protocol: 'udp',
     port: 14265,
     TCPPort: 15600,
     UDPPort: 14600,
@@ -26,6 +27,7 @@ class IRI extends Base {
         this.addNeighbors = this.addNeighbors.bind(this);
         this.updateNeighbors = this.updateNeighbors.bind(this);
         this._tick = this._tick.bind(this);
+        this._getIRIPeerURI = this._getIRIPeerURI.bind(this);
         this.ticker = null;
         this.isHealthy = false;
         this.iriStats = {};
@@ -104,7 +106,7 @@ class IRI extends Base {
 
         const myPeers = peers.filter((peer) => {
             if (this.isStaticNeighbor(peer)) {
-                this.log(`WARNING: trying to remove a static neighbor. Skipping: ${peer.getUDPURI()}`.yellow);
+                this.log(`WARNING: trying to remove a static neighbor. Skipping: ${peer.data.hostname}`.yellow);
                 return false;
             }
             return true;
@@ -114,14 +116,14 @@ class IRI extends Base {
             return Promise.resolve([]);
         }
 
-        const uris = myPeers.map((p) => p.getUDPURI());
+        const uris = myPeers.map(this._getIRIPeerURI);
         return new Promise ((resolve, reject) => {
             this.api.removeNeighbors(uris, (err) => {
                 if (err) {
                     reject(err);
                     return;
                 }
-                this.log('Neighbors removed (if there were any):'.red, myPeers.map(p => p.getUDPURI()));
+                this.log('Neighbors removed (if there were any):'.red, uris.join(', '));
                 resolve(peers)
             });
         });
@@ -137,7 +139,7 @@ class IRI extends Base {
             return Promise.reject();
         }
 
-        const uris = peers.map((p) => p.getUDPURI());
+        const uris = peers.map(this._getIRIPeerURI);
 
         return new Promise((resolve, reject) => {
             this.api.addNeighbors(uris, (error, data) => {
@@ -243,12 +245,23 @@ class IRI extends Base {
                 // TODO: if the address is IPV6, could that pose a problem?
                 onHealthCheck(true, neighbors.map((n) => ({
                     address: n.address.split(':')[0],
+                    numberOfRandomTransactionRequests: n.numberOfRandomTransactionRequests,
                     numberOfAllTransactions: n.numberOfAllTransactions,
                     numberOfNewTransactions: n.numberOfNewTransactions,
                     numberOfInvalidTransactions: n.numberOfInvalidTransactions
                 })));
             });
         }).catch(onError);
+    }
+
+    /**
+     * Returns URI for IRI depending on the protocol.
+     * @param {Peer} peer
+     * @returns {string}
+     * @private
+     */
+    _getIRIPeerURI (peer) {
+        return this.opts.protocol === 'tcp' ? peer.getTCPURI() : peer.getUDPURI();
     }
 
 }

@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.3.0] - 2018-01-02
+
+### Added
+- TCP switch for IRI
+
+### Changed
+- Improved neighbor weighting algorithm. Fixed a few minor bugs.
+- Smarter neighbor quality algorithm.
+- Random peer dropping inversely-weighted by peer quality now.
+- Improved incoming new/top peer rules.
+- Restructured and cleaned up the README.
+- Increased default minimal neighbors back to 5+6 (11) for stronger security.
+
 ## [0.3.0] - 2017-12-27
 
 ### Added
@@ -13,7 +26,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Webhooks.
 - Dynamic IP support.
 - Node naming.
-- Penalizing lazy neighbors.
+- Temporarily penalizing lazy/broken neighbors.
 
 ### Changed
 - Access to the whole peer list only from local requests.

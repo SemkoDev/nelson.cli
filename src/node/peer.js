@@ -22,7 +22,7 @@ const DEFAULT_PEER_DATA = {
     seen: 1,
     connected: 0,
     tried: 0,
-    weight: 1.0,
+    weight: 0,
     dateTried: null,
     dateLastConnected: null,
     dateCreated: null,
@@ -134,11 +134,22 @@ class Peer extends Base {
         const lastConnections = [ ...this.data.lastConnections, {
             ...this.lastConnection,
             end: new Date(),
-            duration: getSecondsPassed(this.lastConnection.start)
+            duration: this.getConnectionDuration()
         }].slice(-10);
 
         this.lastConnection = null;
         return this.update({ lastConnections }).then(() => this);
+    }
+
+    /**
+     * Returns time in seconds that passed since the node has been connected
+     * @returns {number}
+     */
+    getConnectionDuration () {
+        if (!this.lastConnection) {
+            return 0;
+        }
+        return getSecondsPassed(this.lastConnection.start)
     }
 
     /**
@@ -150,10 +161,18 @@ class Peer extends Base {
             return;
         }
 
-        const { numberOfAllTransactions, numberOfNewTransactions, numberOfInvalidTransactions } = data;
+        const {
+            numberOfAllTransactions,
+            numberOfRandomTransactionRequests,
+            numberOfNewTransactions,
+            numberOfInvalidTransactions
+        } = data;
         this.lastConnection = {
             ...this.lastConnection,
-            numberOfAllTransactions, numberOfNewTransactions, numberOfInvalidTransactions
+            numberOfAllTransactions,
+            numberOfRandomTransactionRequests,
+            numberOfNewTransactions,
+            numberOfInvalidTransactions
         }
     }
 
@@ -162,15 +181,16 @@ class Peer extends Base {
      * @returns {number}
      */
     getPeerQuality () {
-        const history = this.data.lastConnections;
+        const history = [ ...this.data.lastConnections, this.lastConnection].filter(h => h);
         const newTrans = history.reduce((s, h) => s + h.numberOfNewTransactions, 0);
         const badTrans = history.reduce((s, h) => s + h.numberOfInvalidTransactions, 0);
-
-        if (!this.isTrusted() && !newTrans && history.length >= this.opts.lazyTimesLimit) {
-            return 1.0 / history.length
-        }
-
-        return 1.0 - badTrans / (newTrans || 1);
+        const rndTrans = history.reduce((s, h) => s + (h.numberOfRandomTransactionRequests || 0), 0);
+        const badRatio = parseFloat(badTrans * 5 + rndTrans) / (newTrans || 1);
+        const serialPenalization = !this.isTrusted() && !newTrans && history.length >= this.opts.lazyTimesLimit
+            ? 1.0 / history.length
+            : 1.0;
+        const score = Math.max(0.0, 1.0 / (badRatio || 1)) * serialPenalization;
+        return Math.max(0.01, score);
     }
 
     /**
@@ -180,7 +200,10 @@ class Peer extends Base {
     isLazy () {
         return this.lastConnection &&
             getSecondsPassed(this.lastConnection.start) > this.opts.lazyLimit &&
-            this.lastConnection.numberOfNewTransactions === 0
+            (
+                this.lastConnection.numberOfNewTransactions === 0 ||
+                this.lastConnection.numberOfNewTransactions < this.lastConnection.numberOfRandomTransactionRequests
+            )
     }
 
     getTCPURI () {

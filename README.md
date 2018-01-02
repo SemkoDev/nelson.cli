@@ -4,6 +4,34 @@ Nelson is a tool meant to be used with IOTA's IRI Node.
 It automatically manages neighbors of your full node, negotiating connections,
 finding new neighbors and protecting against bad actors.
 
+## Table of contents
+
+  * [Getting Started](#getting-started)
+    * [Prerequisites](#prerequisites)
+    * [Installing](#installing)
+    * [Upgrading](#upgrading)
+    * [Running as a service](#running-as-a-service)
+  * [Docker](#docker)
+  * [Building Locally](#building-locally)
+  * [Configuration](#configuration)
+    * [config.ini](#config.ini)
+    * [Command line options](#command-line-options)
+    * [Options description](#options-description)
+  * [Automated Scripts](#automated-scripts)
+    * [Amazon CloudFormation](#amazon-cloudformation)
+  * [Running Nelson](#running-nelson)
+    * [Initial nodes](#initial-nodes)
+    * [Epochs and Cycles](#epochs-and-cycles)
+    * [Monitor](#monitor)
+    * [API](#api)
+    * [Webhooks](#webhooks)
+  * [FAQ](#faq)
+  * [Contributing](#contributing)
+    * [Donations](#donations)
+    * [Running your own entry node](#running-your-own-entry-node)
+  * [Authors](#authors)
+  * [License](#license)
+
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine.
@@ -43,6 +71,17 @@ points.
 The  ```--gui``` option is used to provide a simple GUI interface in the console.
 
 Below is the list of all possible options.
+
+### Upgrading
+
+To upgrade your Nelson to version X.X.X, simply run:
+```
+npm install -g nelson.cli@x.x.x
+```
+
+**Please check where npm installs your global packages**! It happens very often that the first installed binary
+is put into ```/usr/local/bin``` and the updated into ```/usr/bin```. Run ```nelson --version``` after the upgrade
+to make sure you are using the most recent one. Update your scripts and/or services to point to the right binary!
 
 ### Running as a service
 
@@ -197,6 +236,7 @@ Some have additional short versions.
 | --IRIPort, -i| IRI API port of the running IRI node instance|14265|
 | --TCPPort, -t| IRI TCP Port|15600|
 | --UDPPort, -u| IRI UDP Port|14600|
+| --IRIProtocol| Protocol to use for connecting neighbors. Possible values 'udp' or 'tcp'. **WARNING**: Please do not use until the [IRI bug #345](https://github.com/iotaledger/iri/issues/345) is solved and new IRI version (+1.4.1.5) released! |udp|
 | --dataPath, -d| path to the file, that will be used as neighbor storage| data/neighbors.db|
 | --silent, -s|Run the node without any output||
 | --gui, -g|Run the node in console-gui mode||
@@ -240,6 +280,13 @@ change. Do not change it, unless you know, what you are doing.
 Nelson checks upon its neighbors from time to time to make sure they are okay. Sometimes the neighbors die without saying
 a word or maybe move somewhere else. Nelson wants to know, with whom he should keep in contact. Each cycle Nelson pings
 the neighbors, to make sure they are okay. You can control the cycle interval with the ```cycleInterval``` option.
+
+### Monitor
+There is a simple [Nelson server/monitor](https://github.com/SemkoDev/nelson.gui) available at: https://github.com/SemkoDev/nelson.gui
+This is work in progress, so please bear with the simplicity.
+
+You might need to run your nelson.cli with ```--apiHostname 0.0.0.0``` so that the monitor web-app has 
+access to the Nelson API server.
 
 ### API
 
@@ -330,7 +377,7 @@ curl http://localhost:18600/peer-stats
 }
 ```
 
-#### Webhooks
+### Webhooks
 
 You can provide Nelson a list of webhook URLs that have to be regularly called back with all the node stats data.
 It basically provides the same data as calling ```curl http://localhost:18600/``` API.
@@ -407,21 +454,9 @@ SyntaxError: Unexpected token =
 ```
 Your node version is outdated. Make sure you have node v.6.9.1 or higher installed on your machine.
 
-## Monitor
-There is a simple [Nelson server/monitor](https://github.com/SemkoDev/nelson.gui) available at: https://github.com/SemkoDev/nelson.gui
-This is work in progress, so please bear with the simplicity.
+### I upgraded nelson, but it's still the old version!
 
-You might need to run your nelson.cli with ```--apiHostname 0.0.0.0``` so that the monitor web-app has 
-access to the Nelson API server.
-
-## Authors
-
-* **Roman Semko** - *SemkoDev* - (https://github.com/romansemko)
-* **Vitaly Semko** - *SemkoDev* - (https://github.com/witwit)
-
-## License
-
-This project is licensed under the ICS License - see the [LICENSE.md](LICENSE.md) file for details
+Please refer to [upgrading](#upgrading) for a possible reason.
 
 ## Contributing
 
@@ -451,13 +486,12 @@ of accepted connections (since master nodes do not have active connections, the 
 You can contact the maintainer of this repo (http://www.twitter.com/RomanSemko) to get your node
 included here. An initiative for donations to entry nodes is under way.
 
-## TODO
+## Authors
 
-There are some open TODO's in the source code. Most urging are:
+* **Roman Semko** - *SemkoDev* - (https://github.com/romansemko)
+* **Vitaly Semko** - *SemkoDev* - (https://github.com/witwit)
 
-- node tests: tested using simulation tools (will be published separately), but some Jest tests would be nice.
-- structural/organizational work: linting, editor config, contributions specs
-- Load balancing: running a Nelson swarm behind a balancer. How?
-- etc.?
+## License
 
-Any help welcome!
+This project is licensed under the ICS License - see the [LICENSE.md](LICENSE.md) file for details
+

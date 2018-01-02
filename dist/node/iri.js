@@ -23,6 +23,7 @@ tmp.setGracefulCleanup();
 
 var DEFAULT_OPTIONS = {
     hostname: 'localhost',
+    protocol: 'udp',
     port: 14265,
     TCPPort: 15600,
     UDPPort: 14600,
@@ -48,6 +49,7 @@ var IRI = function (_Base) {
         _this.addNeighbors = _this.addNeighbors.bind(_this);
         _this.updateNeighbors = _this.updateNeighbors.bind(_this);
         _this._tick = _this._tick.bind(_this);
+        _this._getIRIPeerURI = _this._getIRIPeerURI.bind(_this);
         _this.ticker = null;
         _this.isHealthy = false;
         _this.iriStats = {};
@@ -156,7 +158,7 @@ var IRI = function (_Base) {
 
             var myPeers = peers.filter(function (peer) {
                 if (_this3.isStaticNeighbor(peer)) {
-                    _this3.log(('WARNING: trying to remove a static neighbor. Skipping: ' + peer.getUDPURI()).yellow);
+                    _this3.log(('WARNING: trying to remove a static neighbor. Skipping: ' + peer.data.hostname).yellow);
                     return false;
                 }
                 return true;
@@ -166,18 +168,14 @@ var IRI = function (_Base) {
                 return Promise.resolve([]);
             }
 
-            var uris = myPeers.map(function (p) {
-                return p.getUDPURI();
-            });
+            var uris = myPeers.map(this._getIRIPeerURI);
             return new Promise(function (resolve, reject) {
                 _this3.api.removeNeighbors(uris, function (err) {
                     if (err) {
                         reject(err);
                         return;
                     }
-                    _this3.log('Neighbors removed (if there were any):'.red, myPeers.map(function (p) {
-                        return p.getUDPURI();
-                    }));
+                    _this3.log('Neighbors removed (if there were any):'.red, uris.join(', '));
                     resolve(peers);
                 });
             });
@@ -198,9 +196,7 @@ var IRI = function (_Base) {
                 return Promise.reject();
             }
 
-            var uris = peers.map(function (p) {
-                return p.getUDPURI();
-            });
+            var uris = peers.map(this._getIRIPeerURI);
 
             return new Promise(function (resolve, reject) {
                 _this4.api.addNeighbors(uris, function (error, data) {
@@ -332,6 +328,7 @@ var IRI = function (_Base) {
                     onHealthCheck(true, neighbors.map(function (n) {
                         return {
                             address: n.address.split(':')[0],
+                            numberOfRandomTransactionRequests: n.numberOfRandomTransactionRequests,
                             numberOfAllTransactions: n.numberOfAllTransactions,
                             numberOfNewTransactions: n.numberOfNewTransactions,
                             numberOfInvalidTransactions: n.numberOfInvalidTransactions
@@ -339,6 +336,19 @@ var IRI = function (_Base) {
                     }));
                 });
             }).catch(onError);
+        }
+
+        /**
+         * Returns URI for IRI depending on the protocol.
+         * @param {Peer} peer
+         * @returns {string}
+         * @private
+         */
+
+    }, {
+        key: '_getIRIPeerURI',
+        value: function _getIRIPeerURI(peer) {
+            return this.opts.protocol === 'tcp' ? peer.getTCPURI() : peer.getUDPURI();
         }
     }]);
 

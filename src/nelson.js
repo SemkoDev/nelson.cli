@@ -38,6 +38,7 @@ program
     .option('-i, --IRIPort [value]', 'IRI API port', parseNumber, DEFAULT_OPTIONS.IRIPort)
     .option('-t, --TCPPort [value]', 'IRI TCP port', parseNumber, DEFAULT_OPTIONS.TCPPort)
     .option('-u, --UDPPort [value]', 'IRI UDP port', parseNumber, DEFAULT_OPTIONS.UDPPort)
+    .option('--IRIProtocol [value]', 'IRI protocol to use: udp or tcp', (v) => v.toLowerCase(), DEFAULT_OPTIONS.IRIProtocol)
     .option('-d, --dataPath [value]', 'Peer database path', DEFAULT_LIST_OPTIONS.dataPath)
     .option('-m, --isMaster [value]', 'Is a master node', false)
     .option('-s, --silent [value]', 'Silent', false)

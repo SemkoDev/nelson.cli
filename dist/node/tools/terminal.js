@@ -186,8 +186,8 @@ function nodes(_ref4) {
         connected.forEach(function (connection, i) {
             var id = ((connection.hostname || connection.ip) + ':' + connection.port).bold.cyan;
             id = connection.name ? (id + ' (' + connection.name + ')').bold.cyan : id;
-            var weight = ('[weight: ' + connection.weight + ']').green;
-            peersBox.setLine(5 + i, id + ' ' + weight);
+            // const weight = `[trust: ${(connection.trust * 100).toFixed(6)}]`.green;
+            peersBox.setLine(5 + i, '' + id);
         });
     }
     screen.render();
