@@ -142,12 +142,12 @@ class IRI extends Base {
         const uris = peers.map(this._getIRIPeerURI);
 
         return new Promise((resolve, reject) => {
-            this.api.addNeighbors(uris, (error, data) => {
+            this.api.addNeighbors(uris, (error) => {
                 if(error) {
                     reject(error);
                     return;
                 }
-                this.log('Neighbors added:'.green, data, uris.join(', '));
+                this.log('Neighbors added:'.green, uris.join(', '));
                 resolve(peers);
             });
         });
@@ -200,6 +200,8 @@ class IRI extends Base {
                     return resolve();
                 }
                 if (Array.isArray(neighbors) && neighbors.length) {
+                    // FIXME: This is broken. staticNeighbors is just a resolved IP. n.address includes port and can be a hostname.
+                    // Hence, the filter will always be true.
                     const toRemove = neighbors.filter((n) => !this.staticNeighbors.includes(n.address));
                     return this.api.removeNeighbors(toRemove.map((n) => `${n.connectionType}://${n.address}`), resolve);
                 }

@@ -382,7 +382,7 @@ var PeerList = function (_Base) {
                         port: port, TCPPort: TCPPort, UDPPort: UDPPort
                     });
                 } else {
-                    _this9.log('Adding to the list of known Nelson peers: ' + hostname + ':' + port, data);
+                    _this9.log('Adding to the list of known Nelson peers: ' + hostname + ':' + port);
                     var peerIP = ip.isV4Format(addr) || ip.isV6Format(addr) ? addr : null;
                     var peer = new Peer({
                         port: port,

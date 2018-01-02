@@ -125,13 +125,14 @@ class Node extends Base {
         this.log('terminating...');
 
         this.heart && this.heart.end();
+        this._ready = false;
 
         const closeServer = () => {
             return new Promise((resolve) => {
                 if (this.server) {
                     this.server.close();
                 }
-                return this.iri.removeAllNeighbors().then(() => {
+                return this._removeNeighbors(Array.from(this.sockets.keys())).then(() => {
                     this.sockets = new Map();
                     resolve(true);
                 });
@@ -139,7 +140,6 @@ class Node extends Base {
         };
 
         return closeServer().then(() => {
-            this._ready = false;
             return this.iri
                 ? this.iri.end()
                 : true;
@@ -264,7 +264,7 @@ class Node extends Base {
         const wrongRequest = !headers;
 
         return new Promise((resolve, reject) => {
-            if (!this.guard || !this.guard.isAllowed(address, port)) {
+            if (!this._ready || !this.guard || !this.guard.isAllowed(address, port)) {
                 return reject();
             }
 
@@ -359,7 +359,7 @@ class Node extends Base {
      */
     _bindWebSocket (ws, peer, asServer=false) {
         const removeNeighbor = (e) => {
-            if (!ws || ws.removingNow) {
+            if (!this._ready || !ws || ws.removingNow) {
                 return;
             }
             ws.removingNow = true;
@@ -369,11 +369,14 @@ class Node extends Base {
         };
 
         const onConnected = () => {
+            if (!this._ready) {
+                return;
+            }
             this.log('connection established'.green, this.formatNode(peer.data.hostname, peer.data.port));
             this._sendNeighbors(ws);
             peer.markConnected()
-                .then(() => this.iri.addNeighbors([ peer ]))
-                .then(() => this.opts.onPeerConnected(peer));
+                .then(() => this._ready && this.iri.addNeighbors([ peer ]))
+                .then(() => this._ready && this.opts.onPeerConnected(peer));
         };
 
         ws.isAlive = true;
@@ -525,7 +528,7 @@ class Node extends Base {
      * @private
      */
     _removeNeighbor (peer) {
-        if (!this.sockets.get(peer)) {
+        if (!this._ready || !this.sockets.get(peer)) {
             return Promise.resolve([]);
         }
         // this.log('removing neighbor', this.formatNode(peer.data.hostname, peer.data.port));
@@ -739,8 +742,11 @@ class Node extends Base {
      */
     _onIRIHealth (healthy, data) {
         if (!healthy) {
-            this.log('IRI gone... closing all Nelson connections'.red);
-            return this._removeNeighbors(Array.from(this.sockets.keys()));
+            // Do not drop connections, yet. IRI might just be unavailable for a moment.
+            // If it still has "old" neighbors, they will leak, causing more nodes to be added than permitted.
+            this.log('IRI gone...'.red);
+            return;
+            // return this._removeNeighbors(Array.from(this.sockets.keys()));
         }
         return Promise.all(data.map(n => n.address).map(getIP)).then((neighbors) => {
             const toRemove = [];
