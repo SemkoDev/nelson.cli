@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Fixed removed static neighbors on exit.
 - Fixed possible neighbor leak in IRI.
+- Fixes IPv6 URIs.
 
 ## [0.3.1] - 2018-01-02
 

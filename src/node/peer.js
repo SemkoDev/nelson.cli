@@ -207,11 +207,11 @@ class Peer extends Base {
     }
 
     getTCPURI () {
-        return `tcp://${this.data.hostname}:${this.data.TCPPort}`
+        return `tcp://${this._getIPString(this.data.hostname)}:${this.data.TCPPort}`
     }
 
     getUDPURI () {
-        return `udp://${this.data.hostname}:${this.data.UDPPort}`
+        return `udp://${this._getIPString(this.data.hostname)}:${this.data.UDPPort}`
     }
 
     getNelsonURI () {
@@ -232,6 +232,10 @@ class Peer extends Base {
 
     _isHostnameIP () {
         return ip.isV4Format(this.data.hostname) || ip.isV6Format(this.data.hostname)
+    }
+
+    _getIPString (ipOrHostname) {
+        return ip.isV6Format(ipOrHostname) ? `[${ipOrHostname}]` : ipOrHostname;
     }
 
     _isIPOutdated () {
