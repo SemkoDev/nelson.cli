@@ -235,7 +235,7 @@ class Peer extends Base {
     }
 
     _getIPString (ipOrHostname) {
-        return ip.isV6Format(ipOrHostname) ? `[${ipOrHostname}]` : ipOrHostname;
+        return ipOrHostname.includes(':')  ? `[${ipOrHostname}]` : ipOrHostname;
     }
 
     _isIPOutdated () {

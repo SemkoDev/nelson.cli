@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+- Fixes IPv6 check
+
 ## [0.3.4] - 2018-01-02
 
 ### Changed
