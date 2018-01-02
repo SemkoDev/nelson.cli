@@ -266,43 +266,21 @@ var PeerList = function (_Base) {
         }
 
         /**
-         * Returns whether the provided uri is from a trusted node
-         * @param {URL|string} uri
-         * @returns {Promise<boolean>}
-         */
-
-    }, {
-        key: 'isTrusted',
-        value: function isTrusted(uri) {
-            var u = null;
-            try {
-                u = typeof uri === 'string' ? new URL(uri) : uri;
-            } catch (error) {
-                return false;
-            }
-
-            return this.findByAddress(u.hostname, u.port).then(function (peers) {
-                return peers.filter(function (p) {
-                    return p.isTrusted();
-                }).length > 0;
-            });
-        }
-
-        /**
-         * Calculates the weight of a peer
+         * Calculates the trust score of a peer
          * @param {Peer} peer
          * @returns {number}
          */
 
     }, {
-        key: 'getPeerWeight',
-        value: function getPeerWeight(peer) {
+        key: 'getPeerTrust',
+        value: function getPeerTrust(peer) {
+            var age = parseFloat(getSecondsPassed(peer.data.dateCreated)) / 3600;
             if (this.opts.isMaster) {
-                var _weightedAge = ((peer.data.dateLastConnected || peer.data.dateCreated) - peer.data.dateCreated) / 1000;
-                return Math.max(_weightedAge, 1);
+                var _weightedAge = Math.pow(peer.data.connected || peer.isTrusted() ? age : 0, 2) * Math.pow(peer.getPeerQuality(), 2);
+                return Math.max(_weightedAge, 0.0001);
             }
-            var weightedAge = getSecondsPassed(peer.data.dateCreated) * peer.data.weight * peer.getPeerQuality();
-            return Math.max(weightedAge, 1);
+            var weightedAge = Math.pow(age, 2) * Math.pow(peer.getPeerQuality(), 2) * Math.pow(1.0 + peer.data.weight * 10, 2);
+            return Math.max(weightedAge, 0.0001);
         }
 
         /**
@@ -310,16 +288,19 @@ var PeerList = function (_Base) {
          * The weight depends on relationship age (connections) and trust (weight).
          * @param {number} amount
          * @param {Peer[]} sourcePeers list of peers to use. Optional for filtering purposes.
+         * @param {number} power by which increase the weights
          * @returns {Array<Peer, number>}
          */
 
     }, {
         key: 'getWeighted',
         value: function getWeighted() {
+            var amount = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
+
             var _this8 = this;
 
-            var amount = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
             var sourcePeers = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+            var power = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 1.0;
 
             amount = amount || this.peers.length;
             var peers = sourcePeers || Array.from(this.peers);
@@ -327,30 +308,30 @@ var PeerList = function (_Base) {
                 return [];
             }
             var allWeights = peers.map(function (p) {
-                return _this8.getPeerWeight(p);
+                return Math.pow(_this8.getPeerTrust(p), power);
             });
             var weightsMax = Math.max.apply(Math, _toConsumableArray(allWeights));
 
             var choices = [];
             var getChoice = function getChoice() {
-                var peer = weighted(peers, peers.map(function (p) {
-                    return _this8.getPeerWeight(p);
-                }));
-                peers.splice(peers.indexOf(peer), 1);
-                var weightsArray = allWeights.splice(peers.indexOf(peer), 1);
-                choices.push([peer, weightsArray[0] / weightsMax]);
+                var peer = weighted(peers, allWeights);
+                var index = peers.indexOf(peer);
+                var weight = allWeights[index];
+                peers.splice(index, 1);
+                allWeights.splice(index, 1);
+                choices.push([peer, weight / weightsMax]);
             };
 
             for (var x = 0; x < amount; x++) {
-                getChoice();
                 if (peers.length < 1) {
                     break;
                 }
+                getChoice();
             }
             return choices.filter(function (c) {
                 return c && c[0];
             }).map(function (c) {
-                return [c[0], c[0].isTrusted() ? 1 : c[1]];
+                return [c[0], c[0].isTrusted() ? 1.0 : c[1]];
             });
         }
 
@@ -369,6 +350,7 @@ var PeerList = function (_Base) {
                 TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
                 UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
                 isTrusted: false,
+                peerWeight: 0.5,
                 weight: 0,
                 remoteKey: null
             }, data),
@@ -377,6 +359,7 @@ var PeerList = function (_Base) {
                 rawTCPPort = _Object$assign.TCPPort,
                 rawUDPPort = _Object$assign.UDPPort,
                 isTrusted = _Object$assign.isTrusted,
+                peerWeight = _Object$assign.peerWeight,
                 weight = _Object$assign.weight,
                 remoteKey = _Object$assign.remoteKey,
                 name = _Object$assign.name;
@@ -391,7 +374,7 @@ var PeerList = function (_Base) {
 
                 if (existing) {
                     return _this9.update(existing, {
-                        weight: existing.data.weight < weight ? weight : existing.data.weight,
+                        weight: weight ? existing.data.weight ? weight * peerWeight + existing.data.weight * (1.0 - peerWeight) : weight : existing.data.weight,
                         key: existing.data.key || createIdentifier(),
                         remoteKey: remoteKey || existing.data.remoteKey,
                         name: name || existing.data.name,
