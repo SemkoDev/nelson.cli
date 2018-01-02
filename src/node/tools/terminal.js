@@ -169,8 +169,8 @@ function nodes ({ nodes, connected }) {
         connected.forEach((connection, i) => {
             let id = `${connection.hostname||connection.ip}:${connection.port}`.bold.cyan;
             id = connection.name ? `${id} (${connection.name})`.bold.cyan : id;
-            const weight = `[weight: ${connection.weight}]`.green;
-            peersBox.setLine(5 + i, `${id} ${weight}`);
+            // const weight = `[trust: ${(connection.trust * 100).toFixed(6)}]`.green;
+            peersBox.setLine(5 + i, `${id}`);
         });
     }
     screen.render();

@@ -243,6 +243,7 @@ class IRI extends Base {
                 // TODO: if the address is IPV6, could that pose a problem?
                 onHealthCheck(true, neighbors.map((n) => ({
                     address: n.address.split(':')[0],
+                    numberOfRandomTransactionRequests: n.numberOfRandomTransactionRequests,
                     numberOfAllTransactions: n.numberOfAllTransactions,
                     numberOfNewTransactions: n.numberOfNewTransactions,
                     numberOfInvalidTransactions: n.numberOfInvalidTransactions
