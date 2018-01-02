@@ -279,12 +279,12 @@ var Peer = function (_Base) {
     }, {
         key: 'getTCPURI',
         value: function getTCPURI() {
-            return 'tcp://' + this.data.hostname + ':' + this.data.TCPPort;
+            return 'tcp://' + this._getIPString(this.data.hostname) + ':' + this.data.TCPPort;
         }
     }, {
         key: 'getUDPURI',
         value: function getUDPURI() {
-            return 'udp://' + this.data.hostname + ':' + this.data.UDPPort;
+            return 'udp://' + this._getIPString(this.data.hostname) + ':' + this.data.UDPPort;
         }
     }, {
         key: 'getNelsonURI',
@@ -312,6 +312,11 @@ var Peer = function (_Base) {
         key: '_isHostnameIP',
         value: function _isHostnameIP() {
             return ip.isV4Format(this.data.hostname) || ip.isV6Format(this.data.hostname);
+        }
+    }, {
+        key: '_getIPString',
+        value: function _getIPString(ipOrHostname) {
+            return ip.isV6Format(ipOrHostname) ? '[' + ipOrHostname + ']' : ipOrHostname;
         }
     }, {
         key: '_isIPOutdated',
