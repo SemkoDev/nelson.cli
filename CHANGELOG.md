@@ -6,11 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.3.2] - 2018-01-02
+
 ### Changed
 - Fixed removed static neighbors on exit.
 - Fixed possible neighbor leak in IRI.
 
-## [0.3.0] - 2018-01-02
+## [0.3.1] - 2018-01-02
 
 ### Added
 - TCP switch for IRI

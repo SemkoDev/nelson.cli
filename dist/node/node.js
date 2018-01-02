@@ -183,13 +183,14 @@ var Node = function (_Base) {
             this.log('terminating...');
 
             this.heart && this.heart.end();
+            this._ready = false;
 
             var closeServer = function closeServer() {
                 return new Promise(function (resolve) {
                     if (_this3.server) {
                         _this3.server.close();
                     }
-                    return _this3.iri.removeAllNeighbors().then(function () {
+                    return _this3._removeNeighbors(Array.from(_this3.sockets.keys())).then(function () {
                         _this3.sockets = new Map();
                         resolve(true);
                     });
@@ -197,7 +198,6 @@ var Node = function (_Base) {
             };
 
             return closeServer().then(function () {
-                _this3._ready = false;
                 return _this3.iri ? _this3.iri.end() : true;
             });
         }
@@ -381,7 +381,7 @@ var Node = function (_Base) {
             var wrongRequest = !headers;
 
             return new Promise(function (resolve, reject) {
-                if (!_this8.guard || !_this8.guard.isAllowed(address, port)) {
+                if (!_this8._ready || !_this8.guard || !_this8.guard.isAllowed(address, port)) {
                     return reject();
                 }
 
@@ -485,7 +485,7 @@ var Node = function (_Base) {
             var asServer = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
 
             var removeNeighbor = function removeNeighbor(e) {
-                if (!ws || ws.removingNow) {
+                if (!_this9._ready || !ws || ws.removingNow) {
                     return;
                 }
                 ws.removingNow = true;
@@ -495,12 +495,15 @@ var Node = function (_Base) {
             };
 
             var onConnected = function onConnected() {
+                if (!_this9._ready) {
+                    return;
+                }
                 _this9.log('connection established'.green, _this9.formatNode(peer.data.hostname, peer.data.port));
                 _this9._sendNeighbors(ws);
                 peer.markConnected().then(function () {
-                    return _this9.iri.addNeighbors([peer]);
+                    return _this9._ready && _this9.iri.addNeighbors([peer]);
                 }).then(function () {
-                    return _this9.opts.onPeerConnected(peer);
+                    return _this9._ready && _this9.opts.onPeerConnected(peer);
                 });
             };
 
@@ -700,7 +703,7 @@ var Node = function (_Base) {
     }, {
         key: '_removeNeighbor',
         value: function _removeNeighbor(peer) {
-            if (!this.sockets.get(peer)) {
+            if (!this._ready || !this.sockets.get(peer)) {
                 return Promise.resolve([]);
             }
             // this.log('removing neighbor', this.formatNode(peer.data.hostname, peer.data.port));
@@ -965,8 +968,11 @@ var Node = function (_Base) {
             var _this17 = this;
 
             if (!healthy) {
-                this.log('IRI gone... closing all Nelson connections'.red);
-                return this._removeNeighbors(Array.from(this.sockets.keys()));
+                // Do not drop connections, yet. IRI might just be unavailable for a moment.
+                // If it still has "old" neighbors, they will leak, causing more nodes to be added than permitted.
+                this.log('IRI gone...'.red);
+                return;
+                // return this._removeNeighbors(Array.from(this.sockets.keys()));
             }
             return Promise.all(data.map(function (n) {
                 return n.address;

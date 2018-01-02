@@ -199,12 +199,12 @@ var IRI = function (_Base) {
             var uris = peers.map(this._getIRIPeerURI);
 
             return new Promise(function (resolve, reject) {
-                _this4.api.addNeighbors(uris, function (error, data) {
+                _this4.api.addNeighbors(uris, function (error) {
                     if (error) {
                         reject(error);
                         return;
                     }
-                    _this4.log('Neighbors added:'.green, data, uris.join(', '));
+                    _this4.log('Neighbors added:'.green, uris.join(', '));
                     resolve(peers);
                 });
             });
@@ -267,6 +267,8 @@ var IRI = function (_Base) {
                         return resolve();
                     }
                     if (Array.isArray(neighbors) && neighbors.length) {
+                        // FIXME: This is broken. staticNeighbors is just a resolved IP. n.address includes port and can be a hostname.
+                        // Hence, the filter will always be true.
                         var toRemove = neighbors.filter(function (n) {
                             return !_this6.staticNeighbors.includes(n.address);
                         });
