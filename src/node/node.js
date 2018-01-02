@@ -23,6 +23,7 @@ const DEFAULT_OPTIONS = {
     apiHostname: '127.0.0.1',
     IRIHostname: DEFAULT_IRI_OPTIONS.hostname,
     IRIPort: DEFAULT_IRI_OPTIONS.port,
+    IRIProtocol: DEFAULT_IRI_OPTIONS.protocol,
     TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
     UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
     weightDeflation: 0.95,
@@ -175,12 +176,13 @@ class Node extends Base {
      * @private
      */
     _getIRI () {
-        const { IRIHostname, IRIPort, silent } = this.opts;
+        const { IRIHostname, IRIPort, IRIProtocol, silent } = this.opts;
 
         return (new IRI({
             logIdent: `${this.opts.port}::IRI`,
             hostname: IRIHostname,
             port: IRIPort,
+            protocol: IRIProtocol,
             onHealthCheck: this._onIRIHealth,
             silent
         })).start().then((iri) => {
@@ -754,7 +756,7 @@ class Node extends Base {
                     }
                 });
             if (toRemove.length) {
-                this.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map((p) => p.getUDPURI()));
+                this.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map((p) => p.data.hostname));
                 return this._removeNeighbors(toRemove);
             }
             return([]);
