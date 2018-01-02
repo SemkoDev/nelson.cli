@@ -6,12 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.3.3] - 2018-01-02
+## [0.3.4] - 2018-01-02
 
 ### Changed
 - Fixed removed static neighbors on exit.
 - Fixed possible neighbor leak in IRI.
 - Fixes IPv6 URIs.
+- Updated Dockerfile to make the build faster.
 
 ## [0.3.1] - 2018-01-02
 
