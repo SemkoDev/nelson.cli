@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Smarter neighbor quality algorithm.
 - Random peer dropping inversely-weighted by peer quality now.
 - Improved incoming new/top peer rules.
+- Restructured and cleaned up the README.
+- Increased default minimal neighbors back to 5+6 (11) for stronger security.
 
 ## [0.3.0] - 2017-12-27
 
