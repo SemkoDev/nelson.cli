@@ -316,7 +316,7 @@ var Peer = function (_Base) {
     }, {
         key: '_getIPString',
         value: function _getIPString(ipOrHostname) {
-            return ip.isV6Format(ipOrHostname) ? '[' + ipOrHostname + ']' : ipOrHostname;
+            return ipOrHostname.includes(':') ? '[' + ipOrHostname + ']' : ipOrHostname;
         }
     }, {
         key: '_isIPOutdated',
