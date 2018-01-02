@@ -131,7 +131,7 @@ class Node extends Base {
                 if (this.server) {
                     this.server.close();
                 }
-                return this._removeNeighbors(Array.from(this.sockets.keys())).then(() => {
+                return this.iri.removeAllNeighbors().then(() => {
                     this.sockets = new Map();
                     resolve(true);
                 });
