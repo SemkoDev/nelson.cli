@@ -236,7 +236,7 @@ Some have additional short versions.
 | --IRIPort, -i| IRI API port of the running IRI node instance|14265|
 | --TCPPort, -t| IRI TCP Port|15600|
 | --UDPPort, -u| IRI UDP Port|14600|
-| --IRIProtocol| Protocol to use for connecting neighbors. Possible values 'udp' or 'tcp'|udp|
+| --IRIProtocol| Protocol to use for connecting neighbors. Possible values 'udp' or 'tcp'. **WARNING**: Please do not use until the [IRI bug #345](https://github.com/iotaledger/iri/issues/345) is solved and new IRI version (+1.4.1.5) released! |udp|
 | --dataPath, -d| path to the file, that will be used as neighbor storage| data/neighbors.db|
 | --silent, -s|Run the node without any output||
 | --gui, -g|Run the node in console-gui mode||

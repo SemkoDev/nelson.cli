@@ -45,7 +45,7 @@ var DEFAULT_PEER_DATA = {
     seen: 1,
     connected: 0,
     tried: 0,
-    weight: 1.0,
+    weight: 0,
     dateTried: null,
     dateLastConnected: null,
     dateCreated: null,
@@ -192,13 +192,27 @@ var Peer = function (_Base) {
 
             var lastConnections = [].concat(_toConsumableArray(this.data.lastConnections), [_extends({}, this.lastConnection, {
                 end: new Date(),
-                duration: getSecondsPassed(this.lastConnection.start)
+                duration: this.getConnectionDuration()
             })]).slice(-10);
 
             this.lastConnection = null;
             return this.update({ lastConnections: lastConnections }).then(function () {
                 return _this5;
             });
+        }
+
+        /**
+         * Returns time in seconds that passed since the node has been connected
+         * @returns {number}
+         */
+
+    }, {
+        key: 'getConnectionDuration',
+        value: function getConnectionDuration() {
+            if (!this.lastConnection) {
+                return 0;
+            }
+            return getSecondsPassed(this.lastConnection.start);
         }
 
         /**
@@ -214,11 +228,15 @@ var Peer = function (_Base) {
             }
 
             var numberOfAllTransactions = data.numberOfAllTransactions,
+                numberOfRandomTransactionRequests = data.numberOfRandomTransactionRequests,
                 numberOfNewTransactions = data.numberOfNewTransactions,
                 numberOfInvalidTransactions = data.numberOfInvalidTransactions;
 
             this.lastConnection = _extends({}, this.lastConnection, {
-                numberOfAllTransactions: numberOfAllTransactions, numberOfNewTransactions: numberOfNewTransactions, numberOfInvalidTransactions: numberOfInvalidTransactions
+                numberOfAllTransactions: numberOfAllTransactions,
+                numberOfRandomTransactionRequests: numberOfRandomTransactionRequests,
+                numberOfNewTransactions: numberOfNewTransactions,
+                numberOfInvalidTransactions: numberOfInvalidTransactions
             });
         }
 
@@ -230,19 +248,22 @@ var Peer = function (_Base) {
     }, {
         key: 'getPeerQuality',
         value: function getPeerQuality() {
-            var history = this.data.lastConnections;
+            var history = [].concat(_toConsumableArray(this.data.lastConnections), [this.lastConnection]).filter(function (h) {
+                return h;
+            });
             var newTrans = history.reduce(function (s, h) {
                 return s + h.numberOfNewTransactions;
             }, 0);
             var badTrans = history.reduce(function (s, h) {
                 return s + h.numberOfInvalidTransactions;
             }, 0);
-
-            if (!this.isTrusted() && !newTrans && history.length >= this.opts.lazyTimesLimit) {
-                return 1.0 / history.length;
-            }
-
-            return 1.0 - badTrans / (newTrans || 1);
+            var rndTrans = history.reduce(function (s, h) {
+                return s + (h.numberOfRandomTransactionRequests || 0);
+            }, 0);
+            var badRatio = parseFloat(badTrans * 5 + rndTrans) / (newTrans || 1);
+            var serialPenalization = !this.isTrusted() && !newTrans && history.length >= this.opts.lazyTimesLimit ? 1.0 / history.length : 1.0;
+            var score = Math.max(0.0, 1.0 / (badRatio || 1)) * serialPenalization;
+            return Math.max(0.01, score);
         }
 
         /**
@@ -253,7 +274,7 @@ var Peer = function (_Base) {
     }, {
         key: 'isLazy',
         value: function isLazy() {
-            return this.lastConnection && getSecondsPassed(this.lastConnection.start) > this.opts.lazyLimit && this.lastConnection.numberOfNewTransactions === 0;
+            return this.lastConnection && getSecondsPassed(this.lastConnection.start) > this.opts.lazyLimit && (this.lastConnection.numberOfNewTransactions === 0 || this.lastConnection.numberOfNewTransactions < this.lastConnection.numberOfRandomTransactionRequests);
         }
     }, {
         key: 'getTCPURI',

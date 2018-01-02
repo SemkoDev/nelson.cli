@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.3.0] - 2018-01-02
+
+### Added
+- TCP switch for IRI
+
 ### Changed
 - Improved neighbor weighting algorithm. Fixed a few minor bugs.
 - Smarter neighbor quality algorithm.

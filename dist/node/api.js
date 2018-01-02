@@ -105,7 +105,40 @@ function getNodeStats(node) {
     var connectedPeers = Array.from(node.sockets.keys()).filter(function (p) {
         return node.sockets.get(p).readyState === 1;
     }).map(function (p) {
-        return p.data;
+        var _p$data = p.data,
+            name = _p$data.name,
+            hostname = _p$data.hostname,
+            ip = _p$data.ip,
+            port = _p$data.port,
+            TCPPort = _p$data.TCPPort,
+            UDPPort = _p$data.UDPPort,
+            seen = _p$data.seen,
+            connected = _p$data.connected,
+            tried = _p$data.tried,
+            weight = _p$data.weight,
+            dateTried = _p$data.dateTried,
+            dateLastConnected = _p$data.dateLastConnected,
+            dateCreated = _p$data.dateCreated,
+            isTrusted = _p$data.isTrusted,
+            lastConnections = _p$data.lastConnections;
+
+        return {
+            name: name,
+            hostname: hostname,
+            ip: ip,
+            port: port,
+            TCPPort: TCPPort,
+            UDPPort: UDPPort,
+            seen: seen,
+            connected: connected,
+            tried: tried,
+            weight: weight,
+            dateTried: dateTried,
+            dateLastConnected: dateLastConnected,
+            dateCreated: dateCreated,
+            isTrusted: isTrusted,
+            lastConnections: lastConnections
+        };
     });
 
     return {
