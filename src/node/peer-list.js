@@ -275,7 +275,7 @@ class PeerList extends Base {
                     port, TCPPort, UDPPort
                 });
             } else {
-                this.log(`Adding to the list of known Nelson peers: ${hostname}:${port}`, data);
+                this.log(`Adding to the list of known Nelson peers: ${hostname}:${port}`);
                 const peerIP = ip.isV4Format(addr) || ip.isV6Format(addr) ? addr : null;
                 const peer = new Peer(
                     {
