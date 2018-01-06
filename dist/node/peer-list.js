@@ -349,6 +349,7 @@ var PeerList = function (_Base) {
             var _Object$assign = Object.assign({
                 TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
                 UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
+                IRIProtocol: 'udp',
                 isTrusted: false,
                 peerWeight: 0.5,
                 weight: 0,
@@ -358,6 +359,7 @@ var PeerList = function (_Base) {
                 rawPort = _Object$assign.port,
                 rawTCPPort = _Object$assign.TCPPort,
                 rawUDPPort = _Object$assign.UDPPort,
+                IRIProtocol = _Object$assign.IRIProtocol,
                 isTrusted = _Object$assign.isTrusted,
                 peerWeight = _Object$assign.peerWeight,
                 weight = _Object$assign.weight,
@@ -379,7 +381,7 @@ var PeerList = function (_Base) {
                         remoteKey: remoteKey || existing.data.remoteKey,
                         name: name || existing.data.name,
                         hostname: addr,
-                        port: port, TCPPort: TCPPort, UDPPort: UDPPort
+                        port: port, TCPPort: TCPPort, UDPPort: UDPPort, IRIProtocol: IRIProtocol
                     });
                 } else {
                     _this9.log('Adding to the list of known Nelson peers: ' + hostname + ':' + port);
@@ -390,6 +392,7 @@ var PeerList = function (_Base) {
                         ip: peerIP,
                         TCPPort: TCPPort || DEFAULT_IRI_OPTIONS.TCPPort,
                         UDPPort: UDPPort || DEFAULT_IRI_OPTIONS.UDPPort,
+                        IRIProtocol: IRIProtocol || 'udp',
                         isTrusted: isTrusted,
                         name: name,
                         weight: weight,
