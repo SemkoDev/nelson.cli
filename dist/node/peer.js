@@ -25,6 +25,7 @@ var _require3 = require('./tools/utils'),
     getSecondsPassed = _require3.getSecondsPassed,
     createIdentifier = _require3.createIdentifier;
 
+var PROTOCOLS = ['tcp', 'udp', 'prefertcp', 'preferudp', 'any'];
 var DEFAULT_OPTIONS = {
     onDataUpdate: function onDataUpdate(data) {
         return Promise.resolve();
@@ -42,6 +43,7 @@ var DEFAULT_PEER_DATA = {
     port: 31337,
     TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
     UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
+    IRIProtocol: 'udp', // Assume all old Nelsons to be running udp.
     seen: 1,
     connected: 0,
     tried: 0,
@@ -74,7 +76,7 @@ var Peer = function (_Base) {
 
         _this.data = null;
         _this.lastConnection = null;
-
+        // Make sure to migrate database if anything else is added to the defaults...
         _this.update(_extends({}, DEFAULT_PEER_DATA, data));
         return _this;
     }
@@ -289,12 +291,17 @@ var Peer = function (_Base) {
     }, {
         key: 'getNelsonURI',
         value: function getNelsonURI() {
-            return 'http://' + this.data.hostname + ':' + this.data.port;
+            return 'http://' + this._getIPString(this.data.hostname) + ':' + this.data.port;
+        }
+    }, {
+        key: 'getNelsonWebsocketURI',
+        value: function getNelsonWebsocketURI() {
+            return 'ws://' + this._getIPString(this.data.hostname) + ':' + this.data.port;
         }
     }, {
         key: 'getHostname',
         value: function getHostname() {
-            return this.data.hostname + '/' + this.data.port + '/' + this.data.TCPPort + '/' + this.data.UDPPort;
+            return this.data.hostname + '/' + this.data.port + '/' + this.data.TCPPort + '/' + this.data.UDPPort + '/0/' + this.data.IRIProtocol;
         }
     }, {
         key: 'isTrusted',
@@ -331,5 +338,6 @@ var Peer = function (_Base) {
 module.exports = {
     DEFAULT_OPTIONS: DEFAULT_OPTIONS,
     DEFAULT_PEER_DATA: DEFAULT_PEER_DATA,
+    PROTOCOLS: PROTOCOLS,
     Peer: Peer
 };
