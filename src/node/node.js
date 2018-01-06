@@ -224,7 +224,8 @@ class Node extends Base {
         this.server.on('connection', (ws, req) => {
             this.log('incoming connection established'.green, req.connection.remoteAddress);
             const { remoteAddress: address } = req.connection;
-            const { port, TCPPort, UDPPort, remoteKey, name, protocol } = this._getHeaderIdentifiers(req.headers);
+            const { port, TCPPort, UDPPort, remoteKey, name, protocol: wishedProtocol } = this._getHeaderIdentifiers(req.headers);
+            const protocol = this._negotiateProtocol(wishedProtocol);
 
             this.list.add({
                 hostname: address,
