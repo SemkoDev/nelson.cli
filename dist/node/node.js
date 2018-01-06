@@ -262,7 +262,6 @@ var Node = function (_Base) {
                 logIdent: this.opts.port + '::IRI',
                 hostname: IRIHostname,
                 port: IRIPort,
-                protocol: IRIProtocol,
                 onHealthCheck: this._onIRIHealth,
                 silent: silent
             }).start().then(function (iri) {
