@@ -7,7 +7,6 @@ tmp.setGracefulCleanup();
 
 const DEFAULT_OPTIONS = {
     hostname: 'localhost',
-    protocol: 'udp',
     port: 14265,
     TCPPort: 15600,
     UDPPort: 14600,
@@ -263,7 +262,7 @@ class IRI extends Base {
      * @private
      */
     _getIRIPeerURI (peer) {
-        return this.opts.protocol === 'tcp' ? peer.getTCPURI() : peer.getUDPURI();
+        return peer.data.protocol === 'tcp' ? peer.getTCPURI() : peer.getUDPURI();
     }
 
 }
