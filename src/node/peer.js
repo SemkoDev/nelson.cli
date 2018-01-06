@@ -4,6 +4,7 @@ const { Base } = require('./base');
 const { DEFAULT_OPTIONS: DEFAULT_IRI_OPTIONS } = require('./iri');
 const { getSecondsPassed, createIdentifier } = require('./tools/utils');
 
+const PROTOCOLS = ['tcp', 'udp', 'prefertcp', 'preferudp', 'any'];
 const DEFAULT_OPTIONS = {
     onDataUpdate: (data) => Promise.resolve(),
     ipRefreshTimeout: 1200,
@@ -19,6 +20,7 @@ const DEFAULT_PEER_DATA = {
     port: 31337,
     TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
     UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
+    IRIProtocol: 'udp', // Assume all old Nelsons to be running udp.
     seen: 1,
     connected: 0,
     tried: 0,
@@ -42,7 +44,7 @@ class Peer extends Base {
         super({ ...DEFAULT_OPTIONS, ...options, logIdent: `${data.hostname}:${data.port}`});
         this.data = null;
         this.lastConnection = null;
-
+        // Make sure to migrate database if anything else is added to the defaults...
         this.update({ ...DEFAULT_PEER_DATA, ...data });
     }
 
@@ -215,11 +217,15 @@ class Peer extends Base {
     }
 
     getNelsonURI () {
-        return `http://${this.data.hostname}:${this.data.port}`
+        return `http://${this._getIPString(this.data.hostname)}:${this.data.port}`
+    }
+
+    getNelsonWebsocketURI () {
+        return `ws://${this._getIPString(this.data.hostname)}:${this.data.port}`
     }
 
     getHostname () {
-        return `${this.data.hostname}/${this.data.port}/${this.data.TCPPort}/${this.data.UDPPort}`
+        return `${this.data.hostname}/${this.data.port}/${this.data.TCPPort}/${this.data.UDPPort}/0/${this.data.IRIProtocol}`
     }
 
     isTrusted () {
@@ -246,5 +252,6 @@ class Peer extends Base {
 module.exports = {
     DEFAULT_OPTIONS,
     DEFAULT_PEER_DATA,
+    PROTOCOLS,
     Peer
 };

@@ -53,7 +53,7 @@ var DEFAULT_OPTIONS = {
     apiHostname: '127.0.0.1',
     IRIHostname: DEFAULT_IRI_OPTIONS.hostname,
     IRIPort: DEFAULT_IRI_OPTIONS.port,
-    IRIProtocol: DEFAULT_IRI_OPTIONS.protocol,
+    IRIProtocol: 'any',
     TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
     UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
     weightDeflation: 0.95,
@@ -376,7 +376,8 @@ var Node = function (_Base) {
                 port = _ref.port,
                 nelsonID = _ref.nelsonID,
                 version = _ref.version,
-                remoteKey = _ref.remoteKey;
+                remoteKey = _ref.remoteKey,
+                protocol = _ref.protocol;
 
             var wrongRequest = !headers;
 
@@ -410,6 +411,12 @@ var Node = function (_Base) {
 
                     // Deny too frequent connections from the same peer.
                     if (peers.length && _this8.isSaturationReached() && peers[0].data.dateLastConnected && getSecondsPassed(peers[0].data.dateLastConnected) < _this8.opts.epochInterval * 2) {
+                        return reject();
+                    }
+
+                    // Incompatible protocols
+                    if (peers.length[0] && !_this8._negotiateProtocol(protocol, peers[0].data.key, remoteKey)) {
+                        _this8.log(('Couldn\'t negotiate protocol with ' + peers[0].data.hostname + ': my ' + _this8.opts.IRIProtocol + ' vs remote ' + protocol).yellow);
                         return reject();
                     }
 
@@ -500,9 +507,7 @@ var Node = function (_Base) {
                 }
                 _this9.log('connection established'.green, _this9.formatNode(peer.data.hostname, peer.data.port));
                 _this9._sendNeighbors(ws);
-                peer.markConnected().then(function () {
-                    return _this9._ready && _this9.iri.addNeighbors([peer]);
-                }).then(function () {
+                return peer.markConnected().then(function () {
                     return _this9._ready && _this9.opts.onPeerConnected(peer);
                 });
             };
@@ -512,7 +517,9 @@ var Node = function (_Base) {
             this.sockets.set(peer, ws);
 
             if (asServer) {
-                onConnected();
+                onConnected().then(function () {
+                    return _this9._ready && _this9.iri.addNeighbors([peer]);
+                });
             } else {
                 ws.on('headers', function (headers) {
                     // Check for valid headers
@@ -526,9 +533,18 @@ var Node = function (_Base) {
                         TCPPort = head.TCPPort,
                         UDPPort = head.UDPPort,
                         remoteKey = head.remoteKey,
-                        name = head.name;
+                        name = head.name,
+                        wishedProtocol = head.protocol;
 
-                    _this9.list.update(peer, { port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort, remoteKey: remoteKey, name: name });
+                    var protocol = _this9._negotiateProtocol(wishedProtocol, peer.data.key, remoteKey);
+                    _this9.list.update(peer, { port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort, remoteKey: remoteKey, name: name, protocol: protocol }).then(function () {
+                        if (protocol) {
+                            _this9._ready && _this9.iri.addNeighbors([peer]);
+                        } else {
+                            _this9.log(('Couldn\'t negotiate protocol with ' + peer.data.hostname + ': my ' + _this9.opts.IRIProtocol + ' vs remote ' + wishedProtocol).yellow);
+                            removeNeighbor();
+                        }
+                    });
                 });
                 ws.on('open', onConnected);
             }
@@ -564,10 +580,11 @@ var Node = function (_Base) {
             var UDPPort = headers['nelson-udp'];
             var remoteKey = headers['nelson-key'];
             var name = headers['nelson-name'];
+            var protocol = headers['nelson-protocol'] || 'udp';
             if (!version || !port || !nelsonID || !TCPPort || !UDPPort) {
                 return null;
             }
-            return { version: version, port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort, remoteKey: remoteKey, name: name };
+            return { version: version, port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort, remoteKey: remoteKey, name: name, protocol: protocol };
         }
 
         /**
@@ -580,8 +597,81 @@ var Node = function (_Base) {
         key: '_sendNeighbors',
         value: function _sendNeighbors(ws) {
             ws.send(JSON.stringify(this.getPeers().map(function (p) {
-                return p[0].getHostname() + '/' + p[1];
+                return p[0].getHostname().replace('/0/', '/' + p[1] + '/');
             })));
+        }
+
+        /**
+         * Negotiate protocol to be used between the peers.
+         * If null is returned, the connection cannot be established as there is no consensus.
+         * @param {string} protocol preferred by remote
+         * @param {string} key key for remote
+         * @param {string} remoteKey for this node
+         * @returns {string|null}
+         * @private
+         */
+
+    }, {
+        key: '_negotiateProtocol',
+        value: function _negotiateProtocol(protocol, key, remoteKey) {
+            if (protocol === 'any') {
+                switch (this.opts.IRIProtocol) {
+                    case 'tcp':
+                    case 'prefertcp':
+                        return 'tcp';
+                    case 'udp':
+                    case 'preferudp':
+                    case 'any':
+                    default:
+                        return 'udp';
+                }
+            } else if (protocol === 'tcp') {
+                switch (this.opts.IRIProtocol) {
+                    case 'any':
+                    case 'tcp':
+                    case 'prefertcp':
+                    case 'preferudp':
+                        return 'tcp';
+                    case 'udp':
+                    default:
+                        return null;
+                }
+            } else if (protocol === 'udp') {
+                switch (this.opts.IRIProtocol) {
+                    case 'any':
+                    case 'udp':
+                    case 'prefertcp':
+                    case 'preferudp':
+                        return 'tcp';
+                    case 'tcp':
+                    default:
+                        return null;
+                }
+            } else if (protocol === 'prefertcp') {
+                switch (this.opts.IRIProtocol) {
+                    case 'any':
+                    case 'tcp':
+                    case 'prefertcp':
+                        return 'tcp';
+                    case 'preferudp':
+                        return key > remoteKey ? 'udp' : 'tcp';
+                    case 'udp':
+                    default:
+                        return 'udp';
+                }
+            } else if (protocol === 'preferudp') {
+                switch (this.opts.IRIProtocol) {
+                    case 'any':
+                    case 'udp':
+                    case 'preferudp':
+                        return 'udp';
+                    case 'prefertcp':
+                        return key > remoteKey ? 'tcp' : 'udp';
+                    case 'tcp':
+                    default:
+                        return 'tcp';
+                }
+            }
         }
 
         /**
@@ -606,7 +696,8 @@ var Node = function (_Base) {
                 TCPPort: tokens[2],
                 UDPPort: tokens[3],
                 peerWeight: weight,
-                weight: weight * parseFloat(tokens[4] || 0) * this.opts.weightDeflation
+                weight: weight * parseFloat(tokens[4] || 0) * this.opts.weightDeflation,
+                IRIProtocol: tokens[5] || 'udp'
             });
         }
 
@@ -655,7 +746,8 @@ var Node = function (_Base) {
                 'Nelson-TCP': this.opts.TCPPort,
                 'Nelson-UDP': this.opts.UDPPort,
                 'Nelson-Key': key,
-                'Nelson-Name': this.opts.name
+                'Nelson-Name': this.opts.name,
+                'Nelson-Protocol': this.opts.IRIProtocol
             };
         }
 
@@ -804,7 +896,7 @@ var Node = function (_Base) {
             this.log('connecting peer'.yellow, this.formatNode(peer.data.hostname, peer.data.port));
             var key = peer.data.key || createIdentifier();
             this.list.update(peer, { dateTried: new Date(), tried: (peer.data.tried || 0) + 1, key: key });
-            this._bindWebSocket(new WebSocket('ws://' + peer.data.hostname + ':' + peer.data.port, {
+            this._bindWebSocket(new WebSocket(peer.getNelsonWebsocketURI(), {
                 headers: this._getHeaders(key),
                 handshakeTimeout: 5000
             }), peer);

@@ -188,6 +188,7 @@ apiPort = 18600
 apiHostname = 127.0.0.1
 port = 16600
 IRIHostname = localhost
+IRIProtocol = any
 IRIPort = 14265
 TCPPort = 15600
 UDPPort = 14600
@@ -236,7 +237,7 @@ Some have additional short versions.
 | --IRIPort, -i| IRI API port of the running IRI node instance|14265|
 | --TCPPort, -t| IRI TCP Port|15600|
 | --UDPPort, -u| IRI UDP Port|14600|
-| --IRIProtocol| Protocol to use for connecting neighbors. Possible values 'udp' or 'tcp'. **WARNING**: Please do not use until the [IRI bug #345](https://github.com/iotaledger/iri/issues/345) is solved and new IRI version (+1.4.1.5) released! |udp|
+| --IRIProtocol| Protocol to use for connecting neighbors. Possible values **'any'**, **'preferudp'**, **'prefertcp'**, **'udp'**, **'tcp'**. **WARNING**: Please only use with IRI v.1.4.1.6 and do not set to **udp** or **tcp** unless you are 100% sure that you cannot accept other protocol connections in no circumstances. Otherwise, setting **udp** will categorically deny connections from **tcp**-only hosts and vice-versa. **Durung the upgrade phase** setting to **tcp** will probably make your node unreachable as all of the older Nelson version nodes will be running **udp** only! Preferably set **preferudp** or **prefertcp**. "**any**" is always the best choice.  |any|
 | --dataPath, -d| path to the file, that will be used as neighbor storage| data/neighbors.db|
 | --silent, -s|Run the node without any output||
 | --gui, -g|Run the node in console-gui mode||

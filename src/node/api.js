@@ -107,6 +107,7 @@ function getNodeStats (node) {
                 port,
                 TCPPort,
                 UDPPort,
+                protocol,
                 seen,
                 connected,
                 tried,
@@ -124,6 +125,7 @@ function getNodeStats (node) {
                 port,
                 TCPPort,
                 UDPPort,
+                protocol,
                 seen,
                 connected,
                 tried,
@@ -137,7 +139,7 @@ function getNodeStats (node) {
         });
 
     return {
-        name: node.name,
+        name: node.opts.name,
         version,
         ready: node._ready,
         isIRIHealthy,

@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.3.6] - 2018-01-06
+
+### Added
+- IRI protocol negotiation between nodes
+
+### Changed
+- Fixed ECONNRESET bug.
+
 ## [0.3.5] - 2018-01-02
 
 ### Changed
