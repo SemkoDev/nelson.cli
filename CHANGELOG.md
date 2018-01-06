@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.3.12] - 2018-01-06
+
+### Changed
+- Fixed IRI TCP negotiation bug #3
+
 ## [0.3.11] - 2018-01-06
 
 ### Changed
