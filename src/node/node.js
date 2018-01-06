@@ -182,7 +182,6 @@ class Node extends Base {
             logIdent: `${this.opts.port}::IRI`,
             hostname: IRIHostname,
             port: IRIPort,
-            protocol: IRIProtocol,
             onHealthCheck: this._onIRIHealth,
             silent
         })).start().then((iri) => {
