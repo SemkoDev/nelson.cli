@@ -23,7 +23,6 @@ tmp.setGracefulCleanup();
 
 var DEFAULT_OPTIONS = {
     hostname: 'localhost',
-    protocol: 'udp',
     port: 14265,
     TCPPort: 15600,
     UDPPort: 14600,
@@ -350,7 +349,7 @@ var IRI = function (_Base) {
     }, {
         key: '_getIRIPeerURI',
         value: function _getIRIPeerURI(peer) {
-            return this.opts.protocol === 'tcp' ? peer.getTCPURI() : peer.getUDPURI();
+            return peer.data.protocol === 'tcp' ? peer.getTCPURI() : peer.getUDPURI();
         }
     }]);
 
