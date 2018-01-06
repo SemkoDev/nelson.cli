@@ -326,9 +326,9 @@ var Node = function (_Base) {
                     UDPPort = _getHeaderIdentifiers2.UDPPort,
                     remoteKey = _getHeaderIdentifiers2.remoteKey,
                     name = _getHeaderIdentifiers2.name,
-                    wishedProtocol = _getHeaderIdentifiers2.protocol;
+                    protocol = _getHeaderIdentifiers2.protocol;
 
-                var protocol = _this7._negotiateProtocol(wishedProtocol);
+                var IRIProtocol = _this7._negotiateProtocol(protocol);
 
                 _this7.list.add({
                     hostname: address,
@@ -337,7 +337,7 @@ var Node = function (_Base) {
                     UDPPort: UDPPort,
                     remoteKey: remoteKey,
                     name: name,
-                    protocol: protocol
+                    IRIProtocol: IRIProtocol
                 }).then(function (peer) {
                     _this7._bindWebSocket(ws, peer, true);
                 }).catch(function (e) {
