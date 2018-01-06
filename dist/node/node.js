@@ -326,7 +326,9 @@ var Node = function (_Base) {
                     UDPPort = _getHeaderIdentifiers2.UDPPort,
                     remoteKey = _getHeaderIdentifiers2.remoteKey,
                     name = _getHeaderIdentifiers2.name,
-                    protocol = _getHeaderIdentifiers2.protocol;
+                    wishedProtocol = _getHeaderIdentifiers2.protocol;
+
+                var protocol = _this7._negotiateProtocol(wishedProtocol);
 
                 _this7.list.add({
                     hostname: address,
