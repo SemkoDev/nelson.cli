@@ -5,15 +5,22 @@ apiPort = {{ nelson_api_port }}
 apiHostname = {{ nelson_iri_host }}
 port = {{ nelson_tcp_port }}
 IRIHostname = {{ nelson_iri_host }}
+IRIProtocol = any
 IRIPort = {{ iri_api_port }}
 TCPPort = {{ iri_tcp_port }}
 UDPPort = {{ iri_udp_port }}
 dataPath = {{ nelson_datadir }}/data/neighbors.db
+; maximal incoming connections. Please do not set below this limit:
+incomingMax = 5
+; maximal outgoing connections. Only set below this limit, if you have trusted, manual neighbors:
+outgoingMax = 4
 isMaster = false
 silent = false
 gui = false
+; use automatic service to download latest initial nodes
+getNeighbors = https://raw.githubusercontent.com/SemkoDev/nelson.cli/master/ENTRYNODES
 ; add as many initial nelson neighbors, as you like
-neighbors[] = mainnet.deviota.com/16600
-neighbors[] = mainnet2.deviota.com/16600
-neighbors[] = mainnet3.deviota.com/16600
+neighbors[] = mainnet.deviota.com/14600
+neighbors[] = mainnet2.deviota.com/14600
+neighbors[] = mainnet3.deviota.com/14600
 neighbors[] = iotairi.tt-tec.net/16600
