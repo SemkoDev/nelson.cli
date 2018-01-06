@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.3.7] - 2018-01-06
+## [0.3.8] - 2018-01-06
 
 ### Added
 - IRI protocol negotiation between nodes
