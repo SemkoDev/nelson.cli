@@ -224,7 +224,7 @@ class Node extends Base {
         this.server.on('connection', (ws, req) => {
             this.log('incoming connection established'.green, req.connection.remoteAddress);
             const { remoteAddress: address } = req.connection;
-            const { port, TCPPort, UDPPort, remoteKey, name } = this._getHeaderIdentifiers(req.headers);
+            const { port, TCPPort, UDPPort, remoteKey, name, protocol } = this._getHeaderIdentifiers(req.headers);
 
             this.list.add({
                 hostname: address,
@@ -232,7 +232,8 @@ class Node extends Base {
                 TCPPort,
                 UDPPort,
                 remoteKey,
-                name
+                name,
+                protocol
             }).then((peer) => {
                 this._bindWebSocket(ws, peer, true);
             }).catch((e) => {
