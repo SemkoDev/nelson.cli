@@ -240,6 +240,7 @@ class PeerList extends Base {
             port: rawPort,
             TCPPort: rawTCPPort,
             UDPPort: rawUDPPort,
+            IRIProtocol,
             isTrusted,
             peerWeight,
             weight,
@@ -248,6 +249,7 @@ class PeerList extends Base {
         } = Object.assign({
             TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
             UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
+            IRIProtocol: 'udp',
             isTrusted: false,
             peerWeight: 0.5,
             weight: 0,
@@ -272,7 +274,7 @@ class PeerList extends Base {
                     remoteKey: remoteKey || existing.data.remoteKey,
                     name: name || existing.data.name,
                     hostname: addr,
-                    port, TCPPort, UDPPort
+                    port, TCPPort, UDPPort, IRIProtocol
                 });
             } else {
                 this.log(`Adding to the list of known Nelson peers: ${hostname}:${port}`);
@@ -284,6 +286,7 @@ class PeerList extends Base {
                         ip: peerIP,
                         TCPPort: TCPPort || DEFAULT_IRI_OPTIONS.TCPPort,
                         UDPPort: UDPPort || DEFAULT_IRI_OPTIONS.UDPPort,
+                        IRIProtocol: IRIProtocol || 'udp',
                         isTrusted,
                         name,
                         weight,

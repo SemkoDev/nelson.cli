@@ -23,7 +23,7 @@ const DEFAULT_OPTIONS = {
     apiHostname: '127.0.0.1',
     IRIHostname: DEFAULT_IRI_OPTIONS.hostname,
     IRIPort: DEFAULT_IRI_OPTIONS.port,
-    IRIProtocol: DEFAULT_IRI_OPTIONS.protocol,
+    IRIProtocol: 'any',
     TCPPort: DEFAULT_IRI_OPTIONS.TCPPort,
     UDPPort: DEFAULT_IRI_OPTIONS.UDPPort,
     weightDeflation: 0.95,
@@ -260,7 +260,7 @@ class Node extends Base {
     _canConnect (req) {
         const { remoteAddress: address } = req.connection;
         const headers = this._getHeaderIdentifiers(req.headers);
-        const { port, nelsonID, version, remoteKey } = headers || {};
+        const { port, nelsonID, version, remoteKey, protocol } = headers || {};
         const wrongRequest = !headers;
 
         return new Promise((resolve, reject) => {
@@ -293,6 +293,12 @@ class Node extends Base {
 
                 // Deny too frequent connections from the same peer.
                 if (peers.length && this.isSaturationReached() && peers[0].data.dateLastConnected && getSecondsPassed(peers[0].data.dateLastConnected) < this.opts.epochInterval * 2) {
+                    return reject();
+                }
+
+                // Incompatible protocols
+                if (peers.length[0] && !this._negotiateProtocol(protocol, peers[0].data.key, remoteKey)) {
+                    this.log(`Couldn't negotiate protocol with ${peers[0].data.hostname}: my ${this.opts.IRIProtocol} vs remote ${protocol}`.yellow);
                     return reject();
                 }
 
@@ -374,9 +380,7 @@ class Node extends Base {
             }
             this.log('connection established'.green, this.formatNode(peer.data.hostname, peer.data.port));
             this._sendNeighbors(ws);
-            peer.markConnected()
-                .then(() => this._ready && this.iri.addNeighbors([ peer ]))
-                .then(() => this._ready && this.opts.onPeerConnected(peer));
+            return peer.markConnected().then(() => this._ready && this.opts.onPeerConnected(peer));
         };
 
         ws.isAlive = true;
@@ -384,7 +388,7 @@ class Node extends Base {
         this.sockets.set(peer, ws);
 
         if (asServer) {
-            onConnected();
+            onConnected().then(() => this._ready && this.iri.addNeighbors([ peer ]));
         }
         else {
             ws.on('headers', (headers) => {
@@ -394,8 +398,16 @@ class Node extends Base {
                     this.log('!!', 'wrong headers received', head);
                     return removeNeighbor();
                 }
-                const { port, nelsonID, TCPPort, UDPPort, remoteKey, name } = head;
-                this.list.update(peer, { port, nelsonID, TCPPort, UDPPort, remoteKey, name })
+                const { port, nelsonID, TCPPort, UDPPort, remoteKey, name, protocol: wishedProtocol } = head;
+                const protocol = this._negotiateProtocol(wishedProtocol, peer.data.key, remoteKey);
+                this.list.update(peer, { port, nelsonID, TCPPort, UDPPort, remoteKey, name, protocol }).then(() => {
+                    if (protocol) {
+                        this._ready && this.iri.addNeighbors([ peer ]);
+                    } else {
+                        this.log(`Couldn't negotiate protocol with ${peer.data.hostname}: my ${this.opts.IRIProtocol} vs remote ${wishedProtocol}`.yellow);
+                        removeNeighbor();
+                    }
+                });
             });
             ws.on('open', onConnected);
         }
@@ -422,10 +434,11 @@ class Node extends Base {
         const UDPPort = headers['nelson-udp'];
         const remoteKey = headers['nelson-key'];
         const name = headers['nelson-name'];
+        const protocol = headers['nelson-protocol'] || 'udp';
         if (!version || !port || ! nelsonID || !TCPPort || !UDPPort) {
             return null;
         }
-        return { version, port, nelsonID, TCPPort, UDPPort, remoteKey, name };
+        return { version, port, nelsonID, TCPPort, UDPPort, remoteKey, name, protocol };
     }
 
     /**
@@ -434,7 +447,77 @@ class Node extends Base {
      * @private
      */
     _sendNeighbors (ws) {
-        ws.send(JSON.stringify(this.getPeers().map((p) => `${p[0].getHostname()}/${p[1]}`)))
+        ws.send(JSON.stringify(this.getPeers().map((p) => p[0].getHostname().replace('/0/', `/${p[1]}/`))))
+    }
+
+    /**
+     * Negotiate protocol to be used between the peers.
+     * If null is returned, the connection cannot be established as there is no consensus.
+     * @param {string} protocol preferred by remote
+     * @param {string} key key for remote
+     * @param {string} remoteKey for this node
+     * @returns {string|null}
+     * @private
+     */
+    _negotiateProtocol (protocol, key, remoteKey) {
+        if (protocol === 'any') {
+            switch (this.opts.IRIProtocol) {
+                case 'tcp':
+                case 'prefertcp':
+                    return 'tcp';
+                case 'udp':
+                case 'preferudp':
+                case 'any':
+                default:
+                    return 'udp';
+            }
+        } else if (protocol === 'tcp') {
+            switch (this.opts.IRIProtocol) {
+                case 'any':
+                case 'tcp':
+                case 'prefertcp':
+                case 'preferudp':
+                    return 'tcp';
+                case 'udp':
+                default:
+                    return null;
+            }
+        } else if (protocol === 'udp') {
+            switch (this.opts.IRIProtocol) {
+                case 'any':
+                case 'udp':
+                case 'prefertcp':
+                case 'preferudp':
+                    return 'tcp';
+                case 'tcp':
+                default:
+                    return null;
+            }
+        } else if (protocol === 'prefertcp') {
+            switch (this.opts.IRIProtocol) {
+                case 'any':
+                case 'tcp':
+                case 'prefertcp':
+                    return 'tcp';
+                case 'preferudp':
+                    return key > remoteKey ? 'udp' : 'tcp';
+                case 'udp':
+                default:
+                    return 'udp';
+            }
+        } else if (protocol === 'preferudp') {
+            switch (this.opts.IRIProtocol) {
+                case 'any':
+                case 'udp':
+                case 'preferudp':
+                    return 'udp';
+                case 'prefertcp':
+                    return key > remoteKey ? 'tcp' : 'udp';
+                case 'tcp':
+                default:
+                    return 'tcp';
+            }
+        }
     }
 
     /**
@@ -458,7 +541,8 @@ class Node extends Base {
                 TCPPort: tokens[2],
                 UDPPort: tokens[3],
                 peerWeight: weight,
-                weight:  weight * parseFloat(tokens[4] || 0) * this.opts.weightDeflation
+                weight:  weight * parseFloat(tokens[4] || 0) * this.opts.weightDeflation,
+                IRIProtocol: tokens[5] || 'udp'
             });
     }
 
@@ -498,6 +582,7 @@ class Node extends Base {
             'Nelson-UDP': this.opts.UDPPort,
             'Nelson-Key': key,
             'Nelson-Name': this.opts.name,
+            'Nelson-Protocol': this.opts.IRIProtocol,
         }
     }
 
@@ -607,7 +692,7 @@ class Node extends Base {
         this.log('connecting peer'.yellow, this.formatNode(peer.data.hostname, peer.data.port));
         const key = peer.data.key || createIdentifier();
         this.list.update(peer, { dateTried: new Date(), tried: (peer.data.tried || 0) + 1, key });
-        this._bindWebSocket(new WebSocket(`ws://${peer.data.hostname}:${peer.data.port}`, {
+        this._bindWebSocket(new WebSocket(peer.getNelsonWebsocketURI(), {
             headers: this._getHeaders(key),
             handshakeTimeout: 5000
         }), peer);

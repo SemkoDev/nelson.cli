@@ -7,11 +7,16 @@ const { URL } = require('url');
 const program = require('commander');
 const { initNode } = require('./index');
 const { DEFAULT_OPTIONS } = require('./node/node');
+const { PROTOCOLS } = require('./node/peer');
 const { DEFAULT_OPTIONS: DEFAULT_LIST_OPTIONS } = require('./node/peer-list');
 const version = require('../package.json').version;
 
 const parseNeighbors = (val) => val.split(' ');
 const parseURLs = (val) => val.split(' ').map((v) => new URL(v)).map((u) => u.href);
+const parseProtocol = (val) => {
+    const lower = val.toLowerCase();
+    return PROTOCOLS.includes(lower) ? lower : DEFAULT_OPTIONS.IRIProtocol
+};
 const parseNumber = (v) => parseInt(v);
 
 process.on('unhandledRejection', (reason, p) => {
@@ -38,7 +43,7 @@ program
     .option('-i, --IRIPort [value]', 'IRI API port', parseNumber, DEFAULT_OPTIONS.IRIPort)
     .option('-t, --TCPPort [value]', 'IRI TCP port', parseNumber, DEFAULT_OPTIONS.TCPPort)
     .option('-u, --UDPPort [value]', 'IRI UDP port', parseNumber, DEFAULT_OPTIONS.UDPPort)
-    .option('--IRIProtocol [value]', 'IRI protocol to use: udp or tcp', (v) => v.toLowerCase(), DEFAULT_OPTIONS.IRIProtocol)
+    .option('--IRIProtocol [value]', 'IRI protocol to use: udp, tcp, prefertcp, preferudp or any', parseProtocol, DEFAULT_OPTIONS.IRIProtocol)
     .option('-d, --dataPath [value]', 'Peer database path', DEFAULT_LIST_OPTIONS.dataPath)
     .option('-m, --isMaster [value]', 'Is a master node', false)
     .option('-s, --silent [value]', 'Silent', false)
