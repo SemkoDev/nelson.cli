@@ -296,7 +296,7 @@ class Node extends Base {
                 }
 
                 // Incompatible protocols
-                if (peers.length[0] && !this._negotiateProtocol(protocol, peers[0].data.key, remoteKey)) {
+                if (peers.length[0] && !this._negotiateProtocol(protocol)) {
                     this.log(`Couldn't negotiate protocol with ${peers[0].data.hostname}: my ${this.opts.IRIProtocol} vs remote ${protocol}`.yellow);
                     return reject();
                 }
@@ -398,7 +398,7 @@ class Node extends Base {
                     return removeNeighbor();
                 }
                 const { port, nelsonID, TCPPort, UDPPort, remoteKey, name, protocol: wishedProtocol } = head;
-                const protocol = this._negotiateProtocol(wishedProtocol, peer.data.key, remoteKey);
+                const protocol = this._negotiateProtocol(wishedProtocol);
                 this.list.update(peer, { port, nelsonID, TCPPort, UDPPort, remoteKey, name, protocol }).then(() => {
                     if (protocol) {
                         this._ready && this.iri.addNeighbors([ peer ]);
@@ -458,7 +458,7 @@ class Node extends Base {
      * @returns {string|null}
      * @private
      */
-    _negotiateProtocol (protocol, key, remoteKey) {
+    _negotiateProtocol (protocol) {
         if (protocol === 'any') {
             switch (this.opts.IRIProtocol) {
                 case 'tcp':
@@ -487,7 +487,7 @@ class Node extends Base {
                 case 'udp':
                 case 'prefertcp':
                 case 'preferudp':
-                    return 'tcp';
+                    return 'udp';
                 case 'tcp':
                 default:
                     return null;
@@ -499,7 +499,6 @@ class Node extends Base {
                 case 'prefertcp':
                     return 'tcp';
                 case 'preferudp':
-                    return key > remoteKey ? 'udp' : 'tcp';
                 case 'udp':
                 default:
                     return 'udp';
@@ -509,9 +508,8 @@ class Node extends Base {
                 case 'any':
                 case 'udp':
                 case 'preferudp':
-                    return 'udp';
                 case 'prefertcp':
-                    return key > remoteKey ? 'tcp' : 'udp';
+                    return 'udp';
                 case 'tcp':
                 default:
                     return 'tcp';
