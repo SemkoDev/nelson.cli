@@ -414,7 +414,7 @@ var Node = function (_Base) {
                     }
 
                     // Incompatible protocols
-                    if (peers.length[0] && !_this8._negotiateProtocol(protocol, peers[0].data.key, remoteKey)) {
+                    if (peers.length[0] && !_this8._negotiateProtocol(protocol)) {
                         _this8.log(('Couldn\'t negotiate protocol with ' + peers[0].data.hostname + ': my ' + _this8.opts.IRIProtocol + ' vs remote ' + protocol).yellow);
                         return reject();
                     }
@@ -535,7 +535,7 @@ var Node = function (_Base) {
                         name = head.name,
                         wishedProtocol = head.protocol;
 
-                    var protocol = _this9._negotiateProtocol(wishedProtocol, peer.data.key, remoteKey);
+                    var protocol = _this9._negotiateProtocol(wishedProtocol);
                     _this9.list.update(peer, { port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort, remoteKey: remoteKey, name: name, protocol: protocol }).then(function () {
                         if (protocol) {
                             _this9._ready && _this9.iri.addNeighbors([peer]);
@@ -612,7 +612,7 @@ var Node = function (_Base) {
 
     }, {
         key: '_negotiateProtocol',
-        value: function _negotiateProtocol(protocol, key, remoteKey) {
+        value: function _negotiateProtocol(protocol) {
             if (protocol === 'any') {
                 switch (this.opts.IRIProtocol) {
                     case 'tcp':
@@ -641,7 +641,7 @@ var Node = function (_Base) {
                     case 'udp':
                     case 'prefertcp':
                     case 'preferudp':
-                        return 'tcp';
+                        return 'udp';
                     case 'tcp':
                     default:
                         return null;
@@ -653,7 +653,6 @@ var Node = function (_Base) {
                     case 'prefertcp':
                         return 'tcp';
                     case 'preferudp':
-                        return key > remoteKey ? 'udp' : 'tcp';
                     case 'udp':
                     default:
                         return 'udp';
@@ -663,9 +662,8 @@ var Node = function (_Base) {
                     case 'any':
                     case 'udp':
                     case 'preferudp':
-                        return 'udp';
                     case 'prefertcp':
-                        return key > remoteKey ? 'tcp' : 'udp';
+                        return 'udp';
                     case 'tcp':
                     default:
                         return 'tcp';
