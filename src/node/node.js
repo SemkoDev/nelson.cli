@@ -40,7 +40,7 @@ const DEFAULT_OPTIONS = {
     lazyTimesLimit: 3, // starts to penalize peer's quality if connected so many times without new TXs
     onReady: (node) => {},
     onPeerConnected: (peer) => {},
-    onPeerRemoved: (peer) => {},
+    onPeerRemoved: (peer) => {}
 };
 
 // TODO: add node tests. Need to mock away IRI for this.
