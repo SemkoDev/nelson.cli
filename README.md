@@ -44,6 +44,22 @@ and know how to start it. The local IRI instance must have api enabled and allow
 Nelson is running on Node.js You will have to install **node (at least version LTS 6.9.1)** and *npm* (node package manager) on your system.
 Alternatively to npm you can (and should) use yarn package manager.
 
+#### Port Forwarding
+
+If you are trying to run a Nelson node at home, you may need to open some ports (port forwarding) in your NAT Router:
+
+* **UDP 14600**
+* **TCP 15600**
+* **TCP 16600**
+
+Please refer to your Router's manual on how to do that.
+
+Furthermore, please be aware that apart of firewall and port-forwarding in router, your Internet provider may also be an issue.
+Some providers (like Vodafone in Germany) do not have enough IPv4 addresses for homes and
+thus use something called "**IPv4 over DS Lite**". In those cases the **traffic will not come through** over the ports
+mentioned above. Unfortunately, there is no quick fix for this issue (maybe changing providers).
+There is some hope with the upcoming PCP-protocol, this will not happen this year (2018) for most providers, though.
+
 #### WARNING FOR UBUNTU
 
 Ubuntu 16.04 apt comes with an **outdated Node version (4.X)**. You need to install the latest version separately:
