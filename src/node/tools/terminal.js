@@ -170,7 +170,7 @@ function nodes ({ nodes, connected }) {
             let id = `${connection.hostname||connection.ip}:${connection.port}`.bold.cyan;
             id = connection.name ? `${id} (${connection.name})`.bold.cyan : id;
             // const weight = `[trust: ${(connection.trust * 100).toFixed(6)}]`.green;
-            peersBox.setLine(5 + i, `${id} -> ${connection.protocol || 'udp'}`);
+            peersBox.setLine(5 + i, `${id} -> ${connection.IRIProtocol || 'udp'}`);
         });
     }
     screen.render();
