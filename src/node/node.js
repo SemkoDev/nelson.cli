@@ -12,6 +12,13 @@ const {
     getPeerIdentifier, getRandomInt, getSecondsPassed, getVersion, isSameMajorVersion, getIP, createIdentifier
 } = require('./tools/utils');
 
+// Tries to fix the issue #45 https://github.com/SemkoDev/nelson.cli/issues/45
+// Reasoning: https://github.com/request/request/issues/2161#issuecomment-313375694
+process.on('uncaughtException', (err) => { if (err.code !== 'ECONNRESET') throw err });
+process.on('unhandledRejection', (reason, p) => {
+    console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
+});
+
 const DEFAULT_OPTIONS = {
     name: 'CarrIOTA Nelson',
     cycleInterval: 60,
@@ -249,6 +256,10 @@ class Node extends Base {
             const myHeaders = this._getHeaders();
             Object.keys(myHeaders).forEach((key) => headers.push(`${key}: ${myHeaders[key]}`));
         });
+        this.server.on('error', function (err) {
+            // basically, do nothing. Most probably a ECONNRESET error.
+            // The peer will be cleaned up on tick latest.
+        });
         this.log('server created...');
     }
 
@@ -388,6 +399,13 @@ class Node extends Base {
         ws.incoming = asServer;
         this.sockets.set(peer, ws);
 
+        ws.on('message',
+            (data) => this._addNeighbors(data, ws.incoming ? 0 : peer.data.weight)
+        );
+        ws.on('close', () => removeNeighbor('socket closed'));
+        ws.on('error', () => removeNeighbor('remotely dropped'));
+        ws.on('pong', () => { ws.isAlive = true });
+
         if (asServer) {
             onConnected().then(() => this._ready && this.iri.addNeighbors([ peer ]));
         }
@@ -412,13 +430,6 @@ class Node extends Base {
             });
             ws.on('open', onConnected);
         }
-
-        ws.on('message',
-            (data) => this._addNeighbors(data, ws.incoming ? 0 : peer.data.weight)
-        );
-        ws.on('close', () => removeNeighbor('socket closed'));
-        ws.on('error', () => removeNeighbor('remotely dropped'));
-        ws.on('pong', () => { ws.isAlive = true });
     }
 
     /**

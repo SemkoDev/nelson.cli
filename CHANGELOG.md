@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changes
+- Adds possible fix for #45 ECONNRESET error.
+
 ## [0.3.16] - 2018-01-09
 
 ### Changed
