@@ -18,7 +18,7 @@ describe('Peer', () => {
         expect(peer.getTCPURI()).toEqual('tcp://tangle.com:777');
         expect(peer.getUDPURI()).toEqual('udp://tangle.com:888');
         expect(peer.getNelsonURI()).toEqual('http://tangle.com:666');
-        expect(peer.getHostname()).toEqual('tangle.com/666/777/888');
+        expect(peer.getHostname()).toEqual('tangle.com/666/777/888/0/udp');
     });
 
     it('should update the peer data', () => {

@@ -1,6 +1,7 @@
 const http = require('http');
 const request = require('request');
 const HttpDispatcher = require('httpdispatcher');
+const crypto = require('crypto');
 const version = require('../../package.json').version;
 
 /**
@@ -14,18 +15,20 @@ function createAPI (node, webhooks, interval=30) {
     const dispatcher = new HttpDispatcher();
     dispatcher.onGet('/', function(req, res) {
         res.writeHead(200, {"Content-Type": "application/json"});
-        // TODO: if the request is not local, filter out IPs?
-        res.end(JSON.stringify(getNodeStats(node), null, 4));
+        if (server.isLocalRequest(req)) {
+            res.end(JSON.stringify(getNodeStats(node), null, 4));
+        } else {
+            res.end(JSON.stringify(getAnonymousNodeStats(node), null, 4));
+        }
     });
 
     dispatcher.onGet('/peers', function(req, res) {
-        if (!server.isLocalRequest(req)) {
-            res.writeHead(404);
-            res.end();
-            return;
-        }
         res.writeHead(200, {"Content-Type": "application/json"});
-        res.end(JSON.stringify(node.list.all(), null, 4));
+        if (server.isLocalRequest(req)) {
+            res.end(JSON.stringify(node.list.all(), null, 4));
+        } else {
+            res.end(JSON.stringify(getAnonymousNeigbourNodeStats(node.list), null, 4));
+        }
     });
 
     dispatcher.onGet('/peer-stats', function(req, res) {
@@ -70,6 +73,33 @@ function createAPI (node, webhooks, interval=30) {
             }));
         }, interval * 1000);
     }
+}
+
+function getAnonymousNeigbourNodeStats (nodeList) {
+    nodeList.peers.map(peer => {
+        if (peer.data.ip != null) {
+            peer.data.ip = getMD5Hash(peer.data.ip.toString);
+            peer.data.isAnonymous = true;
+        }
+    });
+    return nodeList.peers;
+}
+
+function getAnonymousNodeStats (node) {
+    var json = getNodeStats(node);
+    json.connectedPeers.forEach(function(node) {
+        if (node != null) {
+            if (node.ip != null) {
+                node.ip = getMD5Hash(node.ip.toString());
+                node.isAnonymous = true;
+            }
+        }
+    });
+    return json;
+}
+
+function getMD5Hash(string) {
+    return crypto.createHash('md5').update(string.toString()).digest('hex');
 }
 
 function getNodeStats (node) {
