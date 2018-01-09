@@ -537,14 +537,14 @@ var Node = function (_Base) {
                         UDPPort = head.UDPPort,
                         remoteKey = head.remoteKey,
                         name = head.name,
-                        wishedProtocol = head.protocol;
+                        protocol = head.protocol;
 
-                    var protocol = _this9._negotiateProtocol(wishedProtocol);
-                    _this9.list.update(peer, { port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort, remoteKey: remoteKey, name: name, protocol: protocol }).then(function () {
-                        if (protocol) {
+                    var IRIProtocol = _this9._negotiateProtocol(protocol);
+                    _this9.list.update(peer, { port: port, nelsonID: nelsonID, TCPPort: TCPPort, UDPPort: UDPPort, remoteKey: remoteKey, name: name, IRIProtocol: IRIProtocol }).then(function () {
+                        if (IRIProtocol) {
                             _this9._ready && _this9.iri.addNeighbors([peer]);
                         } else {
-                            _this9.log(('Couldn\'t negotiate protocol with ' + peer.data.hostname + ': my ' + _this9.opts.IRIProtocol + ' vs remote ' + wishedProtocol).yellow);
+                            _this9.log(('Couldn\'t negotiate protocol with ' + peer.data.hostname + ': my ' + _this9.opts.IRIProtocol + ' vs remote ' + IRIProtocol).yellow);
                             removeNeighbor();
                         }
                     });
