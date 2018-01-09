@@ -349,7 +349,7 @@ var IRI = function (_Base) {
     }, {
         key: '_getIRIPeerURI',
         value: function _getIRIPeerURI(peer) {
-            return peer.data.protocol === 'tcp' ? peer.getTCPURI() : peer.getUDPURI();
+            return peer.data.IRIProtocol === 'tcp' ? peer.getTCPURI() : peer.getUDPURI();
         }
     }]);
 

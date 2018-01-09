@@ -262,7 +262,7 @@ class IRI extends Base {
      * @private
      */
     _getIRIPeerURI (peer) {
-        return peer.data.protocol === 'tcp' ? peer.getTCPURI() : peer.getUDPURI();
+        return peer.data.IRIProtocol === 'tcp' ? peer.getTCPURI() : peer.getUDPURI();
     }
 
 }
