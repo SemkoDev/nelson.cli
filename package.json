@@ -18,7 +18,7 @@
   "scripts": {
     "test": "jest",
     "build": "rimraf dist/ && babel ./src --out-dir dist/ --ignore ./node_modules --ignore __tests__ --copy-files",
-    "make:binaries": "rimraf bin/ && pkg -t node6-linux,node6-win,node6-macos -o bin/nelson-`cat package.json | jq -r '.version'` dist/nelson.js",
+    "make:binaries": "rimraf builds/ && pkg -t node6-linux,node6-win,node6-macos -o builds/nelson-`cat package.json | jq -r '.version'` dist/nelson.js",
     "make": "npm run test && npm run build && npm run make:binaries"
   },
   "keywords": [

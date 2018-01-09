@@ -2,5 +2,6 @@
 node_modules/
 temp/
 data/
+builds/
 config.ini
 *.iml
