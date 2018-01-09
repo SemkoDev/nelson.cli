@@ -399,13 +399,13 @@ class Node extends Base {
                     this.log('!!', 'wrong headers received', head);
                     return removeNeighbor();
                 }
-                const { port, nelsonID, TCPPort, UDPPort, remoteKey, name, protocol: wishedProtocol } = head;
-                const protocol = this._negotiateProtocol(wishedProtocol);
-                this.list.update(peer, { port, nelsonID, TCPPort, UDPPort, remoteKey, name, protocol }).then(() => {
-                    if (protocol) {
+                const { port, nelsonID, TCPPort, UDPPort, remoteKey, name, protocol } = head;
+                const IRIProtocol = this._negotiateProtocol(protocol);
+                this.list.update(peer, { port, nelsonID, TCPPort, UDPPort, remoteKey, name, IRIProtocol }).then(() => {
+                    if (IRIProtocol) {
                         this._ready && this.iri.addNeighbors([ peer ]);
                     } else {
-                        this.log(`Couldn't negotiate protocol with ${peer.data.hostname}: my ${this.opts.IRIProtocol} vs remote ${wishedProtocol}`.yellow);
+                        this.log(`Couldn't negotiate protocol with ${peer.data.hostname}: my ${this.opts.IRIProtocol} vs remote ${IRIProtocol}`.yellow);
                         removeNeighbor();
                     }
                 });
