@@ -76,7 +76,7 @@ function createAPI (node, webhooks, interval=30) {
 }
 
 function getAnonymousNeigbourNodeStats (nodeList) {
-    nodeList.peers.forEach(function(peer) {
+    nodeList.peers.map(peer => {
         if (peer.data.ip != null) {
             peer.data.ip = getMD5Hash(peer.data.ip.toString);
             peer.data.isAnonymous = true;
