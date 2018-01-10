@@ -32,10 +32,6 @@ iri_init_java_mem: 768m
 # Overrides above `iri_java_mem` value
 memory_autoset: true
 
-# Exclude from the API the commands below
-# works in conjunction with `--remote` / `api_port_remote: true`
-iri_remote_limit_api: "removeNeighbors, addNeighbors, interruptAttachingToTangle, attachToTangle, getNeighbors"
-
 # Let the iri_api_port bind to all interfaces (0.0.0.0).
 # `true` is necessary in order to allow external wallets/APIs to connect without tunneling.
 # If set to `false` it will only bind to localhost (127.0.0.1)
