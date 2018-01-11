@@ -86,7 +86,7 @@ function getAnonymousNeigbourNodeStats (nodeList) {
 }
 
 function getAnonymousNodeStats (node) {
-    var json = getNodeStats(node);
+    let json = getNodeStats(node);
     json.connectedPeers.forEach(function(node) {
         if (node != null) {
             if (node.ip != null) {
@@ -114,6 +114,7 @@ function getNodeStats (node) {
         TCPPort,
         UDPPort,
         isMaster,
+        IRIProtocol,
         temporary
     } = node.opts;
     const {
@@ -145,6 +146,7 @@ function getNodeStats (node) {
                 dateTried,
                 dateLastConnected,
                 dateCreated,
+                IRIProtocol,
                 isTrusted,
                 lastConnections
             } = p.data;
@@ -156,6 +158,7 @@ function getNodeStats (node) {
                 TCPPort,
                 UDPPort,
                 protocol,
+                IRIProtocol,
                 seen,
                 connected,
                 tried,
@@ -187,6 +190,7 @@ function getNodeStats (node) {
             IRIPort,
             TCPPort,
             UDPPort,
+            IRIProtocol,
             isMaster,
             temporary
         },
