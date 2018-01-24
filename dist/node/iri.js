@@ -240,8 +240,8 @@ var IRI = function (_Base) {
                         });
                     })).then(function (urls) {
                         var toRemove = urls.filter(function (url) {
-                            return peers.filter(function (p) {
-                                return !_this5.staticNeighbors.includes(url.hostname) && !_this5.staticNeighbors.includes(url.ip) && p.data.hostname !== url.hostname && p.data.ip !== url.ip;
+                            return !_this5.staticNeighbors.includes(url.hostname) && !_this5.staticNeighbors.includes(url.ip) && peers.filter(function (p) {
+                                return p.data.hostname !== url.hostname && p.data.ip !== url.ip;
                             }).length === 0;
                         });
                         if (!toRemove.length) {
