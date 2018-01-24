@@ -174,10 +174,11 @@ class IRI extends Base {
                         return url;
                     })
                 })).then((urls) => {
-                    const toRemove = urls.filter((url) => peers.filter((p) => (
-                        !this.staticNeighbors.includes(url.hostname) && !this.staticNeighbors.includes(url.ip) &&
-                        p.data.hostname !== url.hostname && p.data.ip !==url.ip
-                    )).length === 0);
+                    const toRemove = urls.filter((url) =>
+                        !this.staticNeighbors.includes(url.hostname) &&
+                        !this.staticNeighbors.includes(url.ip) &&
+                        peers.filter((p) => (p.data.hostname !== url.hostname && p.data.ip !==url.ip)).length === 0
+                    );
                     if (!toRemove.length) {
                         return resolve(toRemove);
                     }
