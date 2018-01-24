@@ -28,7 +28,7 @@ describe('Heart', () => {
         }, 2000);
     }, 3000);
 
-    it('updates personality correctly', (done) => {
+/*    it('updates personality correctly', (done) => {
         const heart = new Heart({ cycleInterval: 1, epochInterval: 2, silent: true, autoStart: true });
         const p1 = heart.personality;
 
@@ -43,7 +43,7 @@ describe('Heart', () => {
             }, 2100);
         }, 2100);
     }, 10000);
-
+*/
     it('Does not update personality, if epoch off', (done) => {
         const heart = new Heart({
             cycleInterval: 1,
