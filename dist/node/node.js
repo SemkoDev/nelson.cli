@@ -42,6 +42,10 @@ var _require6 = require('./tools/utils'),
     getIP = _require6.getIP,
     createIdentifier = _require6.createIdentifier;
 
+process.on('unhandledRejection', function (reason, p) {
+    console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
+});
+
 var DEFAULT_OPTIONS = {
     name: 'CarrIOTA Nelson',
     cycleInterval: 60,
@@ -101,6 +105,17 @@ var Node = function (_Base) {
         _this.sockets = new Map();
 
         _this.opts.autoStart && _this.start();
+
+        // Tries to fix the issue #45 https://github.com/SemkoDev/nelson.cli/issues/45
+        // Reasoning: https://github.com/request/request/issues/2161#issuecomment-313375694
+        // Also, cleans up nelson before crashing from the sky.
+        process.on('uncaughtException', function (err) {
+            if (err.code !== 'ECONNRESET') {
+                _this.end().then(function () {
+                    throw err;
+                });
+            }
+        });
         return _this;
     }
 
@@ -254,7 +269,6 @@ var Node = function (_Base) {
             var _opts3 = this.opts,
                 IRIHostname = _opts3.IRIHostname,
                 IRIPort = _opts3.IRIPort,
-                IRIProtocol = _opts3.IRIProtocol,
                 silent = _opts3.silent;
 
 
@@ -355,6 +369,10 @@ var Node = function (_Base) {
                 Object.keys(myHeaders).forEach(function (key) {
                     return headers.push(key + ': ' + myHeaders[key]);
                 });
+            });
+            this.server.on('error', function (err) {
+                // basically, do nothing. Most probably a ECONNRESET error.
+                // The peer will be cleaned up on next tick.
             });
             this.log('server created...');
         }
@@ -519,14 +537,27 @@ var Node = function (_Base) {
             ws.incoming = asServer;
             this.sockets.set(peer, ws);
 
+            ws.on('message', function (data) {
+                return _this9._addNeighbors(data, ws.incoming ? 0 : peer.data.weight);
+            });
+            ws.on('close', function () {
+                return removeNeighbor('socket closed');
+            });
+            ws.on('error', function () {
+                return removeNeighbor('remotely dropped');
+            });
+            ws.on('pong', function () {
+                ws.isAlive = true;
+            });
+
             if (asServer) {
                 onConnected().then(function () {
                     return _this9._ready && _this9.iri.addNeighbors([peer]);
                 });
             } else {
-                ws.on('headers', function (headers) {
+                ws.on('upgrade', function (res) {
                     // Check for valid headers
-                    var head = _this9._getHeaderIdentifiers(headers);
+                    var head = _this9._getHeaderIdentifiers(res.headers);
                     if (!head) {
                         _this9.log('!!', 'wrong headers received', head);
                         return removeNeighbor();
@@ -551,19 +582,6 @@ var Node = function (_Base) {
                 });
                 ws.on('open', onConnected);
             }
-
-            ws.on('message', function (data) {
-                return _this9._addNeighbors(data, ws.incoming ? 0 : peer.data.weight);
-            });
-            ws.on('close', function () {
-                return removeNeighbor('socket closed');
-            });
-            ws.on('error', function () {
-                return removeNeighbor('remotely dropped');
-            });
-            ws.on('pong', function () {
-                ws.isAlive = true;
-            });
         }
 
         /**
@@ -999,9 +1017,9 @@ var Node = function (_Base) {
                 } else if (peer.isLazy()) {
                     _this15.log(('Peer ' + peer.data.hostname + ' (' + peer.data.name + ') is lazy for more than ' + _this15.opts.lazyLimit + ' seconds. Removing...!').yellow);
                     promises.push(_this15._removeNeighbor(peer));
-                } else {
+                } else if (ws.readyState === 1) {
                     ws.isAlive = false;
-                    ws.ping('', false, true);
+                    ws.ping('', false);
                 }
             });
             return Promise.all(promises).then(function () {
@@ -1090,6 +1108,8 @@ var Node = function (_Base) {
                     return _this17._removeNeighbors(toRemove);
                 }
                 return [];
+            }).then(function () {
+                return _this17.iri.cleanupNeighbors(Array.from(_this17.sockets.keys()));
             });
         }
 

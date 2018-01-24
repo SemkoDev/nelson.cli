@@ -11,13 +11,17 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var IOTA = require('iota.lib.js');
+
+var _require = require('url'),
+    URL = _require.URL;
+
 var tmp = require('tmp');
 
-var _require = require('./base'),
-    Base = _require.Base;
+var _require2 = require('./base'),
+    Base = _require2.Base;
 
-var _require2 = require('./tools/utils'),
-    getIP = _require2.getIP;
+var _require3 = require('./tools/utils'),
+    getIP = _require3.getIP;
 
 tmp.setGracefulCleanup();
 
@@ -72,7 +76,7 @@ var IRI = function (_Base) {
                     return _this2.api.getNeighbors(function (error, neighbors) {
                         if (!error) {
                             var addresses = neighbors.map(function (n) {
-                                return n.address.split(':')[0];
+                                return new URL(n.connectionType + '://' + n.address).hostname;
                             });
                             Promise.all(addresses.map(getIP)).then(function (ips) {
                                 _this2._isStarted = true;
@@ -210,6 +214,55 @@ var IRI = function (_Base) {
         }
 
         /**
+         * Cleans up any orphans from the IRI
+         * @param {Peer[]} peers
+         * @returns {Promise<URL[]>}
+         */
+
+    }, {
+        key: 'cleanupNeighbors',
+        value: function cleanupNeighbors(peers) {
+            var _this5 = this;
+
+            if (!this.isAvailable()) {
+                return Promise.reject();
+            }
+            return new Promise(function (resolve) {
+                _this5.api.getNeighbors(function (error, neighbors) {
+                    if (error) {
+                        return resolve();
+                    }
+                    Promise.all(neighbors.map(function (n) {
+                        var url = new URL(n.connectionType + '://' + n.address);
+                        return getIP(url.hostname).then(function (ip) {
+                            url.ip = ip;
+                            return url;
+                        });
+                    })).then(function (urls) {
+                        var toRemove = urls.filter(function (url) {
+                            return peers.filter(function (p) {
+                                return !_this5.staticNeighbors.includes(url.hostname) && !_this5.staticNeighbors.includes(url.ip) && p.data.hostname !== url.hostname && p.data.ip !== url.ip;
+                            }).length === 0;
+                        });
+                        if (!toRemove.length) {
+                            return resolve(toRemove);
+                        }
+                        _this5.api.removeNeighbors(toRemove, function (err) {
+                            if (err) {
+                                reject(err);
+                                return;
+                            }
+                            _this5.log('Removed orphans:'.red, toRemove.map(function (url) {
+                                return url.hostname;
+                            }));
+                            resolve(toRemove);
+                        });
+                    });
+                });
+            });
+        }
+
+        /**
          * Updates the list of neighbors at the IRI backend. Removes all neighbors, replacing them with
          * the newly provided neighbors.
          * @param {Peer[]} peers
@@ -219,7 +272,7 @@ var IRI = function (_Base) {
     }, {
         key: 'updateNeighbors',
         value: function updateNeighbors(peers) {
-            var _this5 = this;
+            var _this6 = this;
 
             if (!this.isAvailable()) {
                 return Promise.reject();
@@ -231,15 +284,15 @@ var IRI = function (_Base) {
 
             return new Promise(function (resolve, reject) {
                 var addNeighbors = function addNeighbors() {
-                    _this5.addNeighbors(peers).then(resolve).catch(reject);
+                    _this6.addNeighbors(peers).then(resolve).catch(reject);
                 };
 
-                _this5.api.getNeighbors(function (error, neighbors) {
+                _this6.api.getNeighbors(function (error, neighbors) {
                     if (error) {
                         reject(error);
                         return;
                     }
-                    Array.isArray(neighbors) && neighbors.length ? _this5.api.removeNeighbors(neighbors.map(function (n) {
+                    Array.isArray(neighbors) && neighbors.length ? _this6.api.removeNeighbors(neighbors.map(function (n) {
                         return n.connectionType + '://' + n.address;
                     }), addNeighbors) : addNeighbors();
                 });
@@ -254,14 +307,14 @@ var IRI = function (_Base) {
     }, {
         key: 'removeAllNeighbors',
         value: function removeAllNeighbors() {
-            var _this6 = this;
+            var _this7 = this;
 
             if (!this.isAvailable()) {
                 return Promise.reject();
             }
 
             return new Promise(function (resolve) {
-                _this6.api.getNeighbors(function (error, neighbors) {
+                _this7.api.getNeighbors(function (error, neighbors) {
                     if (error) {
                         return resolve();
                     }
@@ -269,9 +322,9 @@ var IRI = function (_Base) {
                         // FIXME: This is broken. staticNeighbors is just a resolved IP. n.address includes port and can be a hostname.
                         // Hence, the filter will always be true.
                         var toRemove = neighbors.filter(function (n) {
-                            return !_this6.staticNeighbors.includes(n.address);
+                            return !_this7.staticNeighbors.includes(n.address);
                         });
-                        return _this6.api.removeNeighbors(toRemove.map(function (n) {
+                        return _this7.api.removeNeighbors(toRemove.map(function (n) {
                             return n.connectionType + '://' + n.address;
                         }), resolve);
                     }
@@ -288,14 +341,14 @@ var IRI = function (_Base) {
     }, {
         key: 'getStats',
         value: function getStats() {
-            var _this7 = this;
+            var _this8 = this;
 
             return new Promise(function (resolve, reject) {
-                _this7.api.getNodeInfo(function (error, data) {
+                _this8.api.getNodeInfo(function (error, data) {
                     if (error) {
                         return reject();
                     }
-                    _this7.iriStats = data;
+                    _this8.iriStats = data;
                     resolve(data);
                 });
             });
@@ -309,26 +362,26 @@ var IRI = function (_Base) {
     }, {
         key: '_tick',
         value: function _tick() {
-            var _this8 = this;
+            var _this9 = this;
 
             var onHealthCheck = this.opts.onHealthCheck;
 
             var onError = function onError() {
-                _this8.isHealthy = false;
+                _this9.isHealthy = false;
                 onHealthCheck(false);
             };
             this.getStats().then(function () {
-                _this8.api.getNeighbors(function (error, neighbors) {
+                _this9.api.getNeighbors(function (error, neighbors) {
                     if (error) {
-                        _this8.isHealthy = false;
+                        _this9.isHealthy = false;
                         onHealthCheck(false);
                         return;
                     }
-                    _this8.isHealthy = true;
+                    _this9.isHealthy = true;
                     // TODO: if the address is IPV6, could that pose a problem?
                     onHealthCheck(true, neighbors.map(function (n) {
                         return {
-                            address: n.address.split(':')[0],
+                            address: new URL(n.connectionType + '://' + n.address).hostname,
                             numberOfRandomTransactionRequests: n.numberOfRandomTransactionRequests,
                             numberOfAllTransactions: n.numberOfAllTransactions,
                             numberOfNewTransactions: n.numberOfNewTransactions,

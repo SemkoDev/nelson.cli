@@ -1,4 +1,5 @@
 const IOTA = require('iota.lib.js');
+const { URL } = require('url');
 const tmp = require('tmp');
 const { Base } = require('./base');
 const { getIP } = require('./tools/utils');
@@ -41,7 +42,7 @@ class IRI extends Base {
         return new Promise((resolve) => {
             const getNodeInfo = () => this.api.getNeighbors((error, neighbors) => {
                 if (!error) {
-                    const addresses = neighbors.map((n) => n.address.split(':')[0]);
+                    const addresses = neighbors.map((n) => (new URL(`${n.connectionType}://${n.address}`)).hostname);
                     Promise.all(addresses.map(getIP)).then((ips) => {
                         this._isStarted = true;
                         this.isHealthy = true;
@@ -153,6 +154,47 @@ class IRI extends Base {
     }
 
     /**
+     * Cleans up any orphans from the IRI
+     * @param {Peer[]} peers
+     * @returns {Promise<URL[]>}
+     */
+    cleanupNeighbors (peers) {
+        if (!this.isAvailable()) {
+            return Promise.reject();
+        }
+        return new Promise((resolve) => {
+            this.api.getNeighbors((error, neighbors) => {
+                if(error) {
+                    return resolve();
+                }
+                Promise.all(neighbors.map((n) => {
+                    const url = new URL(`${n.connectionType}://${n.address}`);
+                    return getIP(url.hostname).then((ip) => {
+                        url.ip = ip;
+                        return url;
+                    })
+                })).then((urls) => {
+                    const toRemove = urls.filter((url) => peers.filter((p) => (
+                        !this.staticNeighbors.includes(url.hostname) && !this.staticNeighbors.includes(url.ip) &&
+                        p.data.hostname !== url.hostname && p.data.ip !==url.ip
+                    )).length === 0);
+                    if (!toRemove.length) {
+                        return resolve(toRemove);
+                    }
+                    this.api.removeNeighbors(toRemove, (err) => {
+                        if (err) {
+                            reject(err);
+                            return;
+                        }
+                        this.log('Removed orphans:'.red, toRemove.map((url) => url.hostname));
+                        resolve(toRemove)
+                    });
+                });
+            });
+        });
+    }
+
+    /**
      * Updates the list of neighbors at the IRI backend. Removes all neighbors, replacing them with
      * the newly provided neighbors.
      * @param {Peer[]} peers
@@ -245,7 +287,7 @@ class IRI extends Base {
                 this.isHealthy = true;
                 // TODO: if the address is IPV6, could that pose a problem?
                 onHealthCheck(true, neighbors.map((n) => ({
-                    address: n.address.split(':')[0],
+                    address: (new URL(`${n.connectionType}://${n.address}`)).hostname,
                     numberOfRandomTransactionRequests: n.numberOfRandomTransactionRequests,
                     numberOfAllTransactions: n.numberOfAllTransactions,
                     numberOfNewTransactions: n.numberOfNewTransactions,

@@ -12,9 +12,6 @@ const {
     getPeerIdentifier, getRandomInt, getSecondsPassed, getVersion, isSameMajorVersion, getIP, createIdentifier
 } = require('./tools/utils');
 
-// Tries to fix the issue #45 https://github.com/SemkoDev/nelson.cli/issues/45
-// Reasoning: https://github.com/request/request/issues/2161#issuecomment-313375694
-process.on('uncaughtException', (err) => { if (err.code !== 'ECONNRESET') throw err });
 process.on('unhandledRejection', (reason, p) => {
     console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
 });
@@ -72,6 +69,15 @@ class Node extends Base {
         this.sockets = new Map();
 
         this.opts.autoStart && this.start();
+
+        // Tries to fix the issue #45 https://github.com/SemkoDev/nelson.cli/issues/45
+        // Reasoning: https://github.com/request/request/issues/2161#issuecomment-313375694
+        // Also, cleans up nelson before crashing from the sky.
+        process.on('uncaughtException', (err) => {
+            if (err.code !== 'ECONNRESET') {
+                this.end().then(() => { throw err });
+            }
+        });
     }
 
     /**
@@ -183,7 +189,7 @@ class Node extends Base {
      * @private
      */
     _getIRI () {
-        const { IRIHostname, IRIPort, IRIProtocol, silent } = this.opts;
+        const { IRIHostname, IRIPort, silent } = this.opts;
 
         return (new IRI({
             logIdent: `${this.opts.port}::IRI`,
@@ -258,7 +264,7 @@ class Node extends Base {
         });
         this.server.on('error', function (err) {
             // basically, do nothing. Most probably a ECONNRESET error.
-            // The peer will be cleaned up on tick latest.
+            // The peer will be cleaned up on next tick.
         });
         this.log('server created...');
     }
@@ -410,9 +416,9 @@ class Node extends Base {
             onConnected().then(() => this._ready && this.iri.addNeighbors([ peer ]));
         }
         else {
-            ws.on('headers', (headers) => {
+            ws.on('upgrade', (res) => {
                 // Check for valid headers
-                const head = this._getHeaderIdentifiers(headers);
+                const head = this._getHeaderIdentifiers(res.headers);
                 if (!head) {
                     this.log('!!', 'wrong headers received', head);
                     return removeNeighbor();
@@ -789,9 +795,9 @@ class Node extends Base {
                 this.log(`Peer ${peer.data.hostname} (${peer.data.name}) is lazy for more than ${this.opts.lazyLimit} seconds. Removing...!`.yellow);
                 promises.push(this._removeNeighbor(peer));
             }
-            else {
+            else if (ws.readyState === 1) {
                 ws.isAlive = false;
-                ws.ping('', false, true);
+                ws.ping('', false);
             }
         });
         return Promise.all(promises).then(() => false);
@@ -861,7 +867,7 @@ class Node extends Base {
                 return this._removeNeighbors(toRemove);
             }
             return([]);
-        });
+        }).then(() => this.iri.cleanupNeighbors(Array.from(this.sockets.keys())));
     }
 
     /**

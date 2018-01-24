@@ -1,5 +1,7 @@
 const { Heart } = require('../heart');
 
+jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
+
 describe('Heart', () => {
     it('doesnt tick, if not started', (done) => {
        const heart = new Heart({ cycleInterval: 1, epochInterval: 3, silent: true });
@@ -32,11 +34,9 @@ describe('Heart', () => {
 
         setTimeout(() => {
             const p2 = heart.personality;
-            console.log(p2);
             expect(p1).not.toEqual(p2);
             setTimeout(() => {
                 const p3 = heart.personality;
-                console.log(p3);
                 expect(p3).not.toEqual(p2);
                 expect(p3).not.toEqual(p1);
                 done();
