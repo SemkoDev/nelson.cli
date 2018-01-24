@@ -127,13 +127,13 @@ pm2 log
 Provided you have docker installed, Nelson can be started as follows:
 
 ```
-docker run <docker opts> romansemko/nelson <nelson command line opts>
+docker run <docker opts> romansemko/nelson.cli <nelson command line opts>
 ```
 
 Hence, running IRI with Nelson can be done with two simple commands:
 ```
 docker run -d --net host -p 14265:14265 --name iri iotaledger/iri
-docker run -d --net host -p 18600:18600 --name nelson romansemko/nelson -r localhost -i 14265 -u 14777 -t 15777 --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600 iotairi.tt-tec.net/16600"
+docker run -d --net host -p 18600:18600 --name nelson romansemko/nelson.cli -r localhost -i 14265 -u 14777 -t 15777 --neighbors "mainnet.deviota.com/16600 mainnet2.deviota.com/16600 mainnet3.deviota.com/16600 iotairi.tt-tec.net/16600"
 ```
 
 The options passed to Nelson's docker (```-r localhost -i 14265 -u 14600 -t 15600 --neighbors ...```) set IRI's
@@ -144,7 +144,7 @@ To keep Nelson's peer database outside of the container, so that you do not lose
 you can mount a volume bound to a host's folder:
 
 ```
-docker run -d --net host -p 18600:18600 --name nelson -v /path/to/nelson/data/directory:/data romansemko/nelson 
+docker run -d --net host -p 18600:18600 --name nelson -v /path/to/nelson/data/directory:/data romansemko/nelson.cli 
 ```
 
 ## Building Locally

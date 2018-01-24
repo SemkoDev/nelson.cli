@@ -14,6 +14,8 @@ This playbook has been tested on:
 
 ### Software Dependencies
 
+**Note** Docker CE will be installed by the playbook, it is not strictly required to install it before running the playbook.
+
 * Docker CE
 
 For Ubuntu: https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/
