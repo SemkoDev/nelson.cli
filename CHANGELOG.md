@@ -6,6 +6,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.3.20] - 2018-01-24
+
+### Added
+- Additional entry nodes
+- Possible fix for #45 ECONNRESET error
+- Interval-compression of the neighbors database
+- IRI cleanup of neighbors. Possible fix for #50
+- Additional Peer and PeerList tests. Fixes #43
+- Guard tests
+- Basic node tests
+- Node network integration tests
+- Basic node network simulation package
+- Parts of the node simulation package for integration tests
+
+### Changed
+- Upgraded minimal node version to 8.9.4
+- Cleanup nelson on uncaught exception. Possible fix for #50
+- Upgrades WebSockets to 4.0.0. Possible fix for #45
+- Fixed docker to copy faster, ignoring unneeded files
+- Made docker run the tests while building
+
 ## [0.3.16] - 2018-01-09
 
 ### Changed

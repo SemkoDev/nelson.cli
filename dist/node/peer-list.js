@@ -42,6 +42,7 @@ var DEFAULT_OPTIONS = {
     multiPort: false,
     temporary: false,
     logIdent: 'LIST',
+    ageNormalizer: 3600,
     lazyLimit: 300, // Time, after which a peer is considered lazy, if no new TXs received
     lazyTimesLimit: 3 // starts to penalize peer's quality if connected so many times without new TXs
 };
@@ -67,6 +68,7 @@ var PeerList = function (_Base) {
             filename: _this.opts.temporary ? tmp.tmpNameSync() : _this.opts.dataPath,
             autoload: true
         });
+        _this.db.persistence.setAutocompactionInterval(30000);
         return _this;
     }
 
@@ -116,8 +118,9 @@ var PeerList = function (_Base) {
                     port: tokens[1],
                     TCPPort: tokens[2],
                     UDPPort: tokens[3],
-                    isTrusted: true,
-                    weight: 1.0
+                    weight: tokens[4] || 1.0,
+                    IRIProtocol: tokens[5] || 'udp',
+                    isTrusted: true
                 });
             }));
         }
@@ -274,7 +277,7 @@ var PeerList = function (_Base) {
     }, {
         key: 'getPeerTrust',
         value: function getPeerTrust(peer) {
-            var age = parseFloat(getSecondsPassed(peer.data.dateCreated)) / 3600;
+            var age = parseFloat(getSecondsPassed(peer.data.dateCreated)) / this.opts.ageNormalizer;
             if (this.opts.isMaster) {
                 var _weightedAge = Math.pow(peer.data.connected || peer.isTrusted() ? age : 0, 2) * Math.pow(peer.getPeerQuality(), 2);
                 return Math.max(_weightedAge, 0.0001);

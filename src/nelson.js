@@ -19,10 +19,6 @@ const parseProtocol = (val) => {
 };
 const parseNumber = (v) => parseInt(v);
 
-process.on('unhandledRejection', (reason, p) => {
-    console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
-});
-
 program
     .version(version)
     .option('--name [value]', 'Name of your node instance', DEFAULT_OPTIONS.name)

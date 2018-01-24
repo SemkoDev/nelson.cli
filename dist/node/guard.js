@@ -18,6 +18,7 @@ var _require2 = require('./tools/utils'),
 
 var DEFAULT_OPTIONS = {
     beatInterval: 1,
+    throttleInterval: 2, // Minimal amount of beats to pass until a remote address is allowed again.
     localNodes: false,
     logIdent: 'GUARD'
 };
@@ -47,7 +48,7 @@ var Guard = function (_Base) {
                 this.requests[target] = new Date();
                 return true;
             } else {
-                var allowed = getSecondsPassed(this.requests[target]) >= this.opts.beatInterval * 2;
+                var allowed = getSecondsPassed(this.requests[target]) >= this.opts.beatInterval * this.opts.throttleInterval;
                 this.requests[target] = new Date();
                 return allowed;
             }

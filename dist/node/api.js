@@ -3,6 +3,7 @@
 var http = require('http');
 var request = require('request');
 var HttpDispatcher = require('httpdispatcher');
+var crypto = require('crypto');
 var version = require('../../package.json').version;
 
 /**
@@ -18,18 +19,20 @@ function createAPI(node, webhooks) {
     var dispatcher = new HttpDispatcher();
     dispatcher.onGet('/', function (req, res) {
         res.writeHead(200, { "Content-Type": "application/json" });
-        // TODO: if the request is not local, filter out IPs?
-        res.end(JSON.stringify(getNodeStats(node), null, 4));
+        if (server.isLocalRequest(req)) {
+            res.end(JSON.stringify(getNodeStats(node), null, 4));
+        } else {
+            res.end(JSON.stringify(getAnonymousNodeStats(node), null, 4));
+        }
     });
 
     dispatcher.onGet('/peers', function (req, res) {
-        if (!server.isLocalRequest(req)) {
-            res.writeHead(404);
-            res.end();
-            return;
-        }
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify(node.list.all(), null, 4));
+        if (server.isLocalRequest(req)) {
+            res.end(JSON.stringify(node.list.all(), null, 4));
+        } else {
+            res.end(JSON.stringify(getAnonymousNeigbourNodeStats(node.list), null, 4));
+        }
     });
 
     dispatcher.onGet('/peer-stats', function (req, res) {
@@ -78,6 +81,33 @@ function createAPI(node, webhooks) {
     }
 }
 
+function getAnonymousNeigbourNodeStats(nodeList) {
+    nodeList.peers.map(function (peer) {
+        if (peer.data.ip != null) {
+            peer.data.ip = getMD5Hash(peer.data.ip.toString);
+            peer.data.isAnonymous = true;
+        }
+    });
+    return nodeList.peers;
+}
+
+function getAnonymousNodeStats(node) {
+    var json = getNodeStats(node);
+    json.connectedPeers.forEach(function (node) {
+        if (node != null) {
+            if (node.ip != null) {
+                node.ip = getMD5Hash(node.ip.toString());
+                node.isAnonymous = true;
+            }
+        }
+    });
+    return json;
+}
+
+function getMD5Hash(string) {
+    return crypto.createHash('md5').update(string.toString()).digest('hex');
+}
+
 function getNodeStats(node) {
     var _node$opts = node.opts,
         cycleInterval = _node$opts.cycleInterval,
@@ -90,6 +120,7 @@ function getNodeStats(node) {
         TCPPort = _node$opts.TCPPort,
         UDPPort = _node$opts.UDPPort,
         isMaster = _node$opts.isMaster,
+        IRIProtocol = _node$opts.IRIProtocol,
         temporary = _node$opts.temporary;
     var _node$heart = node.heart,
         lastCycle = _node$heart.lastCycle,
@@ -120,6 +151,7 @@ function getNodeStats(node) {
             dateTried = _p$data.dateTried,
             dateLastConnected = _p$data.dateLastConnected,
             dateCreated = _p$data.dateCreated,
+            IRIProtocol = _p$data.IRIProtocol,
             isTrusted = _p$data.isTrusted,
             lastConnections = _p$data.lastConnections;
 
@@ -131,6 +163,7 @@ function getNodeStats(node) {
             TCPPort: TCPPort,
             UDPPort: UDPPort,
             protocol: protocol,
+            IRIProtocol: IRIProtocol,
             seen: seen,
             connected: connected,
             tried: tried,
@@ -162,6 +195,7 @@ function getNodeStats(node) {
             IRIPort: IRIPort,
             TCPPort: TCPPort,
             UDPPort: UDPPort,
+            IRIProtocol: IRIProtocol,
             isMaster: isMaster,
             temporary: temporary
         },

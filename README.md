@@ -41,7 +41,7 @@ These instructions will get you a copy of the project up and running on your loc
 It is expected that you have already installed Java, downloaded the IRI jar file
 and know how to start it. The local IRI instance must have api enabled and allowing to add/remove neighbors.
 
-Nelson is running on Node.js You will have to install **node (at least version LTS 6.9.1)** and *npm* (node package manager) on your system.
+Nelson is running on Node.js You will have to install **node (at least version LTS 8.9.4)** and *npm* (node package manager) on your system.
 Alternatively to npm you can (and should) use yarn package manager.
 
 #### Port Forwarding
@@ -449,7 +449,7 @@ Nelson adds up to 10/11 additional neighbors. If you have a lot of "manual" neig
  usr/bin/env: »node“ Unknown command...
 ```
 
-Make sure you have node v.6.9.1 or higher installed on your machine.
+Make sure you have node v.8.9.4 or higher installed on your machine.
 
 ### I am getting an error:
 
