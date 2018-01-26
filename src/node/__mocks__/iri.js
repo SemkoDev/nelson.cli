@@ -113,6 +113,13 @@ class IRI extends BaseIRI {
         });
     }
 
+    _tick () {
+        const { onHealthCheck } = this.opts;
+        this.getStats().then(() => {
+            onHealthCheck(true, []);
+        });
+    }
+
 }
 
 IRI.isMocked = true;
