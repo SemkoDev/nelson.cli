@@ -373,9 +373,7 @@ var IRI = function (_Base) {
             this.getStats().then(function () {
                 _this9.api.getNeighbors(function (error, neighbors) {
                     if (error) {
-                        _this9.isHealthy = false;
-                        onHealthCheck(false);
-                        return;
+                        return onError();
                     }
                     _this9.isHealthy = true;
                     // TODO: if the address is IPV6, could that pose a problem?

@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.3.22] - 2018-01-29
+
 ### Changed
 - Fixed tests on some systems that were failing.
 - Upgraded IOTA IRI JS Library to 0.4.7
