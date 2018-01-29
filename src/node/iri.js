@@ -281,9 +281,7 @@ class IRI extends Base {
         this.getStats().then(() => {
             this.api.getNeighbors((error, neighbors) => {
                 if(error) {
-                    this.isHealthy = false;
-                    onHealthCheck(false);
-                    return;
+                    return onError();
                 }
                 this.isHealthy = true;
                 // TODO: if the address is IPV6, could that pose a problem?

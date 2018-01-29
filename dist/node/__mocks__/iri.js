@@ -164,6 +164,15 @@ var IRI = function (_BaseIRI) {
                 resolve(_this4.iriStats);
             });
         }
+    }, {
+        key: '_tick',
+        value: function _tick() {
+            var onHealthCheck = this.opts.onHealthCheck;
+
+            this.getStats().then(function () {
+                onHealthCheck(true, []);
+            });
+        }
     }]);
 
     return IRI;

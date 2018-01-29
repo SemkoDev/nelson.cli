@@ -68,7 +68,7 @@ describe('PeerListTest', () => {
                     UDPPort: 777
                 }).then(() => {
                     expect(list.peers).toHaveLength(3);
-                    expect(list.getAverageAge()).toBeCloseTo(2.72, 1);
+                    expect(list.getAverageAge()).toBeGreaterThan(2.6);
                     done();
                 });
             }, 4000);
@@ -262,10 +262,12 @@ describe('PeerListTest', () => {
                             TCPPort: 335,
                             UDPPort: 336
                         }).then(() => {
-                            expect(list.getPeerTrust(list.peers[0])).toBeCloseTo(1.22, 1);
-                            expect(list.getPeerTrust(list.peers[1])).toBeCloseTo(1.22, 1);
-                            expect(list.getPeerTrust(list.peers[2])).toBeCloseTo(0.0025, 3);
-                            expect(list.getPeerTrust(list.peers[3])).toBeCloseTo(0.0001, 4);
+                            expect(list.getPeerTrust(list.peers[0])).toBeGreaterThan(1);
+                            expect(list.getPeerTrust(list.peers[1])).toBeGreaterThan(1);
+                            expect(list.getPeerTrust(list.peers[2])).toBeGreaterThan(0.001);
+                            expect(list.getPeerTrust(list.peers[2])).toBeLessThan(0.01);
+                            expect(list.getPeerTrust(list.peers[3])).toBeGreaterThanOrEqual(0.0001);
+                            expect(list.getPeerTrust(list.peers[3])).toBeLessThan(0.001);
                             done();
                         })
                     }, 3000);
