@@ -80,7 +80,7 @@ class Peer extends Base {
      */
     getIP () {
         return new Promise ((resolve) => {
-            if (!this.data.ip || (!this._isHostnameIP() && this._isIPOutdated())) {
+            if (!this._hasCorrectIP() || (!this._isHostnameIP() && this._isIPOutdated())) {
                 dns.resolve(this.data.hostname, 'A', (error, results) => {
                     // if there was an error, we set the hostname as ip, even if it's not the case.
                     // It will be re-tried next refresh cycle.
@@ -238,6 +238,10 @@ class Peer extends Base {
 
     _isHostnameIP () {
         return ip.isV4Format(this.data.hostname) || ip.isV6Format(this.data.hostname)
+    }
+
+    _hasCorrectIP () {
+        return this.data.ip && (ip.isV4Format(this.data.ip) || ip.isV6Format(this.data.ip))
     }
 
     _getIPString (ipOrHostname) {

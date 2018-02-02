@@ -3,6 +3,7 @@ const request = require('request');
 const HttpDispatcher = require('httpdispatcher');
 const crypto = require('crypto');
 const version = require('../../package.json').version;
+const salt = require('./tools/utils').createIdentifier();
 
 /**
  * Creates an API interface for the Node. Accepts incoming connections.
@@ -15,20 +16,15 @@ function createAPI (node, webhooks, interval=30) {
     const dispatcher = new HttpDispatcher();
     dispatcher.onGet('/', function(req, res) {
         res.writeHead(200, {"Content-Type": "application/json"});
-        if (server.isLocalRequest(req)) {
-            res.end(JSON.stringify(getNodeStats(node), null, 4));
-        } else {
-            res.end(JSON.stringify(getAnonymousNodeStats(node), null, 4));
-        }
+        res.end(JSON.stringify(getNodeStats(node, !server.isLocalRequest(req)), null, 4));
     });
 
     dispatcher.onGet('/peers', function(req, res) {
         res.writeHead(200, {"Content-Type": "application/json"});
-        if (server.isLocalRequest(req)) {
-            res.end(JSON.stringify(node.list.all(), null, 4));
-        } else {
-            res.end(JSON.stringify(getAnonymousNeigbourNodeStats(node.list), null, 4));
-        }
+        res.end(JSON.stringify(
+            node.list.all().map((peer) => getPeerStats(peer, !server.isLocalRequest(req))),
+            null, 4
+        ));
     });
 
     dispatcher.onGet('/peer-stats', function(req, res) {
@@ -75,34 +71,11 @@ function createAPI (node, webhooks, interval=30) {
     }
 }
 
-function getAnonymousNeigbourNodeStats (nodeList) {
-    nodeList.peers.map(peer => {
-        if (peer.data.ip != null) {
-            peer.data.ip = getMD5Hash(peer.data.ip.toString);
-            peer.data.isAnonymous = true;
-        }
-    });
-    return nodeList.peers;
-}
-
-function getAnonymousNodeStats (node) {
-    let json = getNodeStats(node);
-    json.connectedPeers.forEach(function(node) {
-        if (node != null) {
-            if (node.ip != null) {
-                node.ip = getMD5Hash(node.ip.toString());
-                node.isAnonymous = true;
-            }
-        }
-    });
-    return json;
-}
-
 function getMD5Hash(string) {
-    return crypto.createHash('md5').update(string.toString()).digest('hex');
+    return crypto.createHash('md5').update(`${salt}::${string ? string.toString() : 'null'}`).digest('hex');
 }
 
-function getNodeStats (node) {
+function getNodeStats (node, anonymous=false) {
     const {
         cycleInterval,
         epochInterval,
@@ -130,46 +103,7 @@ function getNodeStats (node) {
     const iriStats = node.iri && node.iri.iriStats;
     const connectedPeers = Array.from(node.sockets.keys())
         .filter((p) => node.sockets.get(p).readyState === 1)
-        .map((p) => {
-            const {
-                name,
-                hostname,
-                ip,
-                port,
-                TCPPort,
-                UDPPort,
-                protocol,
-                seen,
-                connected,
-                tried,
-                weight,
-                dateTried,
-                dateLastConnected,
-                dateCreated,
-                IRIProtocol,
-                isTrusted,
-                lastConnections
-            } = p.data;
-            return {
-                name,
-                hostname,
-                ip,
-                port,
-                TCPPort,
-                UDPPort,
-                protocol,
-                IRIProtocol,
-                seen,
-                connected,
-                tried,
-                weight,
-                dateTried,
-                dateLastConnected,
-                dateCreated,
-                isTrusted,
-                lastConnections
-            }
-        });
+        .map((peer) => getPeerStats(peer, anonymous));
 
     return {
         name: node.opts.name,
@@ -202,6 +136,48 @@ function getNodeStats (node) {
             currentEpoch,
             startDate
         }
+    }
+}
+
+function getPeerStats (peer, isAnonymous=false) {
+    const {
+        name,
+        hostname,
+        ip,
+        port,
+        TCPPort,
+        UDPPort,
+        protocol,
+        seen,
+        connected,
+        tried,
+        weight,
+        dateTried,
+        dateLastConnected,
+        dateCreated,
+        IRIProtocol,
+        isTrusted,
+        lastConnections
+    } = peer.data;
+    return {
+        name,
+        hostname: isAnonymous ? getMD5Hash(hostname.toString()) : hostname,
+        ip: isAnonymous ? getMD5Hash(ip.toString()) : ip,
+        port,
+        TCPPort,
+        UDPPort,
+        protocol,
+        IRIProtocol,
+        seen,
+        connected,
+        tried,
+        weight,
+        dateTried,
+        dateLastConnected,
+        dateCreated,
+        isTrusted,
+        lastConnections,
+        isAnonymous
     }
 }
 

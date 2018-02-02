@@ -170,14 +170,18 @@ class IRI extends Base {
                 Promise.all(neighbors.map((n) => {
                     const url = new URL(`${n.connectionType}://${n.address}`);
                     return getIP(url.hostname).then((ip) => {
-                        url.ip = ip;
+                        url.ip = ip || 'none';
                         return url;
                     })
                 })).then((urls) => {
                     const toRemove = urls.filter((url) =>
                         !this.staticNeighbors.includes(url.hostname) &&
                         !this.staticNeighbors.includes(url.ip) &&
-                        peers.filter((p) => (p.data.hostname !== url.hostname && p.data.ip !==url.ip)).length === 0
+                        peers.filter((p) => (
+                            p.data.hostname === url.hostname ||
+                            p.data.ip === url.hostname ||
+                            p.data.ip === url.ip
+                        )).length === 0
                     );
                     if (!toRemove.length) {
                         return resolve(toRemove);

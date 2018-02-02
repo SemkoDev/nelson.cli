@@ -838,7 +838,7 @@ class Node extends Base {
      * Callback for IRI to check for health and neighbors.
      * If unhealthy, disconnect all. Otherwise, disconnect peers that are not in IRI list any more for any reason.
      * @param {boolean} healthy
-     * @param {object[]} neighbors
+     * @param {object[]} data
      * @private
      */
     _onIRIHealth (healthy, data) {
@@ -849,13 +849,13 @@ class Node extends Base {
             return;
             // return this._removeNeighbors(Array.from(this.sockets.keys()));
         }
-        return Promise.all(data.map(n => n.address).map(getIP)).then((neighbors) => {
+        Promise.all(data.map(n => n.address).map(getIP)).then((neighbors) => {
             const toRemove = [];
             Array.from(this.sockets.keys())
             // It might be that the neighbour was just added and not yet included in IRI...
                 .filter(p => getSecondsPassed(p.data.dateLastConnected) > 5)
                 .forEach((peer) => {
-                    if (!neighbors.includes(peer.data.hostname) && peer.data.ip && !neighbors.includes(peer.data.ip)) {
+                    if (!neighbors.includes(peer.data.hostname) && (!peer.data.ip || peer.data.ip && !neighbors.includes(peer.data.ip))) {
                         toRemove.push(peer);
                     } else {
                         const index = Math.max(neighbors.indexOf(peer.data.hostname), neighbors.indexOf(peer.data.ip));
@@ -866,7 +866,6 @@ class Node extends Base {
                 this.log('Disconnecting Nelson nodes that are missing in IRI:'.red, toRemove.map((p) => p.data.hostname));
                 return this._removeNeighbors(toRemove);
             }
-            return([]);
         }).then(() => this.iri.cleanupNeighbors(Array.from(this.sockets.keys())));
     }
 
