@@ -111,7 +111,10 @@ npm install pm2 -g
 pm2 startup
 
 # Start the Nelson as service
+# If you created a nelson config somewhere on your system, provide the path to the config:
 pm2 start nelson -- --config /path/to/nelson-config.ini
+
+# Otherwise you can just do: pm2 start nelson
 
 # Save current processes runing with pm2 to startup on boot:
 pm2 save
