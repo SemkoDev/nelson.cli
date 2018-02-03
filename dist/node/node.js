@@ -53,8 +53,6 @@ var DEFAULT_OPTIONS = {
     beatInterval: 10,
     dataPath: DEFAULT_LIST_OPTIONS.dataPath,
     port: 16600,
-    apiPort: 18600,
-    apiHostname: '127.0.0.1',
     IRIHostname: DEFAULT_IRI_OPTIONS.hostname,
     IRIPort: DEFAULT_IRI_OPTIONS.port,
     IRIProtocol: 'any',
@@ -1069,7 +1067,7 @@ var Node = function (_Base) {
          * Callback for IRI to check for health and neighbors.
          * If unhealthy, disconnect all. Otherwise, disconnect peers that are not in IRI list any more for any reason.
          * @param {boolean} healthy
-         * @param {object[]} neighbors
+         * @param {object[]} data
          * @private
          */
 
@@ -1085,7 +1083,7 @@ var Node = function (_Base) {
                 return;
                 // return this._removeNeighbors(Array.from(this.sockets.keys()));
             }
-            return Promise.all(data.map(function (n) {
+            Promise.all(data.map(function (n) {
                 return n.address;
             }).map(getIP)).then(function (neighbors) {
                 var toRemove = [];
@@ -1094,7 +1092,7 @@ var Node = function (_Base) {
                 .filter(function (p) {
                     return getSecondsPassed(p.data.dateLastConnected) > 5;
                 }).forEach(function (peer) {
-                    if (!neighbors.includes(peer.data.hostname) && peer.data.ip && !neighbors.includes(peer.data.ip)) {
+                    if (!neighbors.includes(peer.data.hostname) && (!peer.data.ip || peer.data.ip && !neighbors.includes(peer.data.ip))) {
                         toRemove.push(peer);
                     } else {
                         var index = Math.max(neighbors.indexOf(peer.data.hostname), neighbors.indexOf(peer.data.ip));
@@ -1107,7 +1105,6 @@ var Node = function (_Base) {
                     }));
                     return _this17._removeNeighbors(toRemove);
                 }
-                return [];
             }).then(function () {
                 return _this17.iri.cleanupNeighbors(Array.from(_this17.sockets.keys()));
             });

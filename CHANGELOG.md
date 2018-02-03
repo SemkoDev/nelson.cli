@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.4.0] - 2018-02-03
+
+### Added
+- API basic HTTP auth
+
+### Changed
+- Fixed orphaned neighbors check.
+- Fixed API security bug.
+
 ## [0.3.22] - 2018-01-29
 
 ### Changed

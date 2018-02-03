@@ -8,7 +8,7 @@ require('colors');
 var request = require('request');
 var terminal = require('./node/tools/terminal');
 var node = require('./node').node;
-var api = require('./node').api;
+var api = require('./api/index');
 var utils = require('./node').utils;
 
 // Some general TODOs:
@@ -30,7 +30,15 @@ module.exports = _extends({
             opts.gui && terminal.init(opts.name, utils.getVersion(), terminate);
 
             _node.start().then(function (n) {
-                api.createAPI(n, opts.webhooks, opts.webhookInterval);
+                api.createAPI({
+                    node: n,
+                    webhooks: opts.webhooks,
+                    webhookInterval: opts.webhookInterval,
+                    apiPort: opts.apiPort,
+                    apiHostname: opts.apiHostname,
+                    username: opts.apiAuth && opts.apiAuth.username,
+                    password: opts.apiAuth && opts.apiAuth.password
+                });
                 terminal.ports(n.opts);
                 n.log(('Nelson v.' + utils.getVersion() + ' initialized').green.bold);
             });

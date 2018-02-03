@@ -19,7 +19,7 @@ describe('Node', () => {
     });
 
     it('should initialize Node correctly', (done) => {
-        const node = new Node({ ...DEFAULT_OPTIONS, silent: true });
+        const node = new Node({ ...DEFAULT_OPTIONS, silent: true, port: 16610 });
         node.start().then((n) => {
             expect(n.iri && n.iri.isAvailable()).toBeTruthy;
             expect(n.heart && n.heart.personality && n.heart.personality.id).toBeTruthy;
