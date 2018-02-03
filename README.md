@@ -203,7 +203,6 @@ You can provide one or more of the following options in your ini file. Example:
 name = My Nelson Node
 cycleInterval = 60
 epochInterval = 300
-apiAuth = username:password
 apiPort = 18600
 apiHostname = 127.0.0.1
 port = 16600
@@ -226,6 +225,11 @@ neighbors[] = mainnet.deviota.com/16600
 neighbors[] = mainnet2.deviota.com/16600
 neighbors[] = mainnet3.deviota.com/16600
 neighbors[] = iotairi.tt-tec.net/16600
+
+; Protect API with basic auth
+[nelson.apiAuth]
+username=user
+password=pass
 ```
 
 #### WARNING ON NEIGHBORS:
@@ -248,7 +252,7 @@ Some have additional short versions.
 | --name |  Name your node. This identifier will appear in API/webhooks and for your neighbors ||
 | --neighbors, -n |  space-separated list of entry Nelson neighbors ||
 | --getNeighbors |  Downloads a list of entry Nelson neighbors. If no URL is provided, will use a default URL (https://raw.githubusercontent.com/SemkoDev/nelson.cli/master/ENTRYNODES). If this option is not set, no neighbors will be downloaded. This option can be used together with ````--neighbors`` |false|
-| --apiAuth| Add basic HTTP auth to API. Provide username and password in `user:pass` format||
+| --apiAuth| Add basic HTTP auth to API. On the command line, please provide username and password in `user:pass` format. If you use config file, you will have to create a new `[nelson.apiAuth]` section with `username` and `password` See the example above.||
 | --apiPort, -a | Nelson API port to request current node status data|18600|
 | --apiHostname, -o | Nelson API hostname to request current node status data. Default value will only listen to local connections|127.0.0.1|
 | --port, -p | TCP port, on which to start your Nelson instance|16600|
