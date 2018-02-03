@@ -5,6 +5,8 @@ describe('Node Network', () => {
     it('should run correctly', (done) => {
         const onError = () => { throw new Error('A node exited for some reason...'); };
         const network = spawnMockedNetwork({ onError, silent: true });
+        process.on('SIGINT', network.end);
+        process.on('SIGTERM', network.end);
         setTimeout(() => {
             network.end().then(() => {
                 const stats = Object.values(network.getStats());

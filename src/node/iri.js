@@ -180,6 +180,7 @@ class IRI extends Base {
                         peers.filter((p) => (
                             p.data.hostname === url.hostname ||
                             p.data.ip === url.hostname ||
+                            p.data.hostname === url.ip ||
                             p.data.ip === url.ip
                         )).length === 0
                     );

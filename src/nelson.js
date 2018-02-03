@@ -9,6 +9,7 @@ const { initNode } = require('./index');
 const { DEFAULT_OPTIONS } = require('./node/node');
 const { PROTOCOLS } = require('./node/peer');
 const { DEFAULT_OPTIONS: DEFAULT_LIST_OPTIONS } = require('./node/peer-list');
+const { DEFAULT_OPTIONS: DEFAULT_API_OPTIONS } = require('./api/index');
 const version = require('../package.json').version;
 
 const parseNeighbors = (val) => val.split(' ');
@@ -18,6 +19,19 @@ const parseProtocol = (val) => {
     return PROTOCOLS.includes(lower) ? lower : DEFAULT_OPTIONS.IRIProtocol
 };
 const parseNumber = (v) => parseInt(v);
+const parseAuth = (v) => {
+  const tokens = v.split(':');
+  if(!tokens.length === 2) {
+      throw new Error('Wrong apiAuth format! Use: "username.password"');
+  }
+  if (!tokens[0].length) {
+      throw new Error('apiAuth username not provided!');
+  }
+  if(!tokens[1].length) {
+      throw new Error('apiAuth password not provided!');
+  }
+  return { username: tokens[0], password: tokens[1]}
+};
 
 program
     .version(version)
@@ -30,10 +44,11 @@ program
     .option('--outgoingMax [value]', 'Maximal outgoing connection slots', parseNumber, DEFAULT_OPTIONS.outgoingMax)
     .option('--lazyLimit [value]', 'Seconds after which neighbor is dropped for not having provided any new TXs', parseNumber, DEFAULT_OPTIONS.lazyLimit)
     .option('--lazyTimesLimit [value]', 'How many consecutive times a lazy neighbor can connect before getting penalized', parseNumber, DEFAULT_OPTIONS.lazyTimesLimit)
-    .option('-a, --apiPort [value]', 'Nelson API port', parseNumber, DEFAULT_OPTIONS.apiPort)
-    .option('-o, --apiHostname [value]', 'Nelson API hostname', DEFAULT_OPTIONS.apiHostname)
-    .option('-w, --webhooks [value]', 'Nelson API webhook URLs', parseURLs, [])
-    .option('--webhookInterval [value]', 'Webhooks callback interval in seconds', parseNumber, 30)
+    .option('--apiAuth [value]', 'Nelson API username:password', parseAuth, null)
+    .option('-a, --apiPort [value]', 'Nelson API port', parseNumber, DEFAULT_API_OPTIONS.apiPort)
+    .option('-o, --apiHostname [value]', 'Nelson API hostname', DEFAULT_API_OPTIONS.apiHostname)
+    .option('-w, --webhooks [value]', 'Nelson API webhook URLs', parseURLs, DEFAULT_API_OPTIONS.webhooks)
+    .option('--webhookInterval [value]', 'Webhooks callback interval in seconds', parseNumber, DEFAULT_API_OPTIONS.webhookInterval)
     .option('-p, --port [value]', 'Nelson port', parseNumber, DEFAULT_OPTIONS.port)
     .option('-r, --IRIHostname [value]', 'IRI API hostname', DEFAULT_OPTIONS.IRIHostname)
     .option('-i, --IRIPort [value]', 'IRI API port', parseNumber, DEFAULT_OPTIONS.IRIPort)

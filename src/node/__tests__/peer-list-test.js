@@ -270,7 +270,7 @@ describe('PeerListTest', () => {
                             expect(list.getPeerTrust(list.peers[3])).toBeLessThan(0.001);
                             done();
                         })
-                    }, 3000);
+                    }, 1000);
                 })
             }, 3000);
         });
@@ -307,5 +307,5 @@ describe('PeerListTest', () => {
                 })
             }, 3000);
         });
-    });
+    }, 12000);
 });
