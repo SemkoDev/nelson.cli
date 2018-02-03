@@ -235,13 +235,13 @@ var IRI = function (_Base) {
                     Promise.all(neighbors.map(function (n) {
                         var url = new URL(n.connectionType + '://' + n.address);
                         return getIP(url.hostname).then(function (ip) {
-                            url.ip = ip;
+                            url.ip = ip || 'none';
                             return url;
                         });
                     })).then(function (urls) {
                         var toRemove = urls.filter(function (url) {
                             return !_this5.staticNeighbors.includes(url.hostname) && !_this5.staticNeighbors.includes(url.ip) && peers.filter(function (p) {
-                                return p.data.hostname !== url.hostname && p.data.ip !== url.ip;
+                                return p.data.hostname === url.hostname || p.data.ip === url.hostname || p.data.hostname === url.ip || p.data.ip === url.ip;
                             }).length === 0;
                         });
                         if (!toRemove.length) {

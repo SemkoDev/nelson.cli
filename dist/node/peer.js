@@ -126,7 +126,7 @@ var Peer = function (_Base) {
             var _this3 = this;
 
             return new Promise(function (resolve) {
-                if (!_this3.data.ip || !_this3._isHostnameIP() && _this3._isIPOutdated()) {
+                if (!_this3._hasCorrectIP() || !_this3._isHostnameIP() && _this3._isIPOutdated()) {
                     dns.resolve(_this3.data.hostname, 'A', function (error, results) {
                         // if there was an error, we set the hostname as ip, even if it's not the case.
                         // It will be re-tried next refresh cycle.
@@ -319,6 +319,11 @@ var Peer = function (_Base) {
         key: '_isHostnameIP',
         value: function _isHostnameIP() {
             return ip.isV4Format(this.data.hostname) || ip.isV6Format(this.data.hostname);
+        }
+    }, {
+        key: '_hasCorrectIP',
+        value: function _hasCorrectIP() {
+            return this.data.ip && (ip.isV4Format(this.data.ip) || ip.isV6Format(this.data.ip));
         }
     }, {
         key: '_getIPString',
