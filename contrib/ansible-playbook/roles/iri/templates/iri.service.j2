@@ -1,0 +1,32 @@
+[Unit]
+Description=IRI
+After=docker.service
+Requires=docker.service
+
+[Service]
+TimeoutStartSec=0
+Restart=always
+EnvironmentFile=-{{ config_dir }}/iri
+ExecStartPre=-/usr/bin/docker rm %p
+ExecStart=/usr/bin/docker run \
+  --name %p \
+  --hostname iri \
+  --user {{ iri_uid.stdout }} \
+  --net={{ iri_net_name }} \
+  -v {{ iri_configdir }}:/iri/conf \
+  -v {{ iri_basedir }}:/iri/data \
+  -p {{ iri_api_port }}:{{ iri_api_port }} \
+  -p {{ iri_tcp_port }}:{{ iri_tcp_port }} \
+  -p {{ iri_udp_port }}:{{ iri_udp_port }}/udp  \
+  -e DOCKER_IRI_REMOTE_LIMIT_API=${DOCKER_IRI_REMOTE_LIMIT_API} \
+  -e DOCKER_IRI_MONITORING_API_PORT_ENABLE=${DOCKER_IRI_MONITORING_API_PORT_ENABLE} \
+  {{ iri_image }}:{{ iri_tag }} \
+  -c /iri/conf/iri.ini{% if iri_testnet is defined and iri_testnet %} \
+  --testnet
+{% endif %}
+
+ExecStop=/usr/bin/docker stop %p
+ExecReload=/usr/bin/docker restart %p
+
+[Install]
+WantedBy=multi-user.target

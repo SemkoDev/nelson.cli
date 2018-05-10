@@ -2,6 +2,8 @@
 
 This playbook will install IRI and Nelson As Docker containers.
 
+**WARNING** This playbook will configure firewalls (and expects SELinux enforcing on CentOS). Run this playbook on a clean OS installation only.
+
 
 ## Requirements
 
@@ -9,7 +11,7 @@ This playbook will install IRI and Nelson As Docker containers.
 ### Operating System
 This playbook has been tested on:
 
-* Ubuntu 16.04 and 17.04
+* Ubuntu 16.04, 17.04 and 18.04
 * CentOS 7.4
 
 ### Software Dependencies
@@ -109,7 +111,8 @@ You can use `-f` to follow the tail of the log.
 ## File Locations
 
 * Nelson's configuration is at `/etc/nelson/config.ini`
-* IRI config is at `/etc/iri/iri.ini`
+* IRI ini config is at `/etc/iri/iri.ini`
+* IRI environment config file on CentOS: `/etc/sysconf/iri` on Ubuntu: `/etc/default/iri`.
 * Nelson's data directory is at `/var/lib/nelson/`
-* IRI's database is at `/var/lib/iri/`
+* IRI's database is at `/var/lib/iri/target/mainnetdb`
 

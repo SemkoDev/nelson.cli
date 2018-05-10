@@ -1,0 +1,127 @@
+- name: set variables centos/redhat
+  set_fact:
+    systemd_dir: /usr/lib/systemd/system
+    config_dir: /etc/sysconfig
+  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+
+- name: set variables debian/ubuntu
+  set_fact:
+    systemd_dir: /etc/systemd/system
+    config_dir: /etc/default
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+
+- name: ensure iri stopped
+  systemd:
+    name: iri.service
+    state: stopped
+    enabled: false
+  ignore_errors: yes
+
+- name: uninstall config files
+  file:
+    path: "{{ systemd_dir }}/iri.service"
+    state: absent
+  notify:
+    - reload systemd
+
+- name: remove iri config and utility files
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{ iri_basedir }}"
+    - "/usr/bin/reattach"
+    - "/usr/bin/ps_mem"
+    - "{{ config_dir }}/iri"
+    - "{{ iri_configdir }}"
+
+- name: firewalld cleanup iri rules
+  block:
+
+    - name: remove iri tcp port in firewall
+      firewalld:
+        port: "{{ iri_tcp_port }}/tcp"
+        permanent: true
+        state: disabled
+        immediate: yes
+
+    - name: remove iri udp port in firewall
+      firewalld:
+        port: "{{ iri_udp_port }}/udp"
+        permanent: true
+        state: disabled
+        immediate: yes
+
+    - name: remove rate limit api port in firewall
+      firewalld:
+        rich_rule: 'rule port port={{ iri_api_port }} protocol=tcp limit value="24/m" accept'
+        permanent: true
+        state: disabled
+        immediate: yes
+
+    - name: remove log api port access in firewall
+      firewalld:
+        rich_rule: 'rule port port="{{ iri_api_port }}" protocol="tcp" log prefix="iri_api" level="info" limit value="120/m"'
+        permanent: true
+        state: disabled
+        immediate: yes
+
+  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+
+
+- name: remove ufw iri ports
+  block:
+
+    - name: remove iri tcp port in firewall
+      ufw:
+        rule: allow
+        direction: in
+        proto: tcp
+        port: "{{ iri_tcp_port }}"
+        delete: yes
+
+    - name: reemove iri udp port in firewall
+      ufw:
+        rule: allow
+        direction: in
+        proto: udp
+        port: "{{ iri_udp_port }}"
+        delete: yes
+
+    - name: remove iri api port in firewall
+      ufw:
+        rule: allow
+        direction: in
+        proto: tcp
+        port: "{{ iri_api_port }}"
+        log: yes
+        delete: yes
+
+    - name: remove rate limit iri api port in firewall
+      ufw:
+        rule: limit
+        direction: in
+        proto: tcp
+        port: "{{ iri_api_port }}"
+        log: yes
+        delete: yes
+
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+
+- name: remove the user for iri
+  user:
+    name: "{{ iri_username }}"
+    state: absent
+    remove: yes
+
+- name: Remove IRI container
+  docker_container:
+    name: iri
+    state: absent
+
+- name: Delete iri docker network
+  docker_network:
+    name: "{{ iri_net_name }}"
+    state: absent
+    force: yes
+  ignore_errors: yes

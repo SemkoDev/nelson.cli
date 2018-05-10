@@ -23,6 +23,8 @@
   shell: "echo -n $(id -u {{ nelson_username }})" 
   changed_when: false
   register: nelson_uid
+  tags:
+    - nelson_create_container
 
 - name: create nelson data and config directory
   file:
@@ -42,7 +44,8 @@
     owner: "{{ nelson_username }}"
     group: "{{ nelson_username }}"
     mode: 0600
-    force: no
+    force: "{{ overwrite | default('no') }}"
+    backup: yes 
   notify:
     - restart nelson
 
@@ -51,15 +54,17 @@
     src: files/nelson.service
     dest: "{{ systemd_dir }}/nelson.service"
   notify:
-    - reload systemd
+    - restart nelson
 
 - name: Create nelson container
   docker_container:
     name: nelson
     state: present
-    user: "{{ nelson_uid.stdout }}"
+    #user: "{{ nelson_uid.stdout }}"
     restart_policy: unless-stopped
-    network_mode: host
+    network_mode: iri_net
+    networks:
+      - name: "{{ iri_net_name }}"
     hostname: nelson
     image: "{{ nelson_image }}:{{ nelson_tag }}"
     ports:
@@ -74,6 +79,9 @@
     - nelson_create_container
   notify:
     - restart nelson
+
+- name: flush handlers
+  meta: flush_handlers
 
 - name: ensure nelson started and enabled
   systemd:
