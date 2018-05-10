@@ -5,6 +5,9 @@ This playbook will install IRI and Nelson As Docker containers.
 **WARNING** This playbook will configure firewalls (and expects SELinux enforcing on CentOS). Run this playbook on a clean OS installation only.
 
 
+* A network is created in docker (iri_net). This network is used by IRI and Nelson containers.
+
+
 ## Requirements
 
 
@@ -116,3 +119,11 @@ You can use `-f` to follow the tail of the log.
 * Nelson's data directory is at `/var/lib/nelson/`
 * IRI's database is at `/var/lib/iri/target/mainnetdb`
 
+
+## Configuration
+
+* To configure REMOTE_LIMIT_API commands use the `DOCKER_IRI_REMOTE_LIMIT_API` option in the environment configuration file. On CentOS `/etc/sysconf/iri` or on Ubuntu: `/etc/default/iri`
+* DOCKER_IRI_MONITORING_API_PORT_ENABLE=1 enables a socat service to expose 14266 on the iri container. This is how Nelson can communicate with iri.
+* `JAVA_MIN_MEMORY=...` and `JAVA_MAX_MEMORY=...` will be automatically configured. You can edit those on CentOS in `/etc/sysconf/iri` or on Ubuntu in `/etc/default/iri`
+* ZMQ port and other IRI configuration options can be configured in `/etc/iri/iri.ini`
+* Nelson has to contact iri using iri's container name and port 14266 (enabled in iri by `DOCKER_IRI_MONITORING_API_PORT_ENABLE=1`)
