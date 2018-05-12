@@ -72,6 +72,8 @@ If you want to configure values before running the playbook you will find the va
 group_vars/all/*.yml
 ```
 
+**NOTE** Make sure the `ssh_port` reflects your SSH port. This is important, otherwise you might find yourself locked out of the server. You can skip configuring the firewall using the `--skip-tags=firewall`. See examples below for more installation options.
+
 ## Installation
 
 Run:

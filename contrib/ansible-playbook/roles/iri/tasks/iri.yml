@@ -128,7 +128,6 @@
       set_fact:
         iri_java_mem: "{{ (ansible_memtotal_mb|int * 0.7)|round|int }}m"
         iri_init_java_mem: "{{ (ansible_memtotal_mb|int * 0.2)|round|int }}m"
-        iri_java_heap_mem: "{{ (ansible_memtotal_mb|int * 0.2)|round|int }}m"
       when: ansible_memtotal_mb|int <= 10240
 
   when: memory_autoset is defined and memory_autoset|bool

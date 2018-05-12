@@ -13,7 +13,6 @@ iri_basedir: /var/lib/iri/target
 iri_configdir: /etc/iri
 
 # IRI docker image
-#iri_image: nuriel77/iri-image
 iri_image: iri
 
 # IRI Docker image tag
