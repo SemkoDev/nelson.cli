@@ -82,6 +82,16 @@ ansible-playbook -i inventory -v site.yml
 Specifc roles and or tasks can be run individually or skipped using `--tags=tag_name_a,tag_name_b` or `--skip-tags=tag_name`.
 
 
+To skip installing Docker user `--skip-tags=common_role`. To skip configuring the firewall use `--skip-tags=firewall`. You can specify multiple tasks e.g. `--skip-tags=common_role,firewall`.
+
+### Uninstall
+
+Uninstall will do best effort in removing all configuration files, the Docker containers and services:
+
+```sh
+ansible-playbook -i inventory -v site.yml --tags=uninstall -e uninstall_playbook=true
+```
+
 ## Controls
 
 To start, stop or view status of either `nelson` or `iri` run:
@@ -122,8 +132,19 @@ You can use `-f` to follow the tail of the log.
 
 ## Configuration
 
-* To configure REMOTE_LIMIT_API commands use the `DOCKER_IRI_REMOTE_LIMIT_API` option in the environment configuration file. On CentOS `/etc/sysconf/iri` or on Ubuntu: `/etc/default/iri`
-* DOCKER_IRI_MONITORING_API_PORT_ENABLE=1 enables a socat service to expose 14266 on the iri container. This is how Nelson can communicate with iri.
-* `JAVA_MIN_MEMORY=...` and `JAVA_MAX_MEMORY=...` will be automatically configured. You can edit those on CentOS in `/etc/sysconf/iri` or on Ubuntu in `/etc/default/iri`
-* ZMQ port and other IRI configuration options can be configured in `/etc/iri/iri.ini`
-* Nelson has to contact iri using iri's container name and port 14266 (enabled in iri by `DOCKER_IRI_MONITORING_API_PORT_ENABLE=1`)
+To configure limit commands, ports and neighbors you can edit the IRI environment configuration file. The file can be found on CentOS in `/etc/sysconfig/iri` or on Ubuntu in `/etc/default/iri`
+
+* For `REMOTE_LIMIT_API` use the `DOCKER_IRI_REMOTE_LIMIT_API`
+* `DOCKER_IRI_MONITORING_API_PORT_ENABLE=1` enables a socat service to expose 14266 on the iri container. This is how Nelson can communicate with iri.
+* `JAVA_MIN_MEMORY=...` and `JAVA_MAX_MEMORY=...` will be automatically configured during installation (or edited in the configuration file).
+
+ZMQ port and other specific IRI configuration options can be configured in `/etc/iri/iri.ini`
+
+
+## Ports
+
+Port 14266 binds on the localhost interface of the host. This will allow you to communicate with the API being able to access all the API commands.
+
+Port 14265 is used for normal wallet/client connections.
+
+Peering ports can be configured in the IRI environment configuration file mentioned in the Configuration section above.

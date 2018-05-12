@@ -48,6 +48,7 @@
   with_items:
     - "{{ nelson_configdir }}"
     - "{{ nelson_datadir }}"
+    - "{{ config_dir }}/nelson"
 
 - name: uninstall config files
   file:

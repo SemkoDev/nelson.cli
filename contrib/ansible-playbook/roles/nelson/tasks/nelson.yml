@@ -49,34 +49,17 @@
   notify:
     - restart nelson
 
-- name: copy systemd service file
+- name: copy nelson environment configuration file
   template:
-    src: files/nelson.service
-    dest: "{{ systemd_dir }}/nelson.service"
+    src: templates/nelson.sysconfig.j2
+    dest: "{{ config_dir }}/nelson"
   notify:
     - restart nelson
 
-- name: Create nelson container
-  docker_container:
-    name: nelson
-    state: present
-    #user: "{{ nelson_uid.stdout }}"
-    restart_policy: unless-stopped
-    network_mode: iri_net
-    networks:
-      - name: "{{ iri_net_name }}"
-    hostname: nelson
-    image: "{{ nelson_image }}:{{ nelson_tag }}"
-    ports:
-      - "{{ nelson_api_port }}:{{ nelson_api_port }}"
-      - "{{ nelson_tcp_port }}:{{ nelson_tcp_port }}"
-    volumes:
-      - "{{ nelson_datadir }}:/var/lib/nelson/data:Z"
-      - "{{ nelson_configdir }}:/etc/nelson:ro,Z"
-    env:
-      NELSON_CONFIG: "{{ nelson_configdir }}/config.ini"
-  tags:
-    - nelson_create_container
+- name: copy systemd service file
+  template:
+    src: templates/nelson.service.j2
+    dest: "{{ systemd_dir }}/nelson.service"
   notify:
     - restart nelson
 

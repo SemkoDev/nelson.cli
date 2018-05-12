@@ -1,10 +1,6 @@
 [IRI]
-PORT = {{ iri_api_port }}
-UDP_RECEIVER_PORT = {{ iri_udp_port }}
-TCP_RECEIVER_PORT = {{ iri_tcp_port }}
 IXI_DIR = ixi
 HEADLESS = true
-NEIGHBORS = udp://my.favorite.com:15600
 
 # Uncommend this line and set user and password
 # in the format: `user:password` to password protect
@@ -20,7 +16,5 @@ NEIGHBORS = udp://my.favorite.com:15600
 # set max find transactions value
 #MAX_FIND_TRANSACTIONS = 100000
 
-{% if iri_zmq_enabled is defined and iri_zmq_enabled %}
-ZMQ_ENABLED = true
+ZMQ_ENABLED = {% if iri_zmq_enabled is defined and iri_zmq_enabled %}true{% else %}false{% endif %}
 ZMQ_PORT = {{ iri_zmq_port }}
-{% endif %}

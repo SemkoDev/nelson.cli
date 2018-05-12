@@ -1,6 +1,7 @@
 - import_tasks: firewall.yml
   tags:
     - nelson_firewall
+    - firewall
 
 - import_tasks: nelson.yml
   tags:

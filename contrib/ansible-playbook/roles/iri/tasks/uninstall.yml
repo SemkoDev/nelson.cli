@@ -2,13 +2,13 @@
   set_fact:
     systemd_dir: /usr/lib/systemd/system
     config_dir: /etc/sysconfig
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_distribution == 'CentOS'
 
 - name: set variables debian/ubuntu
   set_fact:
     systemd_dir: /etc/systemd/system
     config_dir: /etc/default
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  when: ansible_distribution == 'Ubuntu'
 
 - name: ensure iri stopped
   systemd:
@@ -32,6 +32,7 @@
     - "{{ iri_basedir }}"
     - "/usr/bin/reattach"
     - "/usr/bin/ps_mem"
+    - "/usr/bin/nbctl"
     - "{{ config_dir }}/iri"
     - "{{ iri_configdir }}"
 
@@ -66,7 +67,9 @@
         state: disabled
         immediate: yes
 
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  tags:
+    - firewall
+  when: ansible_distribution == 'CentOS'
 
 
 - name: remove ufw iri ports
@@ -105,8 +108,9 @@
         port: "{{ iri_api_port }}"
         log: yes
         delete: yes
-
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  tags:
+    - firewall
+  when: ansible_distribution == 'Ubuntu'
 
 - name: remove the user for iri
   user:
