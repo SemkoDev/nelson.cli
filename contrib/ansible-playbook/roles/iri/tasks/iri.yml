@@ -149,9 +149,6 @@
   docker_network:
     name: "{{ iri_net_name }}"
     driver: bridge
-    driver_options:
-      com.docker.network.driver.mtu: '{{ iri_net_mtu }}'
-      com.docker.network.bridge.enable_ip_masquerade: 'false'
   tags:
     - iri_network
        

@@ -49,9 +49,6 @@ memory_autoset: true
 # A network will be created in docker for iri
 iri_net_name: iri_net
 
-# IRI Docker network mtu value
-iri_net_mtu: '1500'
-
 # Command to limit access to in iri
 iri_remote_limit_api: "removeNeighbors, addNeighbors, interruptAttachingToTangle, attachToTangle, getNeighbors"
 
