@@ -102,15 +102,17 @@ class Peer extends Base {
 
     /**
      * Marks this node as connected.
+     * @param {number} ping
      * @returns {Promise.<Peer>}
      */
-    markConnected () {
+    markConnected (ping) {
         if (this.lastConnection) {
             return Promise.resolve(this);
         }
         this.lastConnection = {
             start: new Date(),
             duration: 0,
+            ping: ping,
             numberOfAllTransactions: 0,
             numberOfNewTransactions: 0,
             numberOfInvalidTransactions: 0
@@ -184,6 +186,7 @@ class Peer extends Base {
      */
     getPeerQuality () {
         const history = [ ...this.data.lastConnections, this.lastConnection].filter(h => h);
+        const meanPing = history.reduce((s, h) => s + (h.ping || this.opts.ipRefreshTimeout), 0) / (history.length || 1);
         const newTrans = history.reduce((s, h) => s + h.numberOfNewTransactions, 0);
         const badTrans = history.reduce((s, h) => s + h.numberOfInvalidTransactions, 0);
         const rndTrans = history.reduce((s, h) => s + (h.numberOfRandomTransactionRequests || 0), 0);
@@ -191,7 +194,10 @@ class Peer extends Base {
         const serialPenalization = !this.isTrusted() && !newTrans && history.length >= this.opts.lazyTimesLimit
             ? 1.0 / history.length
             : 1.0;
-        const score = Math.max(0.0, 1.0 / (badRatio || 1)) * serialPenalization;
+        const score =
+            (3 / 4) * (Math.max(0.0, 1.0 / (badRatio || 1)) * serialPenalization) +
+            (1 / 4) *  (1 - (Math.log(meanPing || this.opts.ipRefreshTimeout) / Math.log(this.opts.ipRefreshTimeout)))
+        ;
         return Math.max(0.01, score);
     }
 

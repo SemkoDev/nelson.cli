@@ -396,7 +396,7 @@ class Node extends Base {
             }
             this.log('connection established'.green, this.formatNode(peer.data.hostname, peer.data.port));
             this._sendNeighbors(ws);
-            return peer.markConnected().then(() => this._ready && this.opts.onPeerConnected(peer));
+            return this.pingPeer(peer).then(([peer, ping]) => peer.markConnected(ping).then(() => this._ready && this.opts.onPeerConnected(peer)));
         };
 
         ws.isAlive = true;
@@ -711,6 +711,27 @@ class Node extends Base {
             handshakeTimeout: 5000
         }), peer);
         return peer;
+    }
+
+    /**
+     * Ping a peer
+     * @param {Peer} peer
+     * @returns {Promise<Peer, number>}
+     */
+    pingPeer (peer) {
+        return new Promise(resolve => {
+            const hrTimeStart = (hrTime => hrTime[0] * 1000000 + hrTime[1] / 1000)(process.hrtime());
+            const ws = this.sockets.get(peer);
+            const cb = () => {
+                const hrTimeEnd = (hrTime => hrTime[0] * 1000000 + hrTime[1] / 1000)(process.hrtime());
+                const pingInMs = (hrTimeEnd - hrTimeStart) / 1000;
+                ws.removeListener('pong', cb);
+                this.log('Ping for'.green, this.formatNode(peer.data.hostname, peer.data.port), `${pingInMs} ms`.green);
+                resolve([peer, pingInMs]);
+            };
+            ws.on('pong', cb);
+            ws.ping('', false);
+        });
     }
 
     /**
