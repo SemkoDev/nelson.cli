@@ -149,12 +149,13 @@ var Peer = function (_Base) {
 
         /**
          * Marks this node as connected.
+         * @param {number} ping
          * @returns {Promise.<Peer>}
          */
 
     }, {
         key: 'markConnected',
-        value: function markConnected() {
+        value: function markConnected(ping) {
             var _this4 = this;
 
             if (this.lastConnection) {
@@ -163,6 +164,7 @@ var Peer = function (_Base) {
             this.lastConnection = {
                 start: new Date(),
                 duration: 0,
+                ping: ping,
                 numberOfAllTransactions: 0,
                 numberOfNewTransactions: 0,
                 numberOfInvalidTransactions: 0
@@ -250,9 +252,14 @@ var Peer = function (_Base) {
     }, {
         key: 'getPeerQuality',
         value: function getPeerQuality() {
+            var _this6 = this;
+
             var history = [].concat(_toConsumableArray(this.data.lastConnections), [this.lastConnection]).filter(function (h) {
                 return h;
             });
+            var meanPing = history.reduce(function (s, h) {
+                return s + (h.ping || _this6.opts.ipRefreshTimeout);
+            }, 0) / (history.length || 1);
             var newTrans = history.reduce(function (s, h) {
                 return s + h.numberOfNewTransactions;
             }, 0);
@@ -264,7 +271,7 @@ var Peer = function (_Base) {
             }, 0);
             var badRatio = parseFloat(badTrans * 5 + rndTrans) / (newTrans || 1);
             var serialPenalization = !this.isTrusted() && !newTrans && history.length >= this.opts.lazyTimesLimit ? 1.0 / history.length : 1.0;
-            var score = Math.max(0.0, 1.0 / (badRatio || 1)) * serialPenalization;
+            var score = 3 / 4 * (Math.max(0.0, 1.0 / (badRatio || 1)) * serialPenalization) + 1 / 4 * (1 - Math.log(meanPing || this.opts.ipRefreshTimeout) / Math.log(this.opts.ipRefreshTimeout));
             return Math.max(0.01, score);
         }
 
