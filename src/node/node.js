@@ -396,7 +396,7 @@ class Node extends Base {
             }
             this.log('connection established'.green, this.formatNode(peer.data.hostname, peer.data.port));
             this._sendNeighbors(ws);
-            return this.pingPeer(peer).then(([peer, ping]) => peer.markConnected(ping).then(() => this._ready && this.opts.onPeerConnected(peer)));
+            return this.pingPeer(peer).then(([peer, ping]) => peer.markConnected(ping)).then(() => this._ready && this.opts.onPeerConnected(peer));
         };
 
         ws.isAlive = true;
