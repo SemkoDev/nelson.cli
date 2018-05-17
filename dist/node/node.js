@@ -533,9 +533,9 @@ var Node = function (_Base) {
                         peer = _ref3[0],
                         ping = _ref3[1];
 
-                    return peer.markConnected(ping).then(function () {
-                        return _this9._ready && _this9.opts.onPeerConnected(peer);
-                    });
+                    return peer.markConnected(ping);
+                }).then(function () {
+                    return _this9._ready && _this9.opts.onPeerConnected(peer);
                 });
             };
 
