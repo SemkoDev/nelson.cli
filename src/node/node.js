@@ -720,11 +720,10 @@ class Node extends Base {
      */
     pingPeer (peer) {
         return new Promise(resolve => {
-            const hrTimeStart = (hrTime => hrTime[0] * 1000000 + hrTime[1] / 1000)(process.hrtime());
+            const hrTimeStart = process.hrtime();
             const ws = this.sockets.get(peer);
             const cb = () => {
-                const hrTimeEnd = (hrTime => hrTime[0] * 1000000 + hrTime[1] / 1000)(process.hrtime());
-                const pingInMs = (hrTimeEnd - hrTimeStart) / 1000;
+                const pingInMs = (hrTime => hrTime[0] * 10e2 + hrTime[1] / 10e5)(process.hrtime(hrTimeStart));
                 ws.removeListener('pong', cb);
                 this.log('Ping for'.green, this.formatNode(peer.data.hostname, peer.data.port), `${pingInMs} ms`.green);
                 resolve([peer, pingInMs]);

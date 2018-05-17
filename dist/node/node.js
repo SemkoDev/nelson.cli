@@ -940,15 +940,12 @@ var Node = function (_Base) {
             var _this13 = this;
 
             return new Promise(function (resolve) {
-                var hrTimeStart = function (hrTime) {
-                    return hrTime[0] * 1000000 + hrTime[1] / 1000;
-                }(process.hrtime());
+                var hrTimeStart = process.hrtime();
                 var ws = _this13.sockets.get(peer);
                 var cb = function cb() {
-                    var hrTimeEnd = function (hrTime) {
-                        return hrTime[0] * 1000000 + hrTime[1] / 1000;
-                    }(process.hrtime());
-                    var pingInMs = (hrTimeEnd - hrTimeStart) / 1000;
+                    var pingInMs = function (hrTime) {
+                        return hrTime[0] * 10e2 + hrTime[1] / 10e5;
+                    }(process.hrtime(hrTimeStart));
                     ws.removeListener('pong', cb);
                     _this13.log('Ping for'.green, _this13.formatNode(peer.data.hostname, peer.data.port), (pingInMs + ' ms').green);
                     resolve([peer, pingInMs]);
