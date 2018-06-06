@@ -3,7 +3,8 @@ stages:
   - make
   - test
 
-image: node:9
+setup:
+  image: node:9
   stage: setup
   cache:
     key: "$CI_PROJECT_ID"
@@ -34,7 +35,7 @@ binaries:
   script:
     - yarn run make:binaries
 
-unit:
+test:
   image: node:9
   stage: test
   script:
