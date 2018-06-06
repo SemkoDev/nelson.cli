@@ -1,42 +1,18 @@
-stages:
-  - setup
-  - make
-  - test
+image:
+  - node:9
 
-setup:
-  image: node:9
-  stage: setup
-  cache:
-    key: "$CI_PROJECT_ID"
-    paths:
-      - .yarn
-  artifacts:
-    paths:
-      - node_modules/
-  script:
-    - yarn config set cache-folder .yarn
-    - yarn
+before_script:
+  - yarn config set cache-folder .yarn
+  - yarn
 
 build:
-  image: node:9
-  stage: make
-  artifacts:
-    paths:
-      - dist/
   script:
     - yarn run build
 
 binaries:
-  image: node:9
-  stage: make
-  artifacts:
-    paths:
-      - builds/
   script:
     - yarn run make:binaries
 
 test:
-  image: node:9
-  stage: test
   script:
     - yarn run test
