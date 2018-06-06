@@ -2,6 +2,11 @@
 
 This playbook will install IRI and Nelson As Docker containers.
 
+**WARNING** This playbook will configure firewalls (and expects SELinux enforcing on CentOS). Run this playbook on a clean OS installation only.
+
+
+* A network is created in docker (iri_net). This network is used by IRI and Nelson containers.
+
 
 ## Requirements
 
@@ -9,7 +14,7 @@ This playbook will install IRI and Nelson As Docker containers.
 ### Operating System
 This playbook has been tested on:
 
-* Ubuntu 16.04 and 17.04
+* Ubuntu 16.04, 17.04 and 18.04
 * CentOS 7.4
 
 ### Software Dependencies
@@ -67,6 +72,8 @@ If you want to configure values before running the playbook you will find the va
 group_vars/all/*.yml
 ```
 
+**NOTE** Make sure the `ssh_port` reflects your SSH port. This is important, otherwise you might find yourself locked out of the server. You can skip configuring the firewall using the `--skip-tags=firewall`. See examples below for more installation options.
+
 ## Installation
 
 Run:
@@ -76,6 +83,16 @@ ansible-playbook -i inventory -v site.yml
 
 Specifc roles and or tasks can be run individually or skipped using `--tags=tag_name_a,tag_name_b` or `--skip-tags=tag_name`.
 
+
+To skip installing Docker user `--skip-tags=common_role`. To skip configuring the firewall use `--skip-tags=firewall`. You can specify multiple tasks e.g. `--skip-tags=common_role,firewall`.
+
+### Uninstall
+
+Uninstall will do best effort in removing all configuration files, the Docker containers and services:
+
+```sh
+ansible-playbook -i inventory -v site.yml --tags=uninstall -e uninstall_playbook=true
+```
 
 ## Controls
 
@@ -109,7 +126,27 @@ You can use `-f` to follow the tail of the log.
 ## File Locations
 
 * Nelson's configuration is at `/etc/nelson/config.ini`
-* IRI config is at `/etc/iri/iri.ini`
+* IRI ini config is at `/etc/iri/iri.ini`
+* IRI environment config file on CentOS: `/etc/sysconf/iri` on Ubuntu: `/etc/default/iri`.
 * Nelson's data directory is at `/var/lib/nelson/`
-* IRI's database is at `/var/lib/iri/`
+* IRI's database is at `/var/lib/iri/target/mainnetdb`
 
+
+## Configuration
+
+To configure limit commands, ports and neighbors you can edit the IRI environment configuration file. The file can be found on CentOS in `/etc/sysconfig/iri` or on Ubuntu in `/etc/default/iri`
+
+* For `REMOTE_LIMIT_API` use the `DOCKER_IRI_REMOTE_LIMIT_API`
+* `DOCKER_IRI_MONITORING_API_PORT_ENABLE=1` enables a socat service to expose 14266 on the iri container. This is how Nelson can communicate with iri.
+* `JAVA_MIN_MEMORY=...` and `JAVA_MAX_MEMORY=...` will be automatically configured during installation (or edited in the configuration file).
+
+ZMQ port and other specific IRI configuration options can be configured in `/etc/iri/iri.ini`
+
+
+## Ports
+
+Port 14266 binds on the localhost interface of the host. This will allow you to communicate with the API being able to access all the API commands.
+
+Port 14265 is used for normal wallet/client connections.
+
+Peering ports can be configured in the IRI environment configuration file mentioned in the Configuration section above.

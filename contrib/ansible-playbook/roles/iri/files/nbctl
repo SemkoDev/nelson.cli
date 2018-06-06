@@ -1,48 +1,78 @@
 #!/usr/bin/env python
 import argparse
+import tempfile
 import urllib2
+import hashlib
+import socket
+import yaml
 import json
 import sys
+import re
+import os
+from shutil import copyfile
+from os.path import expanduser
+from ipaddress import ip_address
+from argparse import RawTextHelpFormatter
 
+
+DEFAULT_API_VERSION = '1.4'
+DEFAULT_HOST = 'http://127.0.0.1:14265'
 
 """Script to add or remove neighbors
-   from IRI API.
+   from IRI API and configutaion file
    source: https://github.com/nuriel77/iri-playbook
+   Copyright (c) 2017 Nuriel Shem-Tov
 """
 
 def parse_args():
 
     parser = argparse.ArgumentParser(
+        formatter_class=RawTextHelpFormatter,
         description='Add or remove full node neighbors.',
         epilog='Example: nbctl -a -n'
-               ' udp://1.2.3.4:12345 -n tcp://4.3.2.1:4321')
+               ' udp://1.2.3.4:12345 -n tcp://4.3.2.1:4321'
+               ' -f /etc/default/iri\n'
+               '--host and --api-version can be placed in a file in the home directory ~/.nbctl:\n'
+               'api_version: 1.4.2.4\n'
+               'host: http://127.0.0.1:12345')
 
     parser.add_argument('--neighbors', '-n',
                         action='append',
-                        required=True,
                         help='Neighbors to process. Can be specified'
                              ' multiple times.')
 
     parser.add_argument('--remove', '-r', action='store_true',
-                        help='Removes neighbors,')
+                        help='Removes neighbors')
 
     parser.add_argument('--add', '-a', action='store_true',
                         help='Add neighbors')
 
+    parser.add_argument('--list', '-l', action='store_true',
+                        help='List neighbors')
+
+    parser.add_argument('--file', '-f',
+                        help='Configuration file to update')
+
     parser.add_argument('--host', '-i',
-                        default='http://localhost:14265',
-                        help='IRI API endpoint. Default: %(default)s')
+                        help='IRI API endpoint. Default: %s' %
+                        DEFAULT_HOST)
+
+    parser.add_argument('--timeout', '-t',
+                        help='Timeout. Default: %(default)s',
+                        type=int, default=5)
 
     parser.add_argument('--api-version', '-x',
-                        default='1.4',
-                        help='IRI API Version. Default: %(default)s')
+                        help='IRI API Version. Default: %s' %
+                        DEFAULT_API_VERSION)
 
-    return parser.parse_args()
+    return parser
 
 
 def run():
+
     try:
-        args = parse_args()
+        parser = parse_args()
+        args = parser.parse_args()
     except Exception as e:
         sys.stderr.write("Error parsing arguments: %s\n" % e)
         sys.exit(1)
@@ -51,11 +81,21 @@ def run():
         sys.stderr.write("You can either select `--add` or `--remove`"
                          ", not both.\n")
         sys.exit(1)
-    elif not args.add and not args.remove:
-        sys.stderr.write("You must select either `--add` or `--remove`\n")
+
+    if args.add:
+        command = 'addNeighbors'
+    elif args.remove:
+        command = 'removeNeighbors'
+    elif args.list:
+        command = 'getNeighbors'
+    else:
+        sys.stderr.write("You need to specify a command:\n\n")
+        parser.print_help()
         sys.exit(1)
 
-    command = 'addNeighbors' if args.add else 'removeNeighbors'
+    if (args.add or args.remove) and args.neighbors is None:
+        sys.stderr.write("Error: argument --neighbors/-n is required\n")
+        sys.exit(1)
 
     headers = {
         'content-type': 'application/json',
@@ -67,13 +107,199 @@ def run():
         'uris': args.neighbors
     })
 
+    # Set defaults
+    local_config = get_homedir_nbctl()
+    if args.api_version is None and 'api_version' in local_config:
+        args.api_version = local_config['api_version']
+    elif args.api_version is None:
+        args.api_version = DEFAULT_API_VERSION
+
+    if args.host is None and 'host' in local_config:
+        args.host = local_config['host']
+    elif args.host is None:
+        args.host = DEFAULT_HOST
+
     request = urllib2.Request(url=args.host,
                               data=to_send,
                               headers=headers)
 
-    return_data = urllib2.urlopen(request).read()
-    json_data = json.loads(return_data)
-    print(json_data)
+    # Send to IRI API
+    try:
+        return_data = urllib2.urlopen(request, timeout=args.timeout)
+    except urllib2.HTTPError as e:
+        msg = e.read()
+        sys.stderr.write('Request failed with code: %d, response: %s\n' % 
+                         (e.code, msg))
+        if 'hostname can\u0027t be null' in msg:
+            sys.stderr.write('Probably invalid hostname/ip\n')
+        sys.exit(1)
+    except urllib2.URLError as e:
+        sys.stderr.write('Request failed: %s\n' % e)
+        sys.exit(1)
+    except socket.timeout as e:
+        sys.stderr.write('Socket timeout: %s\n' % e)
+        sys.exit(1)
+    except Exception as e:
+        sys.stderr.write('Unknown failure: %s\n' % e)
+        sys.exit(1)
+
+    json_data = json.loads(return_data.read())
+    print (json.dumps(json_data, indent=4, sort_keys=True))
+
+    if args.file is None:
+        sys.exit()
+
+    tmpfile = tempfile.NamedTemporaryFile(delete=False)
+    neighbors_regex = r'^IRI_NEIGHBORS=.*$|^NEIGHBORS =.*$'
+
+    # Update config file
+    try:
+        with open(args.file ,"r") as orig:
+            lines = orig.readlines()
+            for line in lines:
+                if re.match(neighbors_regex, line) is None:
+                    tmpfile.write(line)
+                else:
+                    tmpfile.write(process_neighbors_line(command,
+                                                         line.rstrip(),
+                                                         args.neighbors) + '\n')
+
+    except IOError as e:
+        sys.stderr.write('Operation failed: %s\n' % e.strerror)
+        sys.exit(1)
+
+    tmpfile.close()
+
+    # Check if file changed, and copy if true
+    newfile = hashlib.md5(open(tmpfile.name, 'rb').read()).hexdigest()
+    irifile = hashlib.md5(open(args.file, 'rb').read()).hexdigest()
+    if newfile != irifile:
+        copyfile(args.file, args.file + '.nbctl.bak')
+        copyfile(tmpfile.name, args.file)
+        print("Backed up configutaion file in %s" %
+              args.file + '.nbctl.bak')
+    else:
+        print("No changes in configuration file")
+
+
+def process_neighbors_line(command, line, neighbors_to_process):
+    file_type = 'sysconfig'
+
+    # Check neighbor line valid, get existing neighbors
+    if re.match(r"""^IRI_NEIGHBORS=["']["']""", line):
+        neighbors = []
+    else:
+        m = re.search(r"""^IRI_NEIGHBORS=["'](.+?)["']""", line)
+        # If no results from above, check if ini config type
+        if m is None:
+            file_type = 'ini'
+            if re.match(r"""^NEIGHBORS =[ ]*$""", line):
+                neighbors = []
+            else:
+                m = re.search(r"""^NEIGHBORS = (.*)$""", line)
+                if m is None:
+                    sys.stderr.write("Error: Neigbors line seems invalid: '%s'\n" % line)
+                    sys.exit(1)
+                neighbors = m.group(1).split(" ")
+        else:
+            # Store neigbor URIs in a list
+            neighbors = m.group(1).split(" ")
+
+    # Validate syntax in existing file and provided neighbors list
+    if validate_uris(neighbors) is False:
+        sys.stderr.write("Error detected in neighbors syntax in config file\n")
+        sys.exit(1)
+    elif validate_uris(neighbors_to_process) is False:
+        sys.stderr.write("Error detected in user provided neighbors syntax\n")
+        sys.exit(1)
+
+    if command == 'removeNeighbors':
+        for neighbor_to_process in neighbors_to_process:
+            neighbors = remove_neighbor_from_list(neighbors, neighbor_to_process)
+    elif command == 'addNeighbors':
+        for neighbor_to_process in neighbors_to_process:
+            if neighbor_to_process not in neighbors:
+                neighbors.append(neighbor_to_process)
+
+    if file_type == 'ini':
+        return 'NEIGHBORS = %s' % " ".join(neighbors)
+    else:
+        return 'IRI_NEIGHBORS="%s"' % " ".join(neighbors)
+
+
+def remove_neighbor_from_list(neighbors, neighbor_to_process):
+   return [value for value in neighbors if value != neighbor_to_process]
+
+
+def validate_uris(neighbors):
+
+    for neighbor in neighbors:
+
+        # Check valid neighbor URI
+        m = re.search(r"^(?:tcp|udp)://\[{0,1}(.+?)\]{0,1}:(?!.*:)([0-9]+)",
+                      neighbor)
+        if m is None:
+            sys.stderr.write("Error: invalid neighbor syntax: '%s'\n" % neighbor)
+            return False
+
+        # Check valid port range
+        if int(m.group(2)) > 65535 or int(m.group(2)) < 1:
+            sys.stderr.write("Error: neighbor '%s' has invalid port range"
+                             " (1-65535)\n" % neighbor)
+            return False
+
+        # Check neighbor address is valid hostname or IP
+        if valid_address(m.group(1), neighbor) is not True:
+            sys.stderr.write("Error: address '%s' in URI '%s' seems invalid\n" %
+                             (m.group(1), neighbor))
+            return False
+
+
+def is_valid_hostname(hostname):
+    if re.match('^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$', hostname):
+        # Failed IP check, so this is an invalid IP
+        return False
+
+    if len(hostname) > 255:
+        return False
+    if hostname[-1] == ".":
+        hostname = hostname[:-1]
+    allowed = re.compile("(?!-)[A-Z\d-]{1,63}(?<!-)$", re.IGNORECASE)
+    return all(allowed.match(x) for x in hostname.split("."))
+
+
+def valid_address(address, uri):
+    try:
+        ip = ip_address(u''+address)
+        # If IPv6, check valid brackets in URI
+        if ip.version == 6 and re.match(r'^.*/\[.*\]:.*', uri) is None:
+            sys.stderr.write("Error: IPv6 address '%s' missing one or more"
+                             " square brackets.\nE.g.:"
+                             " tcp://[xx:xx:xx:xx]:15600\n" % uri)
+            return False
+    except ValueError:
+        # Check if valid hostname
+        return is_valid_hostname(address)
+    return True
+
+
+def get_homedir_nbctl():
+    home = expanduser("~")
+    config_file = home + '/.nbctl'
+    if not os.path.exists(config_file):
+        return {}
+
+    with open(config_file, 'r') as stream:
+        try:
+            data = yaml.load(stream)
+        except yaml.YAMLError as e:
+            sys.stderr("Error reading '%s': %s" %
+                       (config_file, e))
+
+    if data is None:
+        return {}
+
+    return data
 
 
 if __name__ == "__main__":

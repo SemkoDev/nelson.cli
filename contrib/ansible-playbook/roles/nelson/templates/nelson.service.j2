@@ -1,0 +1,28 @@
+[Unit]
+Description=Nelson
+After=docker.service
+Requires=docker.service
+
+[Service]
+TimeoutStartSec=0
+Restart=always
+EnvironmentFile=-{{ config_dir }}/nelson
+ExecStartPre=-/usr/bin/docker rm %p
+ExecStart=/usr/bin/docker run \
+  --name %p \
+  --hostname nelson \
+  --user {{ nelson_uid.stdout }} \
+  --net={{ iri_net_name }} \
+  --cap-drop=ALL \
+  -v {{ nelson_datadir }}:/var/lib/nelson/data:Z \
+  -v {{ nelson_configdir }}:/etc/nelson:ro,Z \
+  -p ${API_PORT}:${API_PORT} \
+  -p ${TCP_PORT}:${TCP_PORT}  \
+  -e NELSON_CONFIG=${NELSON_CONFIG} \
+  {{ nelson_image }}:{{ nelson_tag }}
+
+ExecStop=/usr/bin/docker stop %p
+ExecReload=/usr/bin/docker restart %p
+
+[Install]
+WantedBy=multi-user.target

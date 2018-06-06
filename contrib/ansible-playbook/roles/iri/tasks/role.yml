@@ -1,13 +1,21 @@
 - import_tasks: ufw.yml
   tags:
     - iri_ufw
+    - firewall
   when: ansible_distribution == 'Ubuntu'
 
 - import_tasks: firewalld.yml
   tags:
     - iri_firewalld
+    - firewall
   when: ansible_distribution == 'CentOS'
 
 - import_tasks: iri.yml
   tags:
     - iri_install
+
+- import_tasks: uninstall.yml
+  tags:
+    - uninstall
+    - uninstall_iri
+  when: uninstall_playbook is defined and uninstall_playbook
