@@ -1,25 +1,14 @@
 image: node:9
 
+cache:
+  paths:
+  - node_modules/
+
 stages:
-  - build
-  - binaries
   - test
-
-before_script:
-  - yarn config set cache-folder .yarn
-  - yarn
-
-build:
-  stage: build
-  script:
-    - yarn run build
-
-binaries:
-  stage: binaries
-  script:
-    - yarn run make:binaries
 
 test:
   stage: test
   script:
+    - yarn install
     - yarn run test
