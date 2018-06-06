@@ -5,3 +5,5 @@ data/
 builds/
 config.ini
 *.iml
+
+.history/
