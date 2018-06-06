@@ -1,0 +1,3 @@
+- import_tasks: role.yml
+  tags:
+    - iri_role

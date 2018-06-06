@@ -1,0 +1,163 @@
+- name: set variables centos/redhat
+  set_fact:
+    systemd_dir: /usr/lib/systemd/system
+    config_dir: /etc/sysconfig
+  when: ansible_distribution == 'CentOS'
+  tags:
+    - nbctl_config
+
+- name: set variables debian/ubuntu
+  set_fact:
+    systemd_dir: /lib/systemd/system
+    config_dir: /etc/default
+  when: ansible_distribution == 'Ubuntu'
+  tags:
+    - nbctl_config
+
+- name: add user to run iri as
+  user:
+    name: "{{ iri_username }}"
+    shell: /sbin/nologin
+    createhome: no
+    home: "{{ iri_basedir }}"
+  tags:
+    - iri_user
+
+- name: get iri user uid
+  shell: "echo -n $(id -u {{ iri_username }})"
+  changed_when: false
+  register: iri_uid
+  tags:
+    - iri_create_container
+
+- name: delete iri data basedir
+  block:
+    - name: stop iri
+      systemd:
+        name: iri.service
+        state: stopped
+      ignore_errors: yes
+
+    - name: remove basedir
+      file:
+        path: "{{ iri_basedir }}"
+        state: absent
+  when: remove_iri_basedir is defined and remove_iri_basedir
+
+- name: ensure iri basedir ownership and permissions
+  file:
+    path: "{{ iri_basedir }}"
+    state: directory
+    mode: 0700
+    owner: "{{ iri_username }}"
+    group: "{{ iri_username }}"
+
+- name: ensure iri basedir ownership and permissions
+  file:
+    path: "{{ iri_basedir }}"
+    state: directory
+    mode: 0700
+    owner: "{{ iri_username }}"
+    group: "{{ iri_username }}"
+
+- name: ensure iri config dir exists
+  file:
+    path: "{{ iri_configdir }}"
+    state: directory
+    mode: 0700
+    owner: "{{ iri_username }}"
+    group: "{{ iri_username }}"
+
+- name: copy utility scripts
+  copy:
+    src: "files/{{ item }}"
+    dest: "/usr/bin/{{ item }}"
+    mode: 0755
+  with_items:
+    - reattach
+    - nbctl
+  tags:
+    - scripts
+
+- name: download ps_mem
+  get_url:
+    url: https://raw.githubusercontent.com/pixelb/ps_mem/master/ps_mem.py
+    dest: /usr/bin/ps_mem
+    mode: 0755
+  ignore_errors: yes
+  tags:
+    - scripts
+
+- name: config default ~/.nbctl
+  copy:
+    dest: "{{ ansible_env.HOME }}/.nbctl"
+    content: "api_version: {{ iri_version }}\nhost: http://127.0.0.1:14266\nfile: {{ config_dir }}/iri\n"
+    force: "{{ overwrite | default('no') }}"
+    backup: yes
+  tags:
+    - nbctl_config
+    - scripts
+
+- name: copy iri environment config file
+  template:
+    src: templates/iri.sysconfig.j2
+    dest: "{{ config_dir }}/iri"
+    force: "{{ overwrite | default('no') }}"
+    backup: yes
+  notify:
+    - restart iri
+
+- name: copy iri systemd file
+  template:
+    src: templates/iri.service.j2
+    dest: "{{ systemd_dir }}/iri.service"
+  notify:
+    - restart iri
+
+- name: auto memory settings block
+  block:
+
+    - name: set memory limit factor for memory larger than 10240m
+      set_fact:
+        iri_java_mem: 8192m
+        iri_init_java_mem: 2048m
+        iri_java_heap_mem: 2048m
+      when: ansible_memtotal_mb|int > 10240
+
+    - name: set memory limit for java-iri for RAM up to 10240m
+      set_fact:
+        iri_java_mem: "{{ (ansible_memtotal_mb|int * 0.7)|round|int }}m"
+        iri_init_java_mem: "{{ (ansible_memtotal_mb|int * 0.2)|round|int }}m"
+      when: ansible_memtotal_mb|int <= 10240
+
+  when: memory_autoset is defined and memory_autoset|bool
+  tags:
+    - mem_override
+
+- name: copy iri.ini config file
+  template:
+    src: templates/iri.ini.j2
+    dest: "{{ iri_configdir }}/iri.ini"
+    owner: "{{ iri_username }}"
+    group: "{{ iri_username }}"
+    force: "{{ overwrite | default('no') }}"
+    backup: yes
+  notify:
+    - restart iri
+
+- name: Create a network for iri
+  docker_network:
+    name: "{{ iri_net_name }}"
+    driver: bridge
+  tags:
+    - iri_network
+       
+- name: flush handlers
+  meta: flush_handlers
+
+- name: ensure iri started and enabled
+  systemd:
+    daemon_reload: true
+    name: iri.service
+    state: started
+    enabled: true

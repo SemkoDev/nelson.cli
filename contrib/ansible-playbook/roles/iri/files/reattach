@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+# coding=utf-8
+import sys
+import argparse
+from iota import *
+
+"""Script to reattach a transaction to tangle
+   source: https://github.com/nuriel77/iri-playbook
+"""
+
+def parse_args():
+
+    parser = argparse.ArgumentParser(
+        description='Reattach a transaction.',
+        epilog='Example: ./reattach -x TXHASH'
+               ' -i http://localhost:14265 -m 14 -d 2')
+
+    parser.add_argument('--txhash', '-x', type=str,
+                        required=True,
+                        help='Transaction Hash to reattach')
+
+    parser.add_argument('--depth', '-d', type=int,
+                        default=2,
+                        help='Depth. Default: %(default)s')
+
+    parser.add_argument('--magnitute', '-m', type=int,
+                        default=14,
+                        help='Minimum Weight Magnitute')
+
+    parser.add_argument('--host', '-i', type=str,
+                        default='http://localhost:14265',
+                        help='IRI API endpoint. Default: %(default)s')
+
+    return parser.parse_args()
+
+
+def run():
+    try:
+        args = parse_args()
+    except Exception as e:
+        sys.stderr.write("Error parsing arguments: %s\n" % e)
+        sys.exit(1)
+
+    tx_hash = args.txhash
+    min_mag = args.magnitute
+    depth = args.depth
+    api_uri = args.host
+
+    # Create the API instance.
+    api = Iota(api_uri)
+    replayed = api.replay_bundle(tx_hash, depth, min_mag)
+    print(replayed)
+
+
+if __name__ == "__main__":
+    run()

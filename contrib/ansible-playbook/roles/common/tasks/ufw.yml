@@ -1,25 +1,3 @@
-- name: allow iri tcp port in firewall
-  ufw:
-    rule: allow
-    direction: in
-    proto: tcp
-    port: "{{ iri_tcp_port }}"
-
-- name: allow iri udp port in firewall
-  ufw:
-    rule: allow
-    direction: in
-    proto: udp
-    port: "{{ iri_udp_port }}"
-
-- name: allow iri api port in firewall
-  ufw:
-    rule: allow
-    direction: in
-    proto: tcp
-    port: "{{ iri_api_port }}"
-  when: api_port_remote is defined and api_port_remote
-
 - name: allow ssh port firewall
   ufw:
     rule: allow

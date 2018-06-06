@@ -1,10 +1,10 @@
 # Source: https://github.com/geerlingguy/ansible-role-docker/blob/master/tasks/setup-Debian.yml
-
 - name: Ensure depdencies are installed
   apt:
     name: "{{ item }}"
     state: present
   with_items:
+    - software-properties-common
     - apt-transport-https
     - ca-certificates
     - jq
@@ -25,16 +25,16 @@
 
 - name: Ensure curl is present (on older systems without SNI).
   package: name=curl state=present
-  when: add_repository_key|failed
+  when: add_repository_key is failed
 
 - name: Add Docker apt key (alternative for older systems without SNI).
   shell: "curl -sSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -"
   args:
     warn: no
-  when: add_repository_key|failed
+  when: add_repository_key is failed
 
 - name: Add Docker repository.
   apt_repository:
     repo: "{{ docker_apt_repository }}"
     state: present
-  update_cache: yes
+    update_cache: yes

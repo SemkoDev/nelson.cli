@@ -6,6 +6,7 @@ docker_package: "docker-{{ docker_edition }}"
 docker_package_state: present
 
 # Used only for Debian/Ubuntu. Switch 'stable' to 'edge' if needed.
+# At time of writing, 'stable' is not available yet for Ubuntu 18 (bionic). Use 'edge' instead.
 docker_apt_release_channel: stable
 docker_apt_repository: "deb https://download.docker.com/linux/{{ ansible_distribution|lower }} {{ ansible_distribution_release }} {{ docker_apt_release_channel }}"
 
@@ -14,5 +15,5 @@ docker_yum_repo_url: https://download.docker.com/linux/centos/docker-{{ docker_e
 docker_yum_repo_enable_edge: 0
 docker_yum_repo_enable_test: 0
 
-# Globals
+# Set here your SSH port!
 ssh_port: 22

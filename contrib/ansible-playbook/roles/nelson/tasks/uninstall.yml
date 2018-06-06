@@ -1,0 +1,69 @@
+- name: set variables centos/redhat
+  set_fact:
+    systemd_dir: /usr/lib/systemd/system
+    config_dir: /etc/sysconfig
+  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+
+- name: set variables debian/ubuntu
+  set_fact:
+    systemd_dir: /etc/systemd/system
+    config_dir: /etc/default
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+
+
+- name: remove nelson tcp port in firewall
+  firewalld:
+    port: "{{ item }}/tcp"
+    permanent: true
+    state: disabled
+    immediate: yes
+  with_items:
+    - "{{ nelson_tcp_port }}"
+  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+
+- name: remove nelson tcp ports from firewall
+  ufw:
+    rule: allow
+    direction: in
+    proto: tcp
+    delete: yes
+    port: "{{ item }}"
+  with_items:
+    - "{{ nelson_tcp_port }}"
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+
+- name: Stop any active nelson service
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  ignore_errors: yes
+  with_items:
+    - nelson
+
+- name: remove nelson related files
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{ nelson_configdir }}"
+    - "{{ nelson_datadir }}"
+    - "{{ config_dir }}/nelson"
+
+- name: uninstall config files
+  file:
+    path: "{{ systemd_dir }}/nelson.service"
+    state: absent
+  notify:
+    - reload systemd
+
+- name: remove the user for nelson
+  user:
+    name: "{{ nelson_username }}"
+    state: absent
+    remove: yes
+
+- name: Remove nelson container
+  docker_container:
+    name: nelson
+    state: absent

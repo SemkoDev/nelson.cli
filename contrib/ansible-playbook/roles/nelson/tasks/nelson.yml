@@ -23,6 +23,8 @@
   shell: "echo -n $(id -u {{ nelson_username }})" 
   changed_when: false
   register: nelson_uid
+  tags:
+    - nelson_create_container
 
 - name: create nelson data and config directory
   file:
@@ -42,34 +44,24 @@
     owner: "{{ nelson_username }}"
     group: "{{ nelson_username }}"
     mode: 0600
+    force: "{{ overwrite | default('no') }}"
+    backup: yes 
+  notify:
+    - restart nelson
+
+- name: copy nelson environment configuration file
+  template:
+    src: templates/nelson.sysconfig.j2
+    dest: "{{ config_dir }}/nelson"
   notify:
     - restart nelson
 
 - name: copy systemd service file
   template:
-    src: files/nelson.service
+    src: templates/nelson.service.j2
     dest: "{{ systemd_dir }}/nelson.service"
   notify:
-    - reload systemd
-
-- name: Create nelson container
-  docker_container:
-    name: nelson
-    state: present
-    user: "{{ nelson_uid.stdout }}"
-    restart_policy: unless-stopped
-    network_mode: host
-    image: "{{ nelson_image }}:{{ nelson_tag }}"
-    ports:
-      - "{{ nelson_api_port }}:{{ nelson_api_port }}"
-      - "{{ nelson_tcp_port }}:{{ nelson_tcp_port }}"
-    volumes:
-      - "{{ nelson_datadir }}:/var/lib/nelson/data:Z"
-      - "{{ nelson_configdir }}:/etc/nelson:Z"
-    env:
-      NELSON_CONFIG: "{{ nelson_configdir }}/config.ini"
-  tags:
-    - nelson_create_container
+    - restart nelson
 
 - name: flush handlers
   meta: flush_handlers
