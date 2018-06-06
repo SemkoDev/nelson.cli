@@ -1,5 +1,4 @@
-image:
-  - node:9
+image: node:9
 
 before_script:
   - yarn config set cache-folder .yarn
