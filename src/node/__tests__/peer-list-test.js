@@ -1,7 +1,7 @@
 const dns = require("dns");
 const { PeerList } = require("../peer-list");
 
-jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
+jasmine.DEFAULT_TIMEOUT_INTERVAL = 20000;
 
 describe("PeerListTest", () => {
     it("should create a list correctly", done => {
