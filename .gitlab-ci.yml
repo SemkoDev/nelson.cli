@@ -1,14 +1,84 @@
-image: node:9
+image: docker:latest
+
+services:
+  - docker:dind
+
+stages:
+  - test
+  - release
 
 cache:
   paths:
   - node_modules/
 
-stages:
-  - test
+before_script:
+  - apk update
+  - apk add jq yarn
+  - yarn install
 
 test:
   stage: test
   script:
-    - yarn install
     - yarn run test
+
+release:npm:
+  stage: release
+  only:
+    - /v\d*\.\d*\.\d*/
+  except:
+    - branches
+  script:
+    # build the package
+    - yarn run make
+    
+    # publish on npm
+    - echo '//registry.npmjs.org/:_authToken=${NPM_TOKEN}'>.npmrc
+    - npm publish
+
+release:docker.io:
+  stage: release
+  only:
+    - /v\d*\.\d*\.\d*/
+  except:
+    - branches
+  script:
+    # build the package
+    - yarn run make
+
+    # export the current version from package.json into a variable
+    - export PACKAGE_VERSION=$(cat package.json | jq -r .version)
+
+    # login to official docker registry
+    - docker login -u "$DOCKER_REGISTRY_USER" -p "$DOCKER_REGISTRY_PASSWORD"
+
+    # push tagged with version
+    - docker build --pull -t "$DOCKER_REGISTRY_IMAGE:$PACKAGE_VERSION" .
+    - docker push "$DOCKER_REGISTRY_IMAGE:$PACKAGE_VERSION"
+
+    # push tagged with latest
+    - docker build --pull -t "$DOCKER_REGISTRY_IMAGE" .
+    - docker push "$DOCKER_REGISTRY_IMAGE"
+
+release:gitlab:
+  stage: release
+  only:
+    - /v\d*\.\d*\.\d*/
+  except:
+    - branches
+  script:
+    # build the package
+    - yarn run make
+
+    # export the current version from package.json into a variable
+    - export PACKAGE_VERSION=$(cat package.json | jq -r .version)
+
+    # publish on the official docker hub registry
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+
+    # push tagged with version
+    - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG" .
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
+
+    # push tagged with latest
+    - docker build --pull -t "$CI_REGISTRY_IMAGE" .
+    - docker push "$CI_REGISTRY_IMAGE"
