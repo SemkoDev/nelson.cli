@@ -1,0 +1,40 @@
+[Unit]
+Description=IRI
+After=docker.service
+Requires=docker.service
+
+[Service]
+TimeoutStartSec=0
+Restart=always
+EnvironmentFile=-{{ config_dir }}/iri
+ExecStartPre=-/usr/bin/docker rm %p
+ExecStart=/usr/bin/docker run \
+  --name %p \
+  --hostname iri \
+  --user {{ iri_uid.stdout }} \
+  --net={{ iri_net_name }} \
+  --cap-drop=ALL \
+  -v {{ iri_configdir }}:/iri/conf:ro,Z \
+  -v {{ iri_basedir }}:/iri/data:Z \
+  -p ${API_PORT}:${API_PORT} \
+  -p ${TCP_RECEIVER_PORT}:${TCP_RECEIVER_PORT} \
+  -p ${UDP_RECEIVER_PORT}:${UDP_RECEIVER_PORT}/udp  \
+  -p 127.0.0.1:14266:14266 \
+  -e JAVA_MIN_MEMORY=${JAVA_MIN_MEMORY} \
+  -e JAVA_MAX_MEMORY=${JAVA_MAX_MEMORY} \
+  -e DOCKER_IRI_REMOTE_LIMIT_API=${DOCKER_IRI_REMOTE_LIMIT_API} \
+  -e DOCKER_IRI_MONITORING_API_PORT_ENABLE=${DOCKER_IRI_MONITORING_API_PORT_ENABLE} \
+  {{ iri_image }}:{{ iri_tag }} \
+  -n "${NEIGHBORS}" \
+  -p ${API_PORT} \
+  -u ${UDP_RECEIVER_PORT} \
+  -t ${TCP_RECEIVER_PORT} \
+  -c /iri/conf/iri.ini $OPTIONS{% if iri_testnet is defined and iri_testnet %} \
+  --testnet
+{% endif %}
+
+ExecStop=/usr/bin/docker stop %p
+ExecReload=/usr/bin/docker restart %p
+
+[Install]
+WantedBy=multi-user.target

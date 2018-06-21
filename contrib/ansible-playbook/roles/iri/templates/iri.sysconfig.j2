@@ -1,0 +1,30 @@
+# Java initial mem usage
+JAVA_MIN_MEMORY={{ iri_init_java_mem }}
+
+# Java max mem usage for iri
+JAVA_MAX_MEMORY={{ iri_java_mem }}
+
+# Enables port 14266 for other containers to interact with
+# IRI bypassing command limitations (for instance Nelson
+# requires access to manage neighbors)
+# This port will also bind to localhost on the host.
+DOCKER_IRI_MONITORING_API_PORT_ENABLE=1
+
+# Remote connections cannot access those command for security.
+# To enable PoW on your node, remove attachToTangle and interruptAttachingToTangle
+DOCKER_IRI_REMOTE_LIMIT_API="{{ iri_remote_limit_api }}"
+
+# TCP peering port
+TCP_RECEIVER_PORT={{ iri_tcp_port }}
+
+# UDP peering port
+UDP_RECEIVER_PORT={{ iri_udp_port }}
+API_PORT={{ iri_api_port }}
+
+# Fill in neighbor addresses separated by space, e.g.
+# NEIGHBORS="udp://cfb.is.ai:14600 tcp://iota.rules.io:15600"
+NEIGHBORS=""
+
+# Optional OPTIONS can contain multiple values e.g.
+#OPTIONS="--rescan --revalidate"
+OPTIONS=""
