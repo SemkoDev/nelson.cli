@@ -13,7 +13,7 @@ iri_basedir: /var/lib/iri/target
 iri_configdir: /etc/iri
 
 # IRI docker image
-iri_image: iri
+iri_image: iotaledger/iri
 
 # IRI Docker image tag
 iri_tag: latest
