@@ -1,0 +1,5 @@
+- name: restart iri
+  systemd:
+    name: iri.service
+    state: restarted
+    enabled: yes

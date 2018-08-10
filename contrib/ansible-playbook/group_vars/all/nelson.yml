@@ -1,0 +1,26 @@
+# Nelson docker image tag to run
+nelson_tag: latest
+
+# Nelson image name
+nelson_image: romansemko/nelson
+
+# User name under which to run nelson
+nelson_username: nelson
+
+# Nelson configuration directory
+nelson_configdir: /etc/nelson
+
+# Nelson data dir
+nelson_datadir: /var/lib/nelson
+
+# IRI host on which to bind to IRI
+nelson_iri_host: 127.0.0.1
+
+# Nelson bind API to this address
+nelson_bind_address: 127.0.0.1
+
+# Nelson API port
+nelson_api_port: 18600
+
+# Nelson communication TCP port
+nelson_tcp_port: 16600

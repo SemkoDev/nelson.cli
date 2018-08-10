@@ -1,0 +1,39 @@
+# Unprivileged user to run iri with
+iri_username: iri
+
+# Base directory where iri is installed and runs from
+iri_basedir: /var/lib/iri
+
+# IRI configuration dir
+iri_configdir: /etc/iri
+
+# IRI docker image
+iri_image: nuriel77/iri-image
+
+# IRI Docker image tag
+iri_tag: latest
+
+# The TCP port on which IRI listens for API calls and allows for light wallets to connect to
+iri_api_port: 14265
+
+# The UDP neighbor peering port
+iri_udp_port: 14600
+
+# The TCP neighbor peering port
+iri_tcp_port: 14600
+
+# Limit IRI memory usage
+iri_java_mem: 4096m
+
+# Initial memory usage
+iri_init_java_mem: 768m
+
+# Automatically configure memory limits
+# Overrides above `iri_java_mem` value
+memory_autoset: true
+
+# Let the iri_api_port bind to all interfaces (0.0.0.0).
+# `true` is necessary in order to allow external wallets/APIs to connect without tunneling.
+# If set to `false` it will only bind to localhost (127.0.0.1)
+# If setting to `true`, make sure you use the `iri_remote_limit_api` to limit what users can do.
+api_port_remote: false

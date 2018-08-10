@@ -1,0 +1,135 @@
+- name: set variables centos/redhat
+  set_fact:
+    systemd_dir: /usr/lib/systemd/system
+    config_dir: /etc/sysconfig
+  when: ansible_distribution == 'CentOS'
+
+- name: set variables debian/ubuntu
+  set_fact:
+    systemd_dir: /lib/systemd/system
+    config_dir: /etc/default
+  when: ansible_distribution == 'Ubuntu'
+
+# TODO: set 0.8 to be configured in iri.yml variable file
+- name: set memory limit for java-iri
+  set_fact:
+    iri_java_mem: "{{ (ansible_memtotal_mb * 0.8)|int|abs }}m"
+  when: memory_autoset is defined and memory_autoset
+  tags:
+    - mem_override
+
+- name: add user to run iri as
+  user:
+    name: "{{ iri_username }}"
+    shell: /sbin/nologin
+    createhome: no
+    home: "{{ iri_basedir }}"
+  tags:
+    - iri_user
+
+- name: get iri user uid
+  shell: "echo -n $(id -u {{ iri_username }})"
+  changed_when: false
+  register: iri_uid
+
+- name: delete iri data basedir
+  block:
+    - name: stop iri
+      systemd:
+        name: iri.service
+        state: stopped
+      false_when: false
+
+    - name: remove basedir
+      file:
+        path: "{{ iri_basedir }}"
+        state: absent
+  when: remove_iri_basedir is defined and remove_iri_basedir
+
+- name: ensure iri basedir ownership and permissions
+  file:
+    path: "{{ iri_basedir }}"
+    state: directory
+    mode: 0700
+    owner: "{{ iri_username }}"
+    group: "{{ iri_username }}"
+
+- name: ensure iri basedir ownership and permissions
+  file:
+    path: "{{ iri_basedir }}"
+    state: directory
+    mode: 0700
+    owner: "{{ iri_username }}"
+    group: "{{ iri_username }}"
+
+- name: ensure iri config dir exists
+  file:
+    path: "{{ iri_configdir }}"
+    state: directory
+    mode: 0700
+    owner: "{{ iri_username }}"
+    group: "{{ iri_username }}"
+
+- name: copy utility scripts
+  copy:
+    src: "files/{{ item }}"
+    dest: "/usr/bin/{{ item }}"
+    mode: 0755
+  with_items:
+    - nbctl
+    - reattach
+    - ps_mem
+  tags:
+    - scripts
+
+- name: copy iri systemd file
+  template:
+    src: files/iri.service
+    dest: "{{ systemd_dir }}/iri.service"
+  notify:
+    - reload systemd
+
+- name: copy iri config file
+  template:
+    src: templates/iri.ini
+    dest: "{{ iri_configdir }}/iri.ini"
+    owner: "{{ iri_username }}"
+    group: "{{ iri_username }}"
+    force: no
+  notify:
+    - restart iri
+
+- name: Create iri container
+  docker_container:
+    name: iri
+    state: present
+    user: "{{ iri_uid.stdout }}"
+    restart_policy: unless-stopped
+    network_mode: host
+    hostname: iri
+    image: "{{ iri_image }}:{{ iri_tag }}"
+    ports:
+      - "{{ iri_api_port }}:{{ iri_api_port }}"
+      - "{{ iri_tcp_port }}:{{ iri_tcp_port }}"
+      - "{{ iri_udp_port }}:{{ iri_udp_port }}/udp"
+    volumes:
+      - "{{ iri_basedir }}:/iri/target:Z"
+      - "{{ iri_configdir }}:/iri/conf:ro,Z"
+    env:
+      IRI_CONFIG: "/iri/conf/iri.ini"
+      INIT_MEMORY: "{{ iri_init_java_mem }}" 
+      MAX_MEMORY: "{{ iri_java_mem }}"
+  tags:
+    - iri_create_container
+  notify:
+    - restart iri
+
+- name: flush handlers
+  meta: flush_handlers
+
+- name: ensure iri started and enabled
+  systemd:
+    daemon_reload: true
+    name: iri.service
+    state: started
+    enabled: true

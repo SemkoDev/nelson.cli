@@ -1,0 +1,17 @@
+- name: allow ssh port firewall
+  ufw:
+    rule: allow
+    direction: in
+    proto: tcp
+    port: "{{ ssh_port }}"
+
+- name: ufw default outgoing policy allowed
+  ufw:
+    direction: outgoing
+    policy: allow
+
+- name: ensure ufw started and default incoming policy denied
+  ufw:
+    state: enabled
+    direction: incoming
+    policy: deny
