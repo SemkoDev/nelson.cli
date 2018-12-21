@@ -493,14 +493,6 @@ Please refer to [upgrading](#upgrading) for a possible reason.
 
 ## Contributing
 
-### Donations
-
-**Donations always welcome**:
-
-```
-IYUIUCFNGOEEQHT9CQU9VYJVOJMQI9VYTQGQLTBAKTFIPWWRBFEV9TJWUZU9EYEFPM9VB9QYXTSMCDKMDABASVXPPX
-```
-
 ### Running your own entry node
 
 As the network grows, we will need more entry nodes. These "master" nodes serve as gates to the
