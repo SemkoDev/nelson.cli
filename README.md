@@ -1,4 +1,4 @@
-# Deviota Nelson
+# Nelson
 
 Nelson is a tool meant to be used with IOTA's IRI Node.
 It automatically manages neighbors of your full node, negotiating connections,
